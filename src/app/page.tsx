@@ -6,7 +6,7 @@ import EventCard from '../components/EventCard';
 import CertificateVerifierModal from '../components/CertificateVerifierModal';
 import { fetchEvents } from '../services/api.service';
 import { EventItem } from '../types/event.types';
-import { Sparkles, ArrowDown, Award, CalendarX, ShieldCheck, Calendar, HardDrive, QrCode } from 'lucide-react';
+import { Award, CalendarX, Search } from 'lucide-react';
 
 export default function Home() {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -42,99 +42,57 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-[#150408] text-[#fdfbf7] w-full">
       <Navbar onOpenVerifyModal={() => setIsVerifyModalOpen(true)} />
 
-      <main className="flex-1 w-full container-custom py-8">
-        <section className="hero-wrapper">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#800020]/25 border border-[#e6c594]/30 text-[#e6c594] text-xs font-semibold mb-6">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>HITian Inside Official Event & Certificate Portal</span>
+      <main className="flex-1 w-full container-custom py-10">
+        {/* Main Section Header */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#f7f1e5]/10">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
+              Event Registrations & <span className="gradient-text">Verification</span>
+            </h1>
+            <p className="text-xs text-[#a69181] mt-1 font-medium">
+              Official event portal for HITian Inside club registrations & certificate authentication.
+            </p>
           </div>
 
-          <h1 className="hero-title">
-            Event Registration & <span className="gradient-text">Certificate Verification</span>
-          </h1>
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="w-4 h-4 text-[#a69181] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input 
+                type="text" 
+                placeholder="Search events..." 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="form-input text-xs pl-9 py-2"
+              />
+            </div>
 
-          <p className="hero-subtitle">
-            Explore upcoming official events, submit project registrations with media uploads, and instantly verify official participation & merit certificates.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <a 
-              href="#explore" 
-              className="btn-primary shadow-[#e6c594]/25 inline-flex items-center gap-2"
-            >
-              <span>Explore Events & Form Submissions</span>
-              <ArrowDown className="w-4 h-4" />
-            </a>
             <button 
               onClick={() => setIsVerifyModalOpen(true)}
-              className="btn-secondary inline-flex items-center gap-2"
+              className="btn-primary text-xs shrink-0 py-2 inline-flex items-center gap-1.5 shadow-md shadow-[#e6c594]/20"
             >
-              <Award className="w-4 h-4 text-[#e6c594]" />
+              <Award className="w-3.5 h-3.5" />
               <span>Verify Certificate</span>
             </button>
           </div>
+        </div>
 
-          <div className="metrics-grid-container">
-            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10 flex flex-col items-center">
-              <ShieldCheck className="w-5 h-5 text-[#e6c594] mb-1" />
-              <span className="text-xl sm:text-2xl font-extrabold text-[#e6c594]">100%</span>
-              <p className="text-[11px] text-[#a69181] mt-0.5 font-medium">Verified Certificates</p>
-            </div>
-            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10 flex flex-col items-center">
-              <Calendar className="w-5 h-5 text-[#f7f1e5] mb-1" />
-              <span className="text-xl sm:text-2xl font-extrabold text-[#f7f1e5]">{events.length}</span>
-              <p className="text-[11px] text-[#a69181] mt-0.5 font-medium">Active Events</p>
-            </div>
-            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10 flex flex-col items-center">
-              <HardDrive className="w-5 h-5 text-[#e6c594] mb-1" />
-              <span className="text-xl sm:text-2xl font-extrabold text-[#e6c594]">Drive</span>
-              <p className="text-[11px] text-[#a69181] mt-0.5 font-medium">Media Storage</p>
-            </div>
-            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10 flex flex-col items-center">
-              <QrCode className="w-5 h-5 text-[#f7f1e5] mb-1" />
-              <span className="text-xl sm:text-2xl font-extrabold text-[#f7f1e5]">QR</span>
-              <p className="text-[11px] text-[#a69181] mt-0.5 font-medium">Attendance System</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="explore" className="pt-12 pb-12 w-full">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 w-full">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-[#fdfbf7]">Official Events & Form Submissions</h2>
-              <p className="text-xs text-[#a69181] mt-1 font-medium">
-                Official events published by HITian Inside Administrators.
-              </p>
-            </div>
-
-            {events.length > 0 && (
-              <div className="w-full sm:w-80">
-                <input 
-                  type="text" 
-                  placeholder="Search events or clubs..." 
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="form-input text-sm"
-                />
-              </div>
-            )}
-          </div>
-
+        {/* Events Catalog / Directory */}
+        <section className="w-full">
           {loading ? (
             <div className="py-20 text-center text-[#e6d7c3]">
               <div className="inline-block w-8 h-8 border-2 border-[#e6c594] border-t-transparent rounded-full animate-spin mb-4" />
               <p className="text-sm font-medium">Fetching active events...</p>
             </div>
           ) : filteredEvents.length === 0 ? (
-            <div className="glass-panel p-12 text-center my-8 border border-[#f7f1e5]/10 max-w-2xl mx-auto">
+            <div className="glass-panel p-12 text-center my-6 border border-[#f7f1e5]/10 max-w-2xl mx-auto">
               <div className="w-14 h-14 rounded-2xl bg-[#800020]/20 border border-[#e6c594]/30 text-[#e6c594] flex items-center justify-center mx-auto mb-4">
                 <CalendarX className="w-7 h-7" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">No Live Events Currently Available</h3>
               <p className="text-xs text-[#a69181] leading-relaxed max-w-md mx-auto">
                 {searchQuery 
-                  ? `No events found matching "${searchQuery}". Try clearing your search.` 
-                  : 'Currently, there are no active or published events. Check back soon or access the admin panel via URL to host an event!'}
+                  ? `No events found matching "${searchQuery}". Try clearing your search query.` 
+                  : 'There are currently no active or published events for registration. Check back soon!'}
               </p>
 
               {searchQuery && (
@@ -156,7 +114,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-[#f7f1e5]/10 bg-[#100306] py-8 mt-auto w-full">
+      <footer className="border-t border-[#f7f1e5]/10 bg-[#100306] py-6 mt-auto w-full">
         <div className="container-custom text-center text-xs text-[#a69181]">
           <p>© 2026 HITian Inside. Official Event & Certificate Verification Portal.</p>
         </div>
