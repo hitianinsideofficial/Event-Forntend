@@ -64,7 +64,7 @@ export default function EventCard({ event }: EventCardProps) {
           {hasAttendance && (
             <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold inline-flex items-center gap-1">
               <QrCode className="w-3 h-3" />
-              QR Check-in
+              QR Pass
             </span>
           )}
 
@@ -86,7 +86,7 @@ export default function EventCard({ event }: EventCardProps) {
       </div>
 
       <div className="pt-4 border-t border-[#f7f1e5]/10 flex items-center justify-between mt-auto">
-        <span className="text-xs text-[#a69181] flex items-center gap-1 truncate max-w-[55%] font-medium">
+        <span className="text-xs text-[#a69181] flex items-center gap-1 truncate max-w-[50%] font-medium">
           {mode === 'ONLINE' ? <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" /> : <MapPin className="w-3.5 h-3.5 text-[#e6c594] shrink-0" />}
           <span className="truncate">{location || (mode === 'ONLINE' ? 'Online Event' : 'Main Campus')}</span>
         </span>
@@ -95,7 +95,7 @@ export default function EventCard({ event }: EventCardProps) {
           href={`/events/${eventId}`}
           className="px-3.5 py-1.5 text-xs font-bold text-[#150408] bg-[#e6c594] hover:bg-[#f7f1e5] rounded-lg transition-all shadow-md shadow-[#e6c594]/20 inline-flex items-center gap-1"
         >
-          <span>Register & Details</span>
+          <span>View Details & Rules</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
