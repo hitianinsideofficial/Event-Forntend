@@ -12,6 +12,7 @@ import {
   ArrowLeft, 
   Calendar, 
   MapPin, 
+  Globe,
   QrCode, 
   CheckCircle2, 
   Printer, 
@@ -162,16 +163,31 @@ export default function EventDetailPage() {
         {/* Event Header Banner */}
         <div className="glass-panel p-6 sm:p-8 mb-8 border border-[#f7f1e5]/10 relative overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#800020]/25 text-[#e6c594] border border-[#e6c594]/30">
-              {event.organizer || 'HITian Inside'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#800020]/25 text-[#e6c594] border border-[#e6c594]/30">
+                {event.organizer || 'HITian Inside'}
+              </span>
+
+              {event.mode === 'ONLINE' ? (
+                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 inline-flex items-center gap-1">
+                  <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>ONLINE EVENT</span>
+                </span>
+              ) : (
+                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 inline-flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-purple-300" />
+                  <span>IN-PERSON VENUE</span>
+                </span>
+              )}
+            </div>
+
             <div className="flex items-center gap-4 text-xs text-[#a69181] font-medium">
               <span className="inline-flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-[#e6c594]" />
                 {new Date(event.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#e6c594]" />
+                {event.mode === 'ONLINE' ? <Globe className="w-3.5 h-3.5 text-cyan-400" /> : <MapPin className="w-3.5 h-3.5 text-[#e6c594]" />}
                 {event.location}
               </span>
             </div>

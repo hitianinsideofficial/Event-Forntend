@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { EventItem } from '../types/event.types';
-import { Calendar, MapPin, QrCode, UploadCloud, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Globe, QrCode, UploadCloud, ArrowRight } from 'lucide-react';
 
 interface EventCardProps {
   event: EventItem;
 }
 
 export default function EventCard({ event }: EventCardProps) {
-  const { id, _id, title, description, date, location, organizer, status, hasAttendance, requireFileUpload } = event;
+  const { id, _id, title, description, date, location, organizer, status, mode, hasAttendance, requireFileUpload } = event;
   const eventId = id || _id;
 
   const formattedDate = date ? new Date(date).toLocaleDateString('en-US', {
@@ -35,6 +35,7 @@ export default function EventCard({ event }: EventCardProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          {/* Status Badge */}
           {status === 'LIVE' ? (
             <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -46,12 +47,27 @@ export default function EventCard({ event }: EventCardProps) {
             </span>
           )}
 
-          {hasAttendance !== false && (
+          {/* Mode Badge (OFFLINE / ONLINE) */}
+          {mode === 'ONLINE' ? (
+            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold inline-flex items-center gap-1">
+              <Globe className="w-3 h-3 text-cyan-400" />
+              ONLINE EVENT
+            </span>
+          ) : (
+            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 font-semibold inline-flex items-center gap-1">
+              <MapPin className="w-3 h-3 text-purple-300" />
+              IN-PERSON VENUE
+            </span>
+          )}
+
+          {/* Optional QR Attendance Badge */}
+          {hasAttendance && (
             <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold inline-flex items-center gap-1">
               <QrCode className="w-3 h-3" />
               QR Check-in
             </span>
           )}
+
           {requireFileUpload && (
             <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-200 border border-amber-500/30 font-semibold inline-flex items-center gap-1">
               <UploadCloud className="w-3 h-3" />
@@ -71,8 +87,8 @@ export default function EventCard({ event }: EventCardProps) {
 
       <div className="pt-4 border-t border-[#f7f1e5]/10 flex items-center justify-between mt-auto">
         <span className="text-xs text-[#a69181] flex items-center gap-1 truncate max-w-[55%] font-medium">
-          <MapPin className="w-3.5 h-3.5 text-[#e6c594] shrink-0" />
-          <span className="truncate">{location || 'Main Campus'}</span>
+          {mode === 'ONLINE' ? <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" /> : <MapPin className="w-3.5 h-3.5 text-[#e6c594] shrink-0" />}
+          <span className="truncate">{location || (mode === 'ONLINE' ? 'Online Event' : 'Main Campus')}</span>
         </span>
 
         <Link 

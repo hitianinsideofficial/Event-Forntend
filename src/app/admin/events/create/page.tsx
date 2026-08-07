@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '../../../../components/Navbar';
 import { createEventApi } from '../../../../services/api.service';
-import { EventHighlight, EventStatus } from '../../../../types/event.types';
-import { ArrowLeft, Calendar, Sparkles, Plus, X, Lock, GripVertical } from 'lucide-react';
+import { EventHighlight, EventStatus, EventMode } from '../../../../types/event.types';
+import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Globe, MapPin, QrCode } from 'lucide-react';
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -19,7 +19,8 @@ export default function CreateEventPage() {
     location: '',
     organizer: 'HITian Inside',
     status: 'UPCOMING' as EventStatus,
-    hasAttendance: true,
+    mode: 'OFFLINE' as EventMode,
+    hasAttendance: false,
     requireFileUpload: false
   });
 
@@ -45,8 +46,13 @@ export default function CreateEventPage() {
   if (!isAuthenticated) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData(prev => ({ ...prev, [name]: checked }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleAddHighlight = () => {
@@ -101,6 +107,7 @@ export default function CreateEventPage() {
     try {
       const payload = {
         ...formData,
+        location: formData.location.trim() || (formData.mode === 'ONLINE' ? 'Online Event (Link provided)' : 'Main Campus'),
         highlights: highlights.filter(h => h.title.trim())
       };
 
@@ -133,7 +140,7 @@ export default function CreateEventPage() {
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div>
               <h1 className="text-2xl font-bold text-white">Create New Event</h1>
-              <p className="text-xs text-[#a69181] mt-0.5">Define event details and status. Next step will build the registration form.</p>
+              <p className="text-xs text-[#a69181] mt-0.5">Define event mode (Online/Offline), options, and details. Next step will build the registration form.</p>
             </div>
             <span className="px-3 py-1 rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1">
               <Lock className="w-3.5 h-3.5" />
@@ -176,6 +183,19 @@ export default function CreateEventPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="form-group">
+                <label className="form-label">Event Mode *</label>
+                <select
+                  name="mode"
+                  value={formData.mode}
+                  onChange={handleChange}
+                  className="form-select"
+                >
+                  <option value="OFFLINE">OFFLINE (In-Person Campus Venue)</option>
+                  <option value="ONLINE">ONLINE (Virtual / Google Meet / Zoom)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Event Date *</label>
                 <input 
                   type="date"
@@ -186,18 +206,36 @@ export default function CreateEventPage() {
                   required
                 />
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="form-group">
-                <label className="form-label">Location *</label>
+                <label className="form-label">
+                  {formData.mode === 'ONLINE' ? 'Online Meeting Link / Platform' : 'Location / Venue *'}
+                </label>
                 <input 
                   type="text"
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
-                  placeholder="e.g. Main Auditorium / Computer Lab 3"
+                  placeholder={formData.mode === 'ONLINE' ? 'e.g. Google Meet Link / Zoom' : 'e.g. Main Auditorium / Lab 3'}
                   className="form-input"
-                  required
+                  required={formData.mode === 'OFFLINE'}
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Initial Event Status</label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="form-select"
+                >
+                  <option value="UPCOMING">UPCOMING (Registration Open)</option>
+                  <option value="LIVE">LIVE Now</option>
+                  <option value="DONE">DONE (Archived / Hidden from Homepage)</option>
+                </select>
               </div>
             </div>
 
@@ -214,18 +252,24 @@ export default function CreateEventPage() {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Initial Event Status</label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  className="form-select"
-                >
-                  <option value="UPCOMING">UPCOMING (Registration Open)</option>
-                  <option value="LIVE">LIVE Now</option>
-                  <option value="DONE">DONE (Archived / Hidden from Homepage)</option>
-                </select>
+              {/* Optional QR Attendance Toggle */}
+              <div className="form-group justify-end pb-2">
+                <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer mt-4">
+                  <input 
+                    type="checkbox"
+                    name="hasAttendance"
+                    checked={formData.hasAttendance}
+                    onChange={handleChange}
+                    className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
+                  />
+                  <span className="font-semibold text-white inline-flex items-center gap-1.5">
+                    <QrCode className="w-4 h-4 text-emerald-400" />
+                    <span>Enable QR Code Attendance System</span>
+                  </span>
+                </label>
+                <p className="text-[11px] text-[#a69181] mt-1">
+                  (Uncheck if this event does not require QR attendance passes)
+                </p>
               </div>
             </div>
 
@@ -281,7 +325,6 @@ export default function CreateEventPage() {
                 ))}
               </div>
 
-              {/* Add Highlight Button positioned at the BOTTOM */}
               <button 
                 type="button" 
                 onClick={handleAddHighlight}

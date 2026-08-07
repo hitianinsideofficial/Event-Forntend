@@ -135,45 +135,56 @@ export default function EventSubmissionsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2 glass-panel p-6 border border-emerald-500/20">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live QR Attendance Scanner
-              </h2>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono inline-flex items-center gap-1">
-                <QrCode className="w-3 h-3" />
-                SCANNER READY
-              </span>
-            </div>
-            <p className="text-xs text-[#a69181] mb-4">
-              Scan attendee QR code ticket or enter Ticket ID (e.g. <span className="font-mono text-[#e6c594]">HIT-EVT-XXXXXX</span>).
-            </p>
+            {event?.hasAttendance ? (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Live QR Attendance Scanner
+                  </h2>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono inline-flex items-center gap-1">
+                    <QrCode className="w-3 h-3" />
+                    SCANNER READY
+                  </span>
+                </div>
+                <p className="text-xs text-[#a69181] mb-4">
+                  Scan attendee QR code ticket or enter Ticket ID (e.g. <span className="font-mono text-[#e6c594]">HIT-EVT-XXXXXX</span>).
+                </p>
 
-            <form onSubmit={handleCheckInSubmit} className="flex gap-2 mb-3">
-              <input 
-                type="text" 
-                value={scanInput}
-                onChange={e => setScanInput(e.target.value)}
-                placeholder="Scan or enter Ticket ID (e.g., HIT-EVT-XXXXXX)..."
-                className="form-input flex-1 font-mono text-sm uppercase"
-              />
-              <button 
-                type="submit" 
-                disabled={checkInLoading}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 shrink-0 inline-flex items-center gap-1.5"
-              >
-                <Check className="w-4 h-4" />
-                <span>{checkInLoading ? 'Checking...' : 'Check-In Attendee'}</span>
-              </button>
-            </form>
+                <form onSubmit={handleCheckInSubmit} className="flex gap-2 mb-3">
+                  <input 
+                    type="text" 
+                    value={scanInput}
+                    onChange={e => setScanInput(e.target.value)}
+                    placeholder="Scan or enter Ticket ID (e.g., HIT-EVT-XXXXXX)..."
+                    className="form-input flex-1 font-mono text-sm uppercase"
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={checkInLoading}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 shrink-0 inline-flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{checkInLoading ? 'Checking...' : 'Check-In Attendee'}</span>
+                  </button>
+                </form>
 
-            {checkInResult && (
-              <div className={`p-3 rounded-xl border text-xs font-medium ${
-                checkInResult.success 
-                  ? checkInResult.alreadyCheckedIn ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                  : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-              }`}>
-                {checkInResult.message}
+                {checkInResult && (
+                  <div className={`p-3 rounded-xl border text-xs font-medium ${
+                    checkInResult.success 
+                      ? checkInResult.alreadyCheckedIn ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                  }`}>
+                    {checkInResult.message}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col justify-center h-full text-left">
+                <h3 className="text-base font-bold text-white mb-1">QR Attendance System Disabled</h3>
+                <p className="text-xs text-[#a69181]">
+                  This event was configured without QR Attendance tracking. Registrations and submitted media files are tracked below.
+                </p>
               </div>
             )}
           </div>
