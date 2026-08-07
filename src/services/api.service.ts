@@ -1,4 +1,4 @@
-import { EventItem } from '../types/event.types';
+import { EventItem, EventStatus, CustomFormField } from '../types/event.types';
 import { SubmissionItem } from '../types/submission.types';
 import { CertificateItem } from '../types/certificate.types';
 import { ApiResponse, BackendHealthResponse } from '../types/api.types';
@@ -16,9 +16,10 @@ export async function checkBackendHealth(): Promise<BackendHealthResponse> {
   }
 }
 
-export async function fetchEvents(): Promise<EventItem[]> {
+export async function fetchEvents(includeDone: boolean = false): Promise<EventItem[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/events`, { cache: 'no-store' });
+    const url = includeDone ? `${API_BASE_URL}/events?includeDone=true` : `${API_BASE_URL}/events`;
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result: ApiResponse<EventItem[]> = await res.json();
     return result.data || [];
@@ -60,6 +61,46 @@ export async function createEventApi(eventData: Partial<EventItem>): Promise<Api
   }
 }
 
+export async function updateEventStatusApi(eventId: string, status: EventStatus): Promise<ApiResponse<EventItem>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/events/${eventId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || 'Failed to update status');
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating event status:', err);
+    throw err;
+  }
+}
+
+export async function updateEventFormApi(eventId: string, customFields: CustomFormField[]): Promise<ApiResponse<EventItem>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/events/${eventId}/form`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customFields })
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || 'Failed to update event form');
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating event form:', err);
+    throw err;
+  }
+}
+
 export async function submitRegistrationApi(formData: FormData): Promise<ApiResponse<SubmissionItem>> {
   try {
     const res = await fetch(`${API_BASE_URL}/submissions`, {
@@ -79,36 +120,49 @@ export async function submitRegistrationApi(formData: FormData): Promise<ApiResp
   }
 }
 
-export async function verifyCertificateApi(certId: string): Promise<ApiResponse<CertificateItem>> {
+export async function fetchSubmissionsApi(eventId?: string): Promise<SubmissionItem[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/certificates/verify/${certId}`, { cache: 'no-store' });
-    const result: ApiResponse<CertificateItem> = await res.json();
-    if (!res.ok) {
-      throw new Error(result.message || 'Certificate verification failed');
-    }
-    return result;
+    const url = eventId ? `${API_BASE_URL}/submissions/${eventId}` : `${API_BASE_URL}/submissions`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result: ApiResponse<SubmissionItem[]> = await res.json();
+    return result.data || [];
   } catch (err) {
-    console.error('Certificate verification error:', err);
+    console.error('Error fetching submissions:', err);
     throw err;
   }
 }
 
-export async function issueCertificateApi(certData: Partial<CertificateItem>): Promise<ApiResponse<CertificateItem>> {
+export async function checkInAttendeeApi(ticketId: string): Promise<ApiResponse<SubmissionItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/certificates/issue`, {
+    const res = await fetch(`${API_BASE_URL}/submissions/check-in`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(certData)
+      body: JSON.stringify({ ticketId }),
     });
 
     if (!res.ok) {
       const errorData = await res.json();
-      throw new Error(errorData.message || 'Failed to issue certificate');
+      throw new Error(errorData.message || 'Check-in failed');
     }
 
     return await res.json();
   } catch (err) {
-    console.error('Certificate issuance error:', err);
+    console.error('Error during check-in:', err);
+    throw err;
+  }
+}
+
+export async function verifyCertificateApi(certId: string): Promise<ApiResponse<CertificateItem>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/certificates/verify/${certId}`, { cache: 'no-store' });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || 'Certificate verification failed');
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('Certificate verification error:', err);
     throw err;
   }
 }
@@ -129,37 +183,6 @@ export async function adminLoginApi(email: string, password: string): Promise<Ap
     return await res.json();
   } catch (err) {
     console.error('Admin login error:', err);
-    throw err;
-  }
-}
-
-export async function fetchSubmissionsApi(eventId: string = 'all'): Promise<SubmissionItem[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/events/${eventId}/submissions`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const result: ApiResponse<SubmissionItem[]> = await res.json();
-    return result.data || [];
-  } catch (err) {
-    console.error('Error fetching submissions:', err);
-    throw err;
-  }
-}
-
-export async function checkInAttendeeApi(ticketId: string): Promise<ApiResponse<SubmissionItem>> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/submissions/checkin`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticketId })
-    });
-
-    const result: ApiResponse<SubmissionItem> = await res.json();
-    if (!res.ok) {
-      throw new Error(result.message || 'Check-in failed');
-    }
-    return result;
-  } catch (err) {
-    console.error('Check-in error:', err);
     throw err;
   }
 }

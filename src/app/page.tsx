@@ -17,7 +17,8 @@ export default function Home() {
   const loadEvents = async () => {
     setLoading(true);
     try {
-      const data = await fetchEvents();
+      // Fetches active events (UPCOMING & LIVE only, excludes DONE)
+      const data = await fetchEvents(false);
       setEvents(data || []);
     } catch (err) {
       console.warn('Backend unavailable.');
@@ -122,7 +123,7 @@ export default function Home() {
           {loading ? (
             <div className="py-20 text-center text-[#e6d7c3]">
               <div className="inline-block w-8 h-8 border-2 border-[#e6c594] border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-sm font-medium">Fetching events...</p>
+              <p className="text-sm font-medium">Fetching active events...</p>
             </div>
           ) : filteredEvents.length === 0 ? (
             <div className="glass-panel p-12 text-center my-8 border border-[#f7f1e5]/10 max-w-2xl mx-auto">

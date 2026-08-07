@@ -1,5 +1,7 @@
+export type EventStatus = 'UPCOMING' | 'LIVE' | 'DONE';
+
 export interface EventHighlight {
-  icon: string;
+  icon?: string;
   title: string;
   description: string;
 }
@@ -23,6 +25,7 @@ export interface EventItem {
   date: string;
   location: string;
   organizer: string;
+  status: EventStatus;
   hasAttendance?: boolean;
   requireFileUpload?: boolean;
   highlights?: EventHighlight[];
