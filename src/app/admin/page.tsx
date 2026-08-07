@@ -225,15 +225,15 @@ export default function AdminDashboardPage() {
                           value={ev.status || 'UPCOMING'}
                           disabled={updatingStatusId === eventId}
                           onChange={(e) => handleStatusChange(eventId, e.target.value as EventStatus)}
-                          className={`text-[10px] font-bold rounded-full px-2.5 py-0.5 border outline-none cursor-pointer ${
+                          className={`text-[10px] font-bold rounded-full px-3 py-1 border outline-none cursor-pointer ${
                             ev.status === 'LIVE' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
                             ev.status === 'DONE' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
                             'bg-amber-500/20 text-amber-300 border-amber-500/40'
                           }`}
                         >
-                          <option value="UPCOMING">🟢 UPCOMING (Registration Open)</option>
-                          <option value="LIVE">⚡ LIVE NOW</option>
-                          <option value="DONE">🔴 DONE (Hidden from Public)</option>
+                          <option value="UPCOMING">UPCOMING (Registration Open)</option>
+                          <option value="LIVE">LIVE NOW</option>
+                          <option value="DONE">DONE (Hidden from Public)</option>
                         </select>
                       </div>
 

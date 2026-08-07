@@ -258,6 +258,21 @@ body::after {
   box-shadow: 0 0 0 2px rgba(230, 197, 148, 0.25);
 }
 
+/* Custom Select Dropdown Options Styling */
+select option {
+  background-color: #20070d !important;
+  color: #fdfbf7 !important;
+  padding: 10px 14px;
+}
+
+select option:hover,
+select option:focus,
+select option:active,
+select option:checked {
+  background-color: #800020 !important;
+  color: #e6c594 !important;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }

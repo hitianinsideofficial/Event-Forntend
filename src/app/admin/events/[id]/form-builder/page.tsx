@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Navbar from '../../../../../components/Navbar';
 import { fetchEventById, updateEventFormApi } from '../../../../../services/api.service';
 import { EventItem, CustomFormField, QuestionType } from '../../../../../types/event.types';
-import { ArrowLeft, HelpCircle, Plus, X, Save, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Plus, X, Save, CheckCircle2, GripVertical } from 'lucide-react';
 
 export default function EventFormBuilderPage() {
   const params = useParams();
@@ -16,6 +16,8 @@ export default function EventFormBuilderPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [event, setEvent] = useState<EventItem | null>(null);
   const [customFields, setCustomFields] = useState<CustomFormField[]>([]);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
@@ -107,6 +109,29 @@ export default function EventFormBuilderPage() {
     setCustomFields(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Drag & Drop Reordering for Questions
+  const handleDragStart = (index: number) => {
+    setDraggedIdx(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === index) return;
+
+    setCustomFields(prev => {
+      const copy = [...prev];
+      const draggedItem = copy[draggedIdx];
+      copy.splice(draggedIdx, 1);
+      copy.splice(index, 0, draggedItem);
+      return copy;
+    });
+    setDraggedIdx(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+  };
+
   const handleSaveForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -159,17 +184,8 @@ export default function EventFormBuilderPage() {
               <h1 className="text-2xl font-bold text-white mt-1">
                 {event?.title || 'Event Registration Form'}
               </h1>
-              <p className="text-xs text-[#a69181] mt-0.5">Design questions and upload requirements for attendees.</p>
+              <p className="text-xs text-[#a69181] mt-0.5">Design questions and upload requirements. Drag handle to reorder questions.</p>
             </div>
-
-            <button 
-              type="button" 
-              onClick={handleAddQuestion}
-              className="btn-primary text-xs shrink-0 inline-flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Question</span>
-            </button>
           </div>
 
           {message && (
@@ -188,8 +204,21 @@ export default function EventFormBuilderPage() {
           <form onSubmit={handleSaveForm} className="space-y-6">
             <div className="space-y-4">
               {customFields.map((q, qIdx) => (
-                <div key={q.id} className="bg-[#180509] p-5 rounded-xl border border-white/10 space-y-3 shadow-md">
+                <div 
+                  key={q.id}
+                  draggable
+                  onDragStart={() => handleDragStart(qIdx)}
+                  onDragOver={(e) => handleDragOver(e, qIdx)}
+                  onDragEnd={handleDragEnd}
+                  className={`bg-[#180509] p-5 rounded-xl border space-y-3 transition-all ${
+                    draggedIdx === qIdx ? 'border-[#e6c594] opacity-50' : 'border-white/10 hover:border-white/20'
+                  }`}
+                >
                   <div className="flex flex-wrap items-center gap-3">
+                    <div className="cursor-grab active:cursor-grabbing p-1 text-[#a69181] hover:text-[#e6c594]">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+
                     <span className="text-xs font-mono text-[#a69181] font-bold">Q{qIdx + 1}.</span>
                     
                     <input 
@@ -239,17 +268,10 @@ export default function EventFormBuilderPage() {
                   {/* Options Manager for Select, Checkbox, Radio */}
                   {['select', 'checkbox', 'radio'].includes(q.type) && (
                     <div className="pl-6 space-y-2 pt-2 border-t border-white/5">
-                      <div className="flex items-center justify-between text-[11px] text-[#a69181]">
-                        <span className="font-medium">Question Options:</span>
-                        <button 
-                          type="button" 
-                          onClick={() => handleAddOption(qIdx)}
-                          className="text-[#e6c594] hover:underline inline-flex items-center gap-1"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>Add Option</span>
-                        </button>
+                      <div className="text-[11px] text-[#a69181] font-medium">
+                        Question Options:
                       </div>
+                      
                       {q.options?.map((opt, optIdx) => (
                         <div key={optIdx} className="flex gap-2 items-center">
                           <input 
@@ -268,11 +290,31 @@ export default function EventFormBuilderPage() {
                           </button>
                         </div>
                       ))}
+
+                      {/* Add Option Button positioned at the BOTTOM of options */}
+                      <button 
+                        type="button" 
+                        onClick={() => handleAddOption(qIdx)}
+                        className="mt-2 py-1.5 px-3 rounded-lg bg-white/5 hover:bg-white/10 text-[#e6c594] text-xs font-medium inline-flex items-center gap-1 transition-all"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Option</span>
+                      </button>
                     </div>
                   )}
                 </div>
               ))}
             </div>
+
+            {/* Add Question Button positioned at the BOTTOM of questions */}
+            <button 
+              type="button" 
+              onClick={handleAddQuestion}
+              className="w-full py-3 text-xs font-semibold rounded-xl bg-[#800020]/30 hover:bg-[#800020] text-[#e6c594] hover:text-white border border-[#e6c594]/30 inline-flex items-center justify-center gap-1.5 transition-all mt-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Question</span>
+            </button>
 
             <div className="pt-4 flex justify-between items-center border-t border-white/10">
               <Link href="/admin" className="btn-secondary text-xs">

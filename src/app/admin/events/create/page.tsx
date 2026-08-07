@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Navbar from '../../../../components/Navbar';
 import { createEventApi } from '../../../../services/api.service';
 import { EventHighlight, EventStatus } from '../../../../types/event.types';
-import { ArrowLeft, Calendar, Sparkles, Plus, X, Lock } from 'lucide-react';
+import { ArrowLeft, Calendar, Sparkles, Plus, X, Lock, GripVertical } from 'lucide-react';
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -27,6 +27,7 @@ export default function CreateEventPage() {
     { title: 'Schedule Highlight', description: 'Interactive workshops & live keynotes' }
   ]);
 
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -62,6 +63,29 @@ export default function CreateEventPage() {
 
   const handleRemoveHighlight = (index: number) => {
     setHighlights(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Drag & Drop Reorder Handlers
+  const handleDragStart = (index: number) => {
+    setDraggedIdx(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === index) return;
+
+    setHighlights(prev => {
+      const copy = [...prev];
+      const draggedItem = copy[draggedIdx];
+      copy.splice(draggedIdx, 1);
+      copy.splice(index, 0, draggedItem);
+      return copy;
+    });
+    setDraggedIdx(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -205,48 +229,67 @@ export default function CreateEventPage() {
               </div>
             </div>
 
-            {/* Custom Highlights */}
+            {/* Custom Highlights with Drag & Drop Reordering */}
             <div className="space-y-4 pt-4 border-t border-white/10">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-[#e6c594] flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4" />
-                  <span>Custom Event Highlights</span>
+                  <span>Custom Event Highlights (Drag handle to reorder)</span>
                 </h3>
-                <button 
-                  type="button" 
-                  onClick={handleAddHighlight}
-                  className="px-2.5 py-1 text-xs font-semibold rounded bg-[#800020]/40 text-[#e6c594] border border-[#e6c594]/30 hover:bg-[#800020] inline-flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Highlight</span>
-                </button>
               </div>
 
-              {highlights.map((item, idx) => (
-                <div key={idx} className="flex gap-2 items-start bg-[#180509] p-3 rounded-xl border border-white/5">
-                  <input 
-                    type="text"
-                    value={item.title}
-                    onChange={e => handleUpdateHighlight(idx, 'title', e.target.value)}
-                    placeholder="Highlight Title (e.g. Prize Pool)"
-                    className="form-input flex-1 text-xs"
-                  />
-                  <input 
-                    type="text"
-                    value={item.description}
-                    onChange={e => handleUpdateHighlight(idx, 'description', e.target.value)}
-                    placeholder="Description (e.g. ₹50,000 Cash)"
-                    className="form-input flex-1 text-xs"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => handleRemoveHighlight(idx)}
-                    className="text-rose-400 p-2 text-sm hover:text-rose-300"
+              <div className="space-y-2">
+                {highlights.map((item, idx) => (
+                  <div 
+                    key={idx}
+                    draggable
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragOver={(e) => handleDragOver(e, idx)}
+                    onDragEnd={handleDragEnd}
+                    className={`flex gap-2 items-center bg-[#180509] p-3 rounded-xl border transition-all ${
+                      draggedIdx === idx ? 'border-[#e6c594] opacity-50' : 'border-white/5 hover:border-white/20'
+                    }`}
                   >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                    <div className="cursor-grab active:cursor-grabbing p-1 text-[#a69181] hover:text-[#e6c594]">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+
+                    <input 
+                      type="text"
+                      value={item.title}
+                      onChange={e => handleUpdateHighlight(idx, 'title', e.target.value)}
+                      placeholder="Highlight Title (e.g. Prize Pool)"
+                      className="form-input flex-1 text-xs"
+                    />
+
+                    <input 
+                      type="text"
+                      value={item.description}
+                      onChange={e => handleUpdateHighlight(idx, 'description', e.target.value)}
+                      placeholder="Description (e.g. INR 50,000 Cash)"
+                      className="form-input flex-1 text-xs"
+                    />
+
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveHighlight(idx)}
+                      className="text-rose-400 p-2 text-sm hover:text-rose-300"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Highlight Button positioned at the BOTTOM */}
+              <button 
+                type="button" 
+                onClick={handleAddHighlight}
+                className="w-full py-2.5 text-xs font-semibold rounded-xl bg-[#800020]/30 hover:bg-[#800020] text-[#e6c594] hover:text-white border border-[#e6c594]/30 inline-flex items-center justify-center gap-1.5 transition-all mt-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Custom Highlight</span>
+              </button>
             </div>
 
             <div className="pt-4 flex justify-end gap-3 border-t border-white/10">
