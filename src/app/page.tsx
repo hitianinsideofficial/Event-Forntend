@@ -6,6 +6,7 @@ import EventCard from '../components/EventCard';
 import CertificateVerifierModal from '../components/CertificateVerifierModal';
 import { fetchEvents } from '../services/api.service';
 import { EventItem } from '../types/event.types';
+import { Sparkles, ArrowDown, Award, CalendarX, ShieldCheck, Calendar, HardDrive, QrCode } from 'lucide-react';
 
 export default function Home() {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -43,7 +44,8 @@ export default function Home() {
       <main className="flex-1 w-full container-custom py-8">
         <section className="hero-wrapper">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#800020]/25 border border-[#e6c594]/30 text-[#e6c594] text-xs font-semibold mb-6">
-            ✨ HITian Inside Official Event & Certificate Portal
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>HITian Inside Official Event & Certificate Portal</span>
           </div>
 
           <h1 className="hero-title">
@@ -57,34 +59,40 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-center gap-4">
             <a 
               href="#explore" 
-              className="btn-primary shadow-[#e6c594]/25"
+              className="btn-primary shadow-[#e6c594]/25 inline-flex items-center gap-2"
             >
-              Explore Events & Form Submissions ↓
+              <span>Explore Events & Form Submissions</span>
+              <ArrowDown className="w-4 h-4" />
             </a>
             <button 
               onClick={() => setIsVerifyModalOpen(true)}
-              className="btn-secondary"
+              className="btn-secondary inline-flex items-center gap-2"
             >
-              📜 Verify Certificate
+              <Award className="w-4 h-4 text-[#e6c594]" />
+              <span>Verify Certificate</span>
             </button>
           </div>
 
           <div className="metrics-grid-container">
-            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#e6c594]">100%</span>
-              <p className="text-xs text-[#a69181] mt-1 font-medium">Verified Certificates</p>
+            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10 flex flex-col items-center">
+              <ShieldCheck className="w-5 h-5 text-[#e6c594] mb-1" />
+              <span className="text-xl sm:text-2xl font-extrabold text-[#e6c594]">100%</span>
+              <p className="text-[11px] text-[#a69181] mt-0.5 font-medium">Verified Certificates</p>
             </div>
-            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#f7f1e5]">{events.length}</span>
-              <p className="text-xs text-[#a69181] mt-1 font-medium">Active Events</p>
+            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10 flex flex-col items-center">
+              <Calendar className="w-5 h-5 text-[#f7f1e5] mb-1" />
+              <span className="text-xl sm:text-2xl font-extrabold text-[#f7f1e5]">{events.length}</span>
+              <p className="text-[11px] text-[#a69181] mt-0.5 font-medium">Active Events</p>
             </div>
-            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#e6c594]">Drive</span>
-              <p className="text-xs text-[#a69181] mt-1 font-medium">Media Storage</p>
+            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10 flex flex-col items-center">
+              <HardDrive className="w-5 h-5 text-[#e6c594] mb-1" />
+              <span className="text-xl sm:text-2xl font-extrabold text-[#e6c594]">Drive</span>
+              <p className="text-[11px] text-[#a69181] mt-0.5 font-medium">Media Storage</p>
             </div>
-            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#f7f1e5]">QR</span>
-              <p className="text-xs text-[#a69181] mt-1 font-medium">Attendance System</p>
+            <div className="glass-panel p-4 text-center border-[#f7f1e5]/10 flex flex-col items-center">
+              <QrCode className="w-5 h-5 text-[#f7f1e5] mb-1" />
+              <span className="text-xl sm:text-2xl font-extrabold text-[#f7f1e5]">QR</span>
+              <p className="text-[11px] text-[#a69181] mt-0.5 font-medium">Attendance System</p>
             </div>
           </div>
         </section>
@@ -118,8 +126,8 @@ export default function Home() {
             </div>
           ) : filteredEvents.length === 0 ? (
             <div className="glass-panel p-12 text-center my-8 border border-[#f7f1e5]/10 max-w-2xl mx-auto">
-              <div className="w-16 h-16 rounded-2xl bg-[#800020]/20 border border-[#e6c594]/30 text-[#e6c594] flex items-center justify-center mx-auto mb-4 text-3xl">
-                📅
+              <div className="w-14 h-14 rounded-2xl bg-[#800020]/20 border border-[#e6c594]/30 text-[#e6c594] flex items-center justify-center mx-auto mb-4">
+                <CalendarX className="w-7 h-7" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">No Live Events Currently Available</h3>
               <p className="text-xs text-[#a69181] leading-relaxed max-w-md mx-auto">

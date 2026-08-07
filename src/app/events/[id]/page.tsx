@@ -8,6 +8,19 @@ import { fetchEventById, submitRegistrationApi } from '../../../services/api.ser
 import { EventItem } from '../../../types/event.types';
 import { SubmissionItem } from '../../../types/submission.types';
 import { QRCodeSVG } from 'qrcode.react';
+import { 
+  ArrowLeft, 
+  Calendar, 
+  MapPin, 
+  QrCode, 
+  CheckCircle2, 
+  Printer, 
+  UploadCloud, 
+  FileText, 
+  Image as ImageIcon, 
+  Video,
+  Sparkles 
+} from 'lucide-react';
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -24,7 +37,6 @@ export default function EventDetailPage() {
     phone: '',
   });
   
-  // Custom Answers State (handles text, radio, dropdown, link, and checkbox array)
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
@@ -39,23 +51,7 @@ export default function EventDetailPage() {
         const data = await fetchEventById(eventId);
         setEvent(data);
       } catch (err) {
-        setEvent({
-          id: eventId,
-          title: 'HITian Tech Symposium 2026',
-          description: 'Annual technical symposium featuring workshops, hackathons, and guest lectures. Upload your project proposal or presentation slides upon registration.',
-          date: '2026-09-15',
-          location: 'Main Auditorium',
-          organizer: 'HITian Tech Club',
-          hasAttendance: true,
-          requireFileUpload: true,
-          highlights: [
-            { icon: '🏆', title: 'Prize Pool', description: '₹50,000 Cash Prizes & Schwag Kits' },
-            { icon: '💻', title: 'Tracks', description: 'AI/ML, Web3, & Fullstack Innovation' }
-          ],
-          customFields: [
-            { id: 'field_dept', label: 'Department & Year', type: 'text', required: true }
-          ]
-        });
+        setEvent(null);
       } finally {
         setLoading(false);
       }
@@ -141,9 +137,13 @@ export default function EventDetailPage() {
     return (
       <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
         <Navbar />
-        <div className="flex-1 flex flex-col items-center justify-center p-6">
-          <h2 className="text-2xl font-bold mb-2">Event Not Found</h2>
-          <Link href="/" className="btn-secondary text-sm">Return Home</Link>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <h2 className="text-2xl font-bold mb-2 text-white">Event Not Found</h2>
+          <p className="text-xs text-[#a69181] mb-6">The requested event details are not available or have been unlisted.</p>
+          <Link href="/" className="btn-secondary text-sm inline-flex items-center gap-1.5">
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to Event Directory</span>
+          </Link>
         </div>
       </div>
     );
@@ -155,7 +155,8 @@ export default function EventDetailPage() {
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-[#a69181] hover:text-white mb-6 transition-colors font-medium">
-          ← Back to Events
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Events</span>
         </Link>
 
         {/* Event Header Banner */}
@@ -164,9 +165,15 @@ export default function EventDetailPage() {
             <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#800020]/25 text-[#e6c594] border border-[#e6c594]/30">
               {event.organizer || 'HITian Inside'}
             </span>
-            <div className="flex items-center gap-3 text-xs text-[#a69181] font-medium">
-              <span>📅 {new Date(event.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-              <span>📍 {event.location}</span>
+            <div className="flex items-center gap-4 text-xs text-[#a69181] font-medium">
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#e6c594]" />
+                {new Date(event.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#e6c594]" />
+                {event.location}
+              </span>
             </div>
           </div>
 
@@ -183,7 +190,9 @@ export default function EventDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-white/10">
               {event.highlights.map((h, i) => (
                 <div key={i} className="p-3.5 rounded-xl bg-[#180509]/80 border border-white/5 flex items-start gap-3">
-                  <span className="text-2xl">{h.icon || '✨'}</span>
+                  <div className="p-2 rounded-lg bg-[#800020]/30 border border-[#e6c594]/20 text-[#e6c594]">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
                   <div>
                     <h4 className="text-xs font-bold text-[#e6c594]">{h.title}</h4>
                     <p className="text-[11px] text-[#a69181] mt-0.5">{h.description}</p>
@@ -197,8 +206,8 @@ export default function EventDetailPage() {
         {ticket ? (
           /* TICKET SCREEN */
           <div className="glass-panel p-8 max-w-xl mx-auto text-center border-2 border-emerald-500/30 shadow-2xl shadow-emerald-500/10 animate-fadeIn">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-              ✓
+            <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
 
             <h2 className="text-2xl font-bold text-white mb-1">Registration Confirmed!</h2>
@@ -232,8 +241,9 @@ export default function EventDetailPage() {
             </div>
 
             <div className="flex items-center justify-center gap-3">
-              <button onClick={() => window.print()} className="btn-secondary text-xs">
-                🖨️ Print / Download Ticket
+              <button onClick={() => window.print()} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Ticket</span>
               </button>
               <button onClick={() => setTicket(null)} className="btn-primary text-xs">
                 Register Another Person
@@ -249,8 +259,9 @@ export default function EventDetailPage() {
                 <p className="text-xs text-[#a69181] mt-0.5">Please provide your details below.</p>
               </div>
               {event.hasAttendance && (
-                <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold">
-                  📲 QR Attendance Enabled
+                <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold inline-flex items-center gap-1.5">
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span>QR Attendance Enabled</span>
                 </span>
               )}
             </div>
@@ -412,10 +423,14 @@ export default function EventDetailPage() {
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         required={field.required}
                       />
-                      <div className="space-y-1">
-                        <span className="text-2xl">
-                          {field.type === 'image' ? '🖼️' : field.type === 'video' ? '🎥' : '📁'}
-                        </span>
+                      <div className="space-y-2 flex flex-col items-center">
+                        {field.type === 'image' ? (
+                          <ImageIcon className="w-8 h-8 text-[#e6c594]" />
+                        ) : field.type === 'video' ? (
+                          <Video className="w-8 h-8 text-[#e6c594]" />
+                        ) : (
+                          <UploadCloud className="w-8 h-8 text-[#e6c594]" />
+                        )}
                         <p className="text-xs text-[#e6d7c3] font-medium">
                           {selectedFile ? `Selected: ${selectedFile.name}` : `Click or Drag & Drop ${field.type.toUpperCase()} file`}
                         </p>
@@ -439,8 +454,8 @@ export default function EventDetailPage() {
                       accept="image/*,video/*,application/pdf,application/zip"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
-                    <div className="space-y-1">
-                      <span className="text-2xl">📁</span>
+                    <div className="space-y-2 flex flex-col items-center">
+                      <UploadCloud className="w-8 h-8 text-[#e6c594]" />
                       <p className="text-xs text-[#e6d7c3] font-medium">
                         {selectedFile ? `Selected: ${selectedFile.name}` : 'Click or Drag & Drop PNGs, MP4 videos, or documents'}
                       </p>

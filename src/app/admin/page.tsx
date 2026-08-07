@@ -12,6 +12,17 @@ import {
 import { EventItem } from '../../types/event.types';
 import { SubmissionItem } from '../../types/submission.types';
 import { ApiResponse } from '../../types/api.types';
+import { 
+  Lock, 
+  LogOut, 
+  QrCode, 
+  Plus, 
+  FileX, 
+  FileSpreadsheet, 
+  Check, 
+  FileText, 
+  ExternalLink 
+} from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -123,8 +134,8 @@ export default function AdminDashboardPage() {
         <Navbar />
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="glass-panel p-8 max-w-md w-full border border-[#f7f1e5]/10 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-[#800020]/30 border border-[#e6c594]/30 text-[#e6c594] flex items-center justify-center mx-auto mb-4 text-2xl">
-              🔐
+            <div className="w-12 h-12 rounded-2xl bg-[#800020]/30 border border-[#e6c594]/30 text-[#e6c594] flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-6 h-6" />
             </div>
             <h1 className="text-2xl font-bold mb-1">Admin Portal Access</h1>
             <p className="text-xs text-[#a69181] mb-6">Enter admin email & password to manage events, QR check-ins, and submissions.</p>
@@ -142,7 +153,7 @@ export default function AdminDashboardPage() {
                   type="email"
                   value={emailInput}
                   onChange={e => setEmailInput(e.target.value)}
-                  placeholder="admin@hitianinside.org"
+                  placeholder="admin@hitianinside.in"
                   className="form-input text-sm"
                   required
                 />
@@ -163,9 +174,10 @@ export default function AdminDashboardPage() {
               <button 
                 type="submit" 
                 disabled={authLoading}
-                className="btn-primary w-full py-2.5 justify-center text-sm font-semibold mt-2"
+                className="btn-primary w-full py-2.5 justify-center text-sm font-semibold mt-2 inline-flex items-center gap-2"
               >
-                {authLoading ? 'Verifying...' : 'Unlock Admin Panel'}
+                <Lock className="w-4 h-4" />
+                <span>{authLoading ? 'Verifying...' : 'Unlock Admin Panel'}</span>
               </button>
             </form>
           </div>
@@ -190,18 +202,20 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsCreateModalOpen(true)}
-              className="btn-primary text-xs"
+              className="btn-primary text-xs inline-flex items-center gap-1.5"
             >
-              + Host Event
+              <Plus className="w-4 h-4" />
+              <span>Host Event</span>
             </button>
             <button 
               onClick={() => {
                 setIsAuthenticated(false);
                 if (typeof window !== 'undefined') sessionStorage.removeItem('adminToken');
               }}
-              className="btn-secondary text-xs"
+              className="btn-secondary text-xs inline-flex items-center gap-1.5"
             >
-              Logout 🔒
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
             </button>
           </div>
         </div>
@@ -213,7 +227,8 @@ export default function AdminDashboardPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
                 Live QR Attendance Scanner & Check-in
               </h2>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono">
+              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono inline-flex items-center gap-1">
+                <QrCode className="w-3 h-3" />
                 SCANNER READY
               </span>
             </div>
@@ -232,9 +247,10 @@ export default function AdminDashboardPage() {
               <button 
                 type="submit" 
                 disabled={checkInLoading}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 shrink-0"
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 shrink-0 inline-flex items-center gap-1.5"
               >
-                {checkInLoading ? 'Checking...' : 'Check-In Attendee ✓'}
+                <Check className="w-4 h-4" />
+                <span>{checkInLoading ? 'Checking...' : 'Check-In Attendee'}</span>
               </button>
             </form>
 
@@ -308,8 +324,8 @@ export default function AdminDashboardPage() {
             </div>
           ) : filteredSubmissions.length === 0 ? (
             <div className="py-12 text-center text-[#a69181]">
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-xl">
-                📋
+              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-[#a69181]">
+                <FileX className="w-6 h-6" />
               </div>
               <p className="text-sm font-semibold text-white mb-1">No Submissions Found</p>
               <p className="text-xs text-[#a69181]">
@@ -371,7 +387,8 @@ export default function AdminDashboardPage() {
                               rel="noreferrer"
                               className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 underline font-medium truncate max-w-[160px] block"
                             >
-                              📁 {f.originalName || 'Download File'}
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                              <span>{f.originalName || 'Download File'}</span>
                             </a>
                           ))
                         ) : (
@@ -382,7 +399,8 @@ export default function AdminDashboardPage() {
                       <td className="p-3">
                         {sub.attendanceStatus === 'CHECKED_IN' ? (
                           <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold inline-flex items-center gap-1">
-                            ✓ Present
+                            <Check className="w-3 h-3" />
+                            <span>Present</span>
                           </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">

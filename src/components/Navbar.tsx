@@ -1,48 +1,51 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import BackendStatus from './BackendStatus';
+import { Award } from 'lucide-react';
 
 interface NavbarProps {
   onOpenVerifyModal?: () => void;
-  onOpenCreateModal?: () => void;
 }
 
 export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#f7f1e5]/10 bg-[#150408]/85 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-        {/* Brand Logo */}
+    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#150408]/85 border-b border-[#f7f1e5]/10">
+      <div className="container-custom flex items-center justify-between h-20">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative flex items-center justify-center p-1 rounded-xl bg-[#2a0c14] border border-[#e6c594]/25 shadow-md shadow-[#800020]/40 group-hover:scale-105 transition-transform">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#800020]/20 border border-[#e6c594]/30 flex items-center justify-center p-1.5 transition-transform group-hover:scale-105 shadow-md">
             <Image 
               src="/hitianinsidelogo.png" 
-              alt="HITian Inside Logo" 
-              width={48} 
-              height={48}
-              className="h-10 w-auto object-contain rounded-lg"
+              alt="HITian Inside Official Logo"
+              width={40}
+              height={40}
+              className="object-contain"
               priority
             />
           </div>
-          <div>
-            <span className="text-xl font-bold tracking-tight text-[#fdfbf7] group-hover:text-[#e6c594] transition-colors">
-              HITian <span className="gradient-text">Inside</span>
+
+          <div className="flex flex-col">
+            <span className="font-extrabold text-lg sm:text-xl text-[#fdfbf7] tracking-tight group-hover:text-[#e6c594] transition-colors">
+              HITian Inside
             </span>
-            <span className="hidden sm:block text-xs text-[#e6d7c3]/70 font-medium">Event Hub & Certificate Verification</span>
+            <span className="text-[10px] font-medium text-[#a69181] tracking-wider uppercase">
+              Event Hub & Certificate Verification
+            </span>
           </div>
         </Link>
 
-        {/* Center/Right Items */}
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-4">
           <BackendStatus />
 
           {onOpenVerifyModal && (
             <button 
               onClick={onOpenVerifyModal}
-              className="btn-secondary text-xs sm:text-sm shadow-[#e6c594]/20 inline-flex items-center gap-1.5"
+              className="btn-secondary text-xs hidden sm:inline-flex items-center gap-1.5"
             >
-              📜 Verify Certificate
+              <Award className="w-3.5 h-3.5 text-[#e6c594]" />
+              <span>Verify Certificate</span>
             </button>
           )}
         </div>

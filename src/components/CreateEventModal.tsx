@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { createEventApi } from '../services/api.service';
 import { EventItem, EventHighlight, CustomFormField, QuestionType } from '../types/event.types';
+import { Plus, X, Calendar, Sparkles, HelpCircle } from 'lucide-react';
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -23,7 +24,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
 
   // Dynamic Highlight Cards
   const [highlights, setHighlights] = useState<EventHighlight[]>([
-    { icon: '📅', title: 'Schedule Highlight', description: 'Interactive workshops & live keynotes' }
+    { icon: 'Sparkles', title: 'Schedule Highlight', description: 'Interactive workshops & live keynotes' }
   ]);
 
   // Dynamic Form Questions Builder
@@ -43,7 +44,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
 
   // Highlights Handler
   const handleAddHighlight = () => {
-    setHighlights(prev => [...prev, { icon: '📌', title: '', description: '' }]);
+    setHighlights(prev => [...prev, { icon: 'Sparkles', title: '', description: '' }]);
   };
 
   const handleUpdateHighlight = (index: number, key: keyof EventHighlight, value: string) => {
@@ -143,7 +144,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
           onClick={onClose}
           className="absolute top-4 right-4 text-[#e6d7c3] hover:text-white text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center transition-colors"
         >
-          ✕
+          <X className="w-4 h-4" />
         </button>
 
         <h2 className="text-xl font-bold text-white mb-1">Host & Design New Event</h2>
@@ -158,7 +159,10 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Section 1: Event General Info */}
           <div className="space-y-4 pb-4 border-b border-white/10">
-            <h3 className="text-sm font-semibold text-[#e6c594]">1. General Event Info</h3>
+            <h3 className="text-sm font-semibold text-[#e6c594] flex items-center gap-1.5">
+              <Calendar className="w-4 h-4" />
+              <span>1. General Event Info</span>
+            </h3>
             
             <div className="form-group">
               <label className="form-label">Event Name *</label>
@@ -229,13 +233,17 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
           {/* Section 2: Event Highlights Cards */}
           <div className="space-y-4 pb-4 border-b border-white/10">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#e6c594]">2. Custom Event Highlights (Icon, Title, Description)</h3>
+              <h3 className="text-sm font-semibold text-[#e6c594] flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                <span>2. Custom Event Highlights</span>
+              </h3>
               <button 
                 type="button" 
                 onClick={handleAddHighlight}
-                className="px-2.5 py-1 text-xs font-semibold rounded bg-[#800020]/40 text-[#e6c594] border border-[#e6c594]/30 hover:bg-[#800020]"
+                className="px-2.5 py-1 text-xs font-semibold rounded bg-[#800020]/40 text-[#e6c594] border border-[#e6c594]/30 hover:bg-[#800020] inline-flex items-center gap-1"
               >
-                + Add Highlight
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Highlight</span>
               </button>
             </div>
 
@@ -243,23 +251,16 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
               <div key={idx} className="flex gap-2 items-start bg-[#180509] p-3 rounded-xl border border-white/5">
                 <input 
                   type="text"
-                  value={item.icon}
-                  onChange={e => handleUpdateHighlight(idx, 'icon', e.target.value)}
-                  placeholder="Emoji/Icon (e.g. 🏆)"
-                  className="form-input w-20 text-center"
-                />
-                <input 
-                  type="text"
                   value={item.title}
                   onChange={e => handleUpdateHighlight(idx, 'title', e.target.value)}
-                  placeholder="Title (e.g. Prize Pool)"
+                  placeholder="Highlight Title (e.g. Prize Pool)"
                   className="form-input flex-1 text-xs"
                 />
                 <input 
                   type="text"
                   value={item.description}
                   onChange={e => handleUpdateHighlight(idx, 'description', e.target.value)}
-                  placeholder="Description (e.g. $5,000 Cash)"
+                  placeholder="Description (e.g. $5,000 Cash Prizes)"
                   className="form-input flex-1 text-xs"
                 />
                 <button 
@@ -267,7 +268,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
                   onClick={() => handleRemoveHighlight(idx)}
                   className="text-rose-400 p-2 text-sm hover:text-rose-300"
                 >
-                  ✕
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ))}
@@ -276,13 +277,17 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
           {/* Section 3: Dynamic Registration Form Questions Builder */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#e6c594]">3. Dynamic Event Registration Form Builder</h3>
+              <h3 className="text-sm font-semibold text-[#e6c594] flex items-center gap-1.5">
+                <HelpCircle className="w-4 h-4" />
+                <span>3. Dynamic Registration Form Builder</span>
+              </h3>
               <button 
                 type="button" 
                 onClick={handleAddQuestion}
-                className="px-2.5 py-1 text-xs font-semibold rounded bg-[#800020]/40 text-[#e6c594] border border-[#e6c594]/30 hover:bg-[#800020]"
+                className="px-2.5 py-1 text-xs font-semibold rounded bg-[#800020]/40 text-[#e6c594] border border-[#e6c594]/30 hover:bg-[#800020] inline-flex items-center gap-1"
               >
-                + Add Question
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Question</span>
               </button>
             </div>
 
@@ -328,7 +333,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
                     onClick={() => handleRemoveQuestion(qIdx)}
                     className="text-rose-400 text-sm hover:text-rose-300 ml-1"
                   >
-                    ✕
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
@@ -359,7 +364,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }: Cr
                           onClick={() => handleRemoveOption(qIdx, optIdx)}
                           className="text-rose-400 text-xs"
                         >
-                          ✕
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
