@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
@@ -23,7 +23,9 @@ export default function EventDetailPage() {
     email: '',
     phone: '',
   });
-  const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
+  
+  // Custom Answers State (handles text, radio, dropdown, link, and checkbox array)
+  const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   const [ticket, setTicket] = useState<SubmissionItem | null>(null);
@@ -46,6 +48,10 @@ export default function EventDetailPage() {
           organizer: 'HITian Tech Club',
           hasAttendance: true,
           requireFileUpload: true,
+          highlights: [
+            { icon: '🏆', title: 'Prize Pool', description: '₹50,000 Cash Prizes & Schwag Kits' },
+            { icon: '💻', title: 'Tracks', description: 'AI/ML, Web3, & Fullstack Innovation' }
+          ],
           customFields: [
             { id: 'field_dept', label: 'Department & Year', type: 'text', required: true }
           ]
@@ -63,8 +69,21 @@ export default function EventDetailPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCustomChange = (fieldId: string, value: string) => {
+  const handleCustomChange = (fieldId: string, value: any) => {
     setCustomAnswers(prev => ({ ...prev, [fieldId]: value }));
+  };
+
+  const handleCheckboxChange = (fieldId: string, option: string, checked: boolean) => {
+    setCustomAnswers(prev => {
+      const currentList: string[] = Array.isArray(prev[fieldId]) ? [...prev[fieldId]] : [];
+      if (checked) {
+        if (!currentList.includes(option)) currentList.push(option);
+      } else {
+        const idx = currentList.indexOf(option);
+        if (idx > -1) currentList.splice(idx, 1);
+      }
+      return { ...prev, [fieldId]: currentList };
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,6 +158,7 @@ export default function EventDetailPage() {
           ← Back to Events
         </Link>
 
+        {/* Event Header Banner */}
         <div className="glass-panel p-6 sm:p-8 mb-8 border border-[#f7f1e5]/10 relative overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#800020]/25 text-[#e6c594] border border-[#e6c594]/30">
@@ -154,12 +174,28 @@ export default function EventDetailPage() {
             {event.title}
           </h1>
 
-          <p className="text-[#e6d7c3]/80 text-sm sm:text-base leading-relaxed max-w-3xl">
+          <p className="text-[#e6d7c3]/80 text-sm sm:text-base leading-relaxed max-w-3xl mb-6">
             {event.description}
           </p>
+
+          {/* Highlights Cards Grid */}
+          {event.highlights && event.highlights.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-white/10">
+              {event.highlights.map((h, i) => (
+                <div key={i} className="p-3.5 rounded-xl bg-[#180509]/80 border border-white/5 flex items-start gap-3">
+                  <span className="text-2xl">{h.icon || '✨'}</span>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#e6c594]">{h.title}</h4>
+                    <p className="text-[11px] text-[#a69181] mt-0.5">{h.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {ticket ? (
+          /* TICKET SCREEN */
           <div className="glass-panel p-8 max-w-xl mx-auto text-center border-2 border-emerald-500/30 shadow-2xl shadow-emerald-500/10 animate-fadeIn">
             <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
               ✓
@@ -205,6 +241,7 @@ export default function EventDetailPage() {
             </div>
           </div>
         ) : (
+          /* DYNAMIC REGISTRATION FORM */
           <div className="glass-panel p-6 sm:p-8 max-w-2xl mx-auto border border-[#f7f1e5]/10">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
               <div>
@@ -265,39 +302,153 @@ export default function EventDetailPage() {
                 />
               </div>
 
+              {/* Render Dynamic Form Questions */}
               {event.customFields && event.customFields.map(field => (
                 <div key={field.id} className="form-group">
-                  <label className="form-label">{field.label} {field.required && '*'}</label>
-                  <input 
-                    type={field.type || 'text'}
-                    value={customAnswers[field.id] || ''}
-                    onChange={(e) => handleCustomChange(field.id, e.target.value)}
-                    className="form-input"
-                    required={field.required}
-                  />
+                  <label className="form-label">
+                    {field.label} {field.required && '*'}
+                  </label>
+                  {field.description && (
+                    <p className="text-[11px] text-[#a69181] -mt-1 mb-1">{field.description}</p>
+                  )}
+
+                  {/* Short Answer */}
+                  {field.type === 'text' && (
+                    <input 
+                      type="text"
+                      value={customAnswers[field.id] || ''}
+                      onChange={(e) => handleCustomChange(field.id, e.target.value)}
+                      className="form-input"
+                      required={field.required}
+                    />
+                  )}
+
+                  {/* Long Answer */}
+                  {field.type === 'textarea' && (
+                    <textarea 
+                      rows={3}
+                      value={customAnswers[field.id] || ''}
+                      onChange={(e) => handleCustomChange(field.id, e.target.value)}
+                      className="form-textarea"
+                      required={field.required}
+                    />
+                  )}
+
+                  {/* Dropdown */}
+                  {field.type === 'select' && (
+                    <select 
+                      value={customAnswers[field.id] || ''}
+                      onChange={(e) => handleCustomChange(field.id, e.target.value)}
+                      className="form-select"
+                      required={field.required}
+                    >
+                      <option value="">Select option...</option>
+                      {field.options?.map((opt, i) => (
+                        <option key={i} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {/* Checkbox (Multi-select) */}
+                  {field.type === 'checkbox' && (
+                    <div className="space-y-2 pt-1">
+                      {field.options?.map((opt, i) => (
+                        <label key={i} className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            checked={Array.isArray(customAnswers[field.id]) && customAnswers[field.id].includes(opt)}
+                            onChange={(e) => handleCheckboxChange(field.id, opt, e.target.checked)}
+                            className="rounded border-white/20 text-[#800020] focus:ring-0"
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Radio Option */}
+                  {field.type === 'radio' && (
+                    <div className="space-y-2 pt-1">
+                      {field.options?.map((opt, i) => (
+                        <label key={i} className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+                          <input 
+                            type="radio"
+                            name={`radio_${field.id}`}
+                            value={opt}
+                            checked={customAnswers[field.id] === opt}
+                            onChange={(e) => handleCustomChange(field.id, e.target.value)}
+                            className="text-[#800020] focus:ring-0"
+                            required={field.required}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* URL Link */}
+                  {field.type === 'url' && (
+                    <input 
+                      type="url"
+                      placeholder="https://..."
+                      value={customAnswers[field.id] || ''}
+                      onChange={(e) => handleCustomChange(field.id, e.target.value)}
+                      className="form-input"
+                      required={field.required}
+                    />
+                  )}
+
+                  {/* File / Image / Video Upload */}
+                  {['file', 'image', 'video'].includes(field.type) && (
+                    <div className="relative border-2 border-dashed border-[#f7f1e5]/20 rounded-xl p-4 text-center hover:border-[#e6c594]/50 transition-colors bg-[#180509]/60">
+                      <input 
+                        type="file" 
+                        onChange={handleFileChange}
+                        accept={
+                          field.type === 'image' ? 'image/*' :
+                          field.type === 'video' ? 'video/*' :
+                          'image/*,video/*,application/pdf,application/zip'
+                        }
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        required={field.required}
+                      />
+                      <div className="space-y-1">
+                        <span className="text-2xl">
+                          {field.type === 'image' ? '🖼️' : field.type === 'video' ? '🎥' : '📁'}
+                        </span>
+                        <p className="text-xs text-[#e6d7c3] font-medium">
+                          {selectedFile ? `Selected: ${selectedFile.name}` : `Click or Drag & Drop ${field.type.toUpperCase()} file`}
+                        </p>
+                        <p className="text-[10px] text-[#a69181]">Uploaded files will be stored in Google Drive automatically.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
 
-              <div className="form-group">
-                <label className="form-label">
-                  Upload Submission File (PNG, JPG, MP4 Video, PDF, ZIP)
-                </label>
-                <div className="relative border-2 border-dashed border-[#f7f1e5]/20 rounded-xl p-4 text-center hover:border-[#e6c594]/50 transition-colors bg-[#180509]/60">
-                  <input 
-                    type="file" 
-                    onChange={handleFileChange}
-                    accept="image/*,video/*,application/pdf,application/zip"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <div className="space-y-1">
-                    <span className="text-2xl">📁</span>
-                    <p className="text-xs text-[#e6d7c3] font-medium">
-                      {selectedFile ? `Selected: ${selectedFile.name}` : 'Click or Drag & Drop PNGs, MP4 videos, or documents'}
-                    </p>
-                    <p className="text-[10px] text-[#a69181]">Max file size 50MB. Uploads stored automatically in Google Drive.</p>
+              {/* Standard File Upload Fallback */}
+              {(!event.customFields || !event.customFields.some(f => ['file', 'image', 'video'].includes(f.type))) && (
+                <div className="form-group">
+                  <label className="form-label">
+                    Upload Submission File (PNG, JPG, MP4 Video, PDF, ZIP)
+                  </label>
+                  <div className="relative border-2 border-dashed border-[#f7f1e5]/20 rounded-xl p-4 text-center hover:border-[#e6c594]/50 transition-colors bg-[#180509]/60">
+                    <input 
+                      type="file" 
+                      onChange={handleFileChange}
+                      accept="image/*,video/*,application/pdf,application/zip"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div className="space-y-1">
+                      <span className="text-2xl">📁</span>
+                      <p className="text-xs text-[#e6d7c3] font-medium">
+                        {selectedFile ? `Selected: ${selectedFile.name}` : 'Click or Drag & Drop PNGs, MP4 videos, or documents'}
+                      </p>
+                      <p className="text-[10px] text-[#a69181]">Max file size 50MB. Uploads stored automatically in Google Drive.</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <button 
                 type="submit" 
