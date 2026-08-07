@@ -7,60 +7,20 @@ import CertificateVerifierModal from '../components/CertificateVerifierModal';
 import { fetchEvents } from '../services/api.service';
 import { EventItem } from '../types/event.types';
 
-const DEMO_EVENTS: EventItem[] = [
-  {
-    id: 'demo-1',
-    title: 'HITian Tech Symposium 2026',
-    description: 'Annual flagship technical symposium featuring AI workshops, competitive coding contests, and guest lectures. Submit project abstracts & media upon registration.',
-    date: '2026-09-15',
-    location: 'Main Auditorium',
-    organizer: 'HITian Tech Club',
-    hasAttendance: true,
-    requireFileUpload: true
-  },
-  {
-    id: 'demo-2',
-    title: 'Design-a-Thon UI/UX Challenge',
-    description: 'Create revolutionary web interfaces and compete for prizes in this 24-hour rapid prototyping hackathon.',
-    date: '2026-10-02',
-    location: 'Computer Lab 3',
-    organizer: 'Creative Wing',
-    hasAttendance: true,
-    requireFileUpload: true
-  },
-  {
-    id: 'demo-3',
-    title: 'Cultural Fest & Talent Hunt',
-    description: 'Showcase music, dance, and drama performances in the biggest inter-society cultural extravaganza of the year.',
-    date: '2026-11-20',
-    location: 'Open Air Theatre',
-    organizer: 'Cultural Wing',
-    hasAttendance: true,
-    requireFileUpload: false
-  }
-];
-
 export default function Home() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState<boolean>(false);
-  const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
 
   const loadEvents = async () => {
     setLoading(true);
     try {
       const data = await fetchEvents();
-      if (data && data.length > 0) {
-        setEvents(data);
-        setIsBackendConnected(true);
-      } else {
-        setEvents(DEMO_EVENTS);
-      }
+      setEvents(data || []);
     } catch (err) {
-      console.warn('Backend unavailable, displaying showcase events.');
-      setEvents(DEMO_EVENTS);
-      setIsBackendConnected(false);
+      console.warn('Backend unavailable.');
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -115,16 +75,16 @@ export default function Home() {
               <p className="text-xs text-[#a69181] mt-1 font-medium">Verified Certificates</p>
             </div>
             <div className="glass-panel p-4 text-center border-[#f7f1e5]/10">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#f7f1e5]">50+</span>
-              <p className="text-xs text-[#a69181] mt-1 font-medium">Official Events</p>
+              <span className="text-2xl sm:text-3xl font-extrabold text-[#f7f1e5]">{events.length}</span>
+              <p className="text-xs text-[#a69181] mt-1 font-medium">Active Events</p>
             </div>
             <div className="glass-panel p-4 text-center border-[#f7f1e5]/10">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#e6c594]">2,500+</span>
-              <p className="text-xs text-[#a69181] mt-1 font-medium">Form Submissions</p>
+              <span className="text-2xl sm:text-3xl font-extrabold text-[#e6c594]">Drive</span>
+              <p className="text-xs text-[#a69181] mt-1 font-medium">Media Storage</p>
             </div>
             <div className="glass-panel p-4 text-center border-[#f7f1e5]/10">
               <span className="text-2xl sm:text-3xl font-extrabold text-[#f7f1e5]">QR</span>
-              <p className="text-xs text-[#a69181] mt-1 font-medium">Attendance Verified</p>
+              <p className="text-xs text-[#a69181] mt-1 font-medium">Attendance System</p>
             </div>
           </div>
         </section>
@@ -134,37 +94,48 @@ export default function Home() {
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold text-[#fdfbf7]">Official Events & Form Submissions</h2>
               <p className="text-xs text-[#a69181] mt-1 font-medium">
-                {isBackendConnected 
-                  ? '⚡ Connected to Express Backend API' 
-                  : 'ℹ️ Showing showcase events (start Express backend on port 5000 to connect live)'}
+                Official events published by HITian Inside Administrators.
               </p>
             </div>
 
-            <div className="w-full sm:w-80">
-              <input 
-                type="text" 
-                placeholder="Search events or clubs..." 
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="form-input text-sm"
-              />
-            </div>
+            {events.length > 0 && (
+              <div className="w-full sm:w-80">
+                <input 
+                  type="text" 
+                  placeholder="Search events or clubs..." 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="form-input text-sm"
+                />
+              </div>
+            )}
           </div>
 
           {loading ? (
             <div className="py-20 text-center text-[#e6d7c3]">
               <div className="inline-block w-8 h-8 border-2 border-[#e6c594] border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-sm font-medium">Fetching events from server...</p>
+              <p className="text-sm font-medium">Fetching events...</p>
             </div>
           ) : filteredEvents.length === 0 ? (
-            <div className="glass-panel p-12 text-center my-8">
-              <p className="text-[#e6d7c3] text-sm mb-4">No events found matching your search.</p>
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="btn-secondary text-xs"
-              >
-                Clear Search
-              </button>
+            <div className="glass-panel p-12 text-center my-8 border border-[#f7f1e5]/10 max-w-2xl mx-auto">
+              <div className="w-16 h-16 rounded-2xl bg-[#800020]/20 border border-[#e6c594]/30 text-[#e6c594] flex items-center justify-center mx-auto mb-4 text-3xl">
+                📅
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">No Live Events Currently Available</h3>
+              <p className="text-xs text-[#a69181] leading-relaxed max-w-md mx-auto">
+                {searchQuery 
+                  ? `No events found matching "${searchQuery}". Try clearing your search.` 
+                  : 'Currently, there are no active or published events. Check back soon or access the admin panel via URL to host an event!'}
+              </p>
+
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="btn-secondary text-xs mt-6"
+                >
+                  Clear Search
+                </button>
+              )}
             </div>
           ) : (
             <div className="events-grid-container">

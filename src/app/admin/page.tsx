@@ -307,8 +307,16 @@ export default function AdminDashboardPage() {
               <p className="text-xs">Loading submission records...</p>
             </div>
           ) : filteredSubmissions.length === 0 ? (
-            <div className="py-12 text-center text-[#a69181] text-xs">
-              No submissions found for selected filter.
+            <div className="py-12 text-center text-[#a69181]">
+              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-xl">
+                📋
+              </div>
+              <p className="text-sm font-semibold text-white mb-1">No Submissions Found</p>
+              <p className="text-xs text-[#a69181]">
+                {searchQuery || selectedEventId !== 'all'
+                  ? 'No submission records match your current search filter.'
+                  : 'Once users register for an event, their details, QR passes, and uploaded files will appear here.'}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
