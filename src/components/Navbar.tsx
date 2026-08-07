@@ -4,7 +4,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import BackendStatus from './BackendStatus';
 
-export default function Navbar({ onOpenVerifyModal }) {
+interface NavbarProps {
+  onOpenVerifyModal?: () => void;
+  onOpenCreateModal?: () => void;
+}
+
+export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#f7f1e5]/10 bg-[#150408]/85 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">

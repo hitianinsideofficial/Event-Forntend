@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import EventCard from '../components/EventCard';
 import CertificateVerifierModal from '../components/CertificateVerifierModal';
-import { fetchEvents } from '../services/api';
+import { fetchEvents } from '../services/api.service';
+import { EventItem } from '../types/event.types';
 
-const DEMO_EVENTS = [
+const DEMO_EVENTS: EventItem[] = [
   {
     id: 'demo-1',
     title: 'HITian Tech Symposium 2026',
@@ -40,11 +41,11 @@ const DEMO_EVENTS = [
 ];
 
 export default function Home() {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
-  const [isBackendConnected, setIsBackendConnected] = useState(false);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState<boolean>(false);
+  const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
 
   const loadEvents = async () => {
     setLoading(true);
@@ -79,9 +80,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-[#150408] text-[#fdfbf7] w-full">
       <Navbar onOpenVerifyModal={() => setIsVerifyModalOpen(true)} />
 
-      {/* Main Content Area */}
       <main className="flex-1 w-full container-custom py-8">
-        {/* Hero Section */}
         <section className="hero-wrapper">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#800020]/25 border border-[#e6c594]/30 text-[#e6c594] text-xs font-semibold mb-6">
             ✨ HITian Inside Official Event & Certificate Portal
@@ -110,7 +109,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Quick Metrics Grid */}
           <div className="metrics-grid-container">
             <div className="glass-panel p-4 text-center border-[#f7f1e5]/10">
               <span className="text-2xl sm:text-3xl font-extrabold text-[#e6c594]">100%</span>
@@ -131,7 +129,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Explorer Section */}
         <section id="explore" className="pt-12 pb-12 w-full">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 w-full">
             <div>
@@ -143,7 +140,6 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Search Input */}
             <div className="w-full sm:w-80">
               <input 
                 type="text" 
@@ -155,7 +151,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Loading state */}
           {loading ? (
             <div className="py-20 text-center text-[#e6d7c3]">
               <div className="inline-block w-8 h-8 border-2 border-[#e6c594] border-t-transparent rounded-full animate-spin mb-4" />
@@ -181,14 +176,12 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-[#f7f1e5]/10 bg-[#100306] py-8 mt-auto w-full">
         <div className="container-custom text-center text-xs text-[#a69181]">
           <p>© 2026 HITian Inside. Official Event & Certificate Verification Portal.</p>
         </div>
       </footer>
 
-      {/* Certificate Verification Modal */}
       <CertificateVerifierModal 
         isOpen={isVerifyModalOpen}
         onClose={() => setIsVerifyModalOpen(false)}

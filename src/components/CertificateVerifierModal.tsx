@@ -1,17 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { verifyCertificateApi } from '../services/api';
+import { verifyCertificateApi } from '../services/api.service';
+import { CertificateItem } from '../types/certificate.types';
 
-export default function CertificateVerifierModal({ isOpen, onClose }) {
+interface CertificateVerifierModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function CertificateVerifierModal({ isOpen, onClose }: CertificateVerifierModalProps) {
   const [certInput, setCertInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [certData, setCertData] = useState(null);
+  const [certData, setCertData] = useState<CertificateItem | null>(null);
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
-  const handleVerify = async (e) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setCertData(null);
@@ -24,10 +30,10 @@ export default function CertificateVerifierModal({ isOpen, onClose }) {
     setLoading(true);
     try {
       const res = await verifyCertificateApi(certInput.trim());
-      if (res.verified) {
+      if (res.verified && res.data) {
         setCertData(res.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Certificate record not found.');
     } finally {
       setLoading(false);
@@ -37,7 +43,6 @@ export default function CertificateVerifierModal({ isOpen, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content relative max-w-lg border border-[#e6c594]/30" onClick={e => e.stopPropagation()}>
-        {/* Close Button */}
         <button 
           onClick={onClose}
           className="absolute top-4 right-4 text-[#e6d7c3] hover:text-white text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center transition-colors"

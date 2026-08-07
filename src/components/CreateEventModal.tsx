@@ -1,9 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { createEventApi } from '../services/api';
+import { createEventApi } from '../services/api.service';
+import { EventItem } from '../types/event.types';
 
-export default function CreateEventModal({ isOpen, onClose, onEventCreated }) {
+interface CreateEventModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onEventCreated: (event: EventItem) => void;
+}
+
+export default function CreateEventModal({ isOpen, onClose, onEventCreated }: CreateEventModalProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -16,12 +23,12 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }) {
 
   if (!isOpen) return null;
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -33,7 +40,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }) {
     setLoading(true);
     try {
       const result = await createEventApi(formData);
-      if (result.success) {
+      if (result.success && result.data) {
         onEventCreated(result.data);
         onClose();
         setFormData({
@@ -44,7 +51,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }) {
           organizer: 'HITian Inside'
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Failed to connect to backend server.');
     } finally {
       setLoading(false);
@@ -54,16 +61,15 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content relative" onClick={e => e.stopPropagation()}>
-        {/* Close Button */}
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center transition-colors"
+          className="absolute top-4 right-4 text-[#e6d7c3] hover:text-white text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center transition-colors"
         >
           ✕
         </button>
 
         <h2 className="text-xl font-bold text-white mb-1">Create New Event</h2>
-        <p className="text-xs text-slate-400 mb-6">Fill in details to publish a new event to the backend API.</p>
+        <p className="text-xs text-[#a69181] mb-6">Fill in details to publish a new event to the backend API.</p>
 
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
