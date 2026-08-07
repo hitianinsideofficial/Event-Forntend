@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '../../../../components/Navbar';
-import { createEventApi } from '../../../../services/api.service';
+import { createEventApi, uploadToImageKitApi } from '../../../../services/api.service';
 import { EventHighlight, EventStatus, EventMode } from '../../../../types/event.types';
-import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Globe, MapPin, QrCode } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, UploadCloud, CheckCircle } from 'lucide-react';
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -20,10 +20,12 @@ export default function CreateEventPage() {
     organizer: 'HITian Inside',
     status: 'UPCOMING' as EventStatus,
     mode: 'OFFLINE' as EventMode,
+    bannerUrl: '',
     hasAttendance: false,
     requireFileUpload: false
   });
 
+  const [uploadingBanner, setUploadingBanner] = useState<boolean>(false);
   const [highlights, setHighlights] = useState<EventHighlight[]>([
     { title: 'Schedule Highlight', description: 'Interactive workshops & live keynotes' }
   ]);
@@ -52,6 +54,25 @@ export default function CreateEventPage() {
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingBanner(true);
+    setError('');
+
+    try {
+      const uploadRes = await uploadToImageKitApi(file);
+      if (uploadRes && uploadRes.url) {
+        setFormData(prev => ({ ...prev, bannerUrl: uploadRes.url }));
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload event banner to ImageKit.');
+    } finally {
+      setUploadingBanner(false);
     }
   };
 
@@ -140,7 +161,7 @@ export default function CreateEventPage() {
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div>
               <h1 className="text-2xl font-bold text-white">Create New Event</h1>
-              <p className="text-xs text-[#a69181] mt-0.5">Define event mode (Online/Offline), options, and details. Next step will build the registration form.</p>
+              <p className="text-xs text-[#a69181] mt-0.5">Upload ImageKit event banner, define details and mode. Next step will build the registration form.</p>
             </div>
             <span className="px-3 py-1 rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1">
               <Lock className="w-3.5 h-3.5" />
@@ -155,6 +176,64 @@ export default function CreateEventPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Event Banner Upload (ImageKit CDN) */}
+            <div className="form-group">
+              <label className="form-label font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-[#e6c594]" />
+                  <span>Event Banner Image (ImageKit CDN Upload)</span>
+                </span>
+                <span className="text-[10px] text-emerald-400 font-mono">ImageKit CDN</span>
+              </label>
+
+              {formData.bannerUrl ? (
+                <div className="relative rounded-2xl overflow-hidden border border-[#e6c594]/40 h-48 bg-black/40 group">
+                  <img 
+                    src={formData.bannerUrl} 
+                    alt="Event Banner Preview" 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                    <button 
+                      type="button" 
+                      onClick={() => setFormData(prev => ({ ...prev, bannerUrl: '' }))}
+                      className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold"
+                    >
+                      Remove Banner
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <label className="flex-1 flex flex-col items-center justify-center p-4 border-2 border-dashed border-white/10 rounded-xl bg-white/[0.02] hover:border-[#e6c594]/40 transition-colors cursor-pointer text-center">
+                    <UploadCloud className="w-6 h-6 text-[#e6c594] mb-1" />
+                    <span className="text-xs font-medium text-white mb-0.5">
+                      {uploadingBanner ? 'Uploading to ImageKit CDN...' : 'Click to Upload Event Banner'}
+                    </span>
+                    <span className="text-[10px] text-[#a69181]">JPG, PNG, WebP up to 10MB</span>
+                    <input 
+                      type="file" 
+                      onChange={handleBannerFileChange}
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingBanner}
+                    />
+                  </label>
+
+                  <div className="flex-1">
+                    <input 
+                      type="url"
+                      name="bannerUrl"
+                      value={formData.bannerUrl}
+                      onChange={handleChange}
+                      placeholder="Or paste direct ImageKit URL..."
+                      className="form-input text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="form-group">
               <label className="form-label">Event Name *</label>
               <input 
@@ -252,7 +331,6 @@ export default function CreateEventPage() {
                 />
               </div>
 
-              {/* Optional QR Attendance Toggle */}
               <div className="form-group justify-end pb-2">
                 <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer mt-4">
                   <input 
@@ -262,14 +340,8 @@ export default function CreateEventPage() {
                     onChange={handleChange}
                     className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
                   />
-                  <span className="font-semibold text-white inline-flex items-center gap-1.5">
-                    <QrCode className="w-4 h-4 text-emerald-400" />
-                    <span>Enable QR Code Attendance System</span>
-                  </span>
+                  <span className="font-semibold text-white">Enable QR Code Attendance System</span>
                 </label>
-                <p className="text-[11px] text-[#a69181] mt-1">
-                  (Uncheck if this event does not require QR attendance passes)
-                </p>
               </div>
             </div>
 
@@ -341,7 +413,7 @@ export default function CreateEventPage() {
               </Link>
               <button 
                 type="submit" 
-                disabled={loading}
+                disabled={loading || uploadingBanner}
                 className="btn-primary text-sm min-w-[180px] justify-center"
               >
                 {loading ? 'Creating...' : 'Save & Build Registration Form →'}

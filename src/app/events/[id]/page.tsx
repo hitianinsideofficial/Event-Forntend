@@ -95,6 +95,16 @@ export default function EventDetailsPage() {
 
         {/* Event Main Banner */}
         <div className="glass-panel p-6 sm:p-8 mb-8 border border-[#f7f1e5]/10 relative overflow-hidden">
+          {event.bannerUrl && (
+            <div className="w-full h-56 sm:h-72 rounded-2xl overflow-hidden mb-6 border border-white/10 shadow-2xl">
+              <img 
+                src={event.bannerUrl} 
+                alt={event.title} 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#800020]/25 text-[#e6c594] border border-[#e6c594]/30">

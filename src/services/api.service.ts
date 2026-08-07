@@ -61,19 +61,15 @@ export async function createEventApi(eventData: Partial<EventItem>): Promise<Api
   }
 }
 
-export async function updateEventStatusApi(eventId: string, status: EventStatus): Promise<ApiResponse<EventItem>> {
+export async function updateEventStatusApi(id: string, status: EventStatus): Promise<ApiResponse<EventItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/events/${eventId}/status`, {
+    const res = await fetch(`${API_BASE_URL}/events/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ status }),
     });
 
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || 'Failed to update status');
-    }
-
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err) {
     console.error('Error updating event status:', err);
@@ -81,23 +77,56 @@ export async function updateEventStatusApi(eventId: string, status: EventStatus)
   }
 }
 
-export async function updateEventFormApi(eventId: string, customFields: CustomFormField[]): Promise<ApiResponse<EventItem>> {
+export async function updateEventFormApi(id: string, customFields: CustomFormField[]): Promise<ApiResponse<EventItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/events/${eventId}/form`, {
+    const res = await fetch(`${API_BASE_URL}/events/${id}/form`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customFields })
+      body: JSON.stringify({ customFields }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating event form schema:', err);
+    throw err;
+  }
+}
+
+export async function uploadToImageKitApi(file: File): Promise<{ url: string; fileId: string }> {
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const res = await fetch(`${API_BASE_URL}/upload/imagekit`, {
+      method: 'POST',
+      body: formData
     });
 
     if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || 'Failed to update event form');
+      const errData = await res.json();
+      throw new Error(errData.message || 'ImageKit upload failed');
     }
 
-    return await res.json();
+    const result = await res.json();
+    return result.data;
   } catch (err) {
-    console.error('Error updating event form:', err);
+    console.error('Error uploading to ImageKit:', err);
     throw err;
+  }
+}
+
+export async function adminLoginApi(email: string, password: string): Promise<{ success: boolean; token?: string; message?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    return await res.json();
+  } catch (err: any) {
+    throw new Error(err.message || 'Login failed');
   }
 }
 
@@ -110,19 +139,19 @@ export async function submitRegistrationApi(formData: FormData): Promise<ApiResp
 
     if (!res.ok) {
       const errorData = await res.json();
-      throw new Error(errorData.message || 'Registration submission failed');
+      throw new Error(errorData.message || 'Failed to submit registration');
     }
 
     return await res.json();
   } catch (err) {
-    console.error('Error submitting registration:', err);
+    console.error('Error submitting event registration:', err);
     throw err;
   }
 }
 
 export async function fetchSubmissionsApi(eventId?: string): Promise<SubmissionItem[]> {
   try {
-    const url = eventId ? `${API_BASE_URL}/submissions/${eventId}` : `${API_BASE_URL}/submissions`;
+    const url = eventId ? `${API_BASE_URL}/events/${eventId}/submissions` : `${API_BASE_URL}/submissions`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result: ApiResponse<SubmissionItem[]> = await res.json();
@@ -135,54 +164,29 @@ export async function fetchSubmissionsApi(eventId?: string): Promise<SubmissionI
 
 export async function checkInAttendeeApi(ticketId: string): Promise<ApiResponse<SubmissionItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/submissions/check-in`, {
+    const res = await fetch(`${API_BASE_URL}/submissions/checkin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ticketId }),
     });
 
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || 'Check-in failed');
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error('Error during check-in:', err);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Check-in failed');
+    return data;
+  } catch (err: any) {
+    console.error('Error checking in attendee:', err);
     throw err;
   }
 }
 
-export async function verifyCertificateApi(certId: string): Promise<ApiResponse<CertificateItem>> {
+export async function verifyCertificateApi(certificateId: string): Promise<ApiResponse<CertificateItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/certificates/verify/${certId}`, { cache: 'no-store' });
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || 'Certificate verification failed');
-    }
-    return await res.json();
-  } catch (err) {
-    console.error('Certificate verification error:', err);
-    throw err;
-  }
-}
-
-export async function adminLoginApi(email: string, password: string): Promise<ApiResponse> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/admin/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || 'Invalid email or password');
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error('Admin login error:', err);
+    const res = await fetch(`${API_BASE_URL}/certificates/verify/${certificateId}`, { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Certificate verification failed');
+    return data;
+  } catch (err: any) {
+    console.error('Error verifying certificate:', err);
     throw err;
   }
 }
