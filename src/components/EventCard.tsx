@@ -59,7 +59,7 @@ export default function EventCard({ event }: EventCardProps) {
             <div className="mb-3 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#ff9933]/25 via-white/10 to-[#138808]/25 border border-[#ff9933]/40 flex items-center gap-1.5">
               <Flag className="w-3.5 h-3.5 text-[#ff9933] shrink-0" />
               <span className="text-[10px] font-black tracking-wider uppercase text-white font-mono">
-                🇮🇳 TRADEMARK FLAGSHIP EVENT
+                🇮🇳 FLAGSHIP EVENT
               </span>
             </div>
           )}
