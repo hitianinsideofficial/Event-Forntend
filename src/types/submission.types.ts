@@ -19,5 +19,7 @@ export interface SubmissionItem {
   qrCodeUrl?: string;
   attendanceStatus: 'PENDING' | 'CHECKED_IN';
   checkedInAt?: string | null;
+  acknowledged?: boolean;
+  acknowledgedAt?: string | null;
   createdAt: string;
 }

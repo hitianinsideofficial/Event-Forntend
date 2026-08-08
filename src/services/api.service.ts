@@ -224,3 +224,19 @@ export async function verifyCertificateApi(certificateId: string): Promise<ApiRe
     throw err;
   }
 }
+
+export async function acknowledgeSubmissionApi(submissionId: string): Promise<ApiResponse<SubmissionItem>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/submissions/${submissionId}/acknowledge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to acknowledge submission');
+    return data;
+  } catch (err: any) {
+    console.error('Error acknowledging submission:', err);
+    throw err;
+  }
+}

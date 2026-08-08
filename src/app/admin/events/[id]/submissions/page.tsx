@@ -7,7 +7,8 @@ import Navbar from '../../../../../components/Navbar';
 import { 
   fetchEventById, 
   fetchSubmissionsApi, 
-  checkInAttendeeApi 
+  checkInAttendeeApi,
+  acknowledgeSubmissionApi 
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
@@ -17,7 +18,10 @@ import {
   QrCode, 
   Check, 
   FileX, 
-  ExternalLink 
+  ExternalLink,
+  Send,
+  CheckCircle2,
+  Flag
 } from 'lucide-react';
 
 export default function EventSubmissionsPage() {
@@ -34,6 +38,7 @@ export default function EventSubmissionsPage() {
   const [scanInput, setScanInput] = useState<string>('');
   const [checkInResult, setCheckInResult] = useState<ApiResponse<SubmissionItem> | null>(null);
   const [checkInLoading, setCheckInLoading] = useState<boolean>(false);
+  const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -98,6 +103,21 @@ export default function EventSubmissionsPage() {
     }
   };
 
+  const handleAcknowledge = async (subId: string) => {
+    setAcknowledgingId(subId);
+    try {
+      const res = await acknowledgeSubmissionApi(subId);
+      if (res.success) {
+        alert(res.message);
+        loadData();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to acknowledge submission');
+    } finally {
+      setAcknowledgingId(null);
+    }
+  };
+
   const filteredSubmissions = submissions.filter(sub => 
     sub.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     sub.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -122,7 +142,7 @@ export default function EventSubmissionsPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
               {event?.title || 'Event'} - <span className="gradient-text">Submissions</span>
             </h1>
-            <p className="text-xs text-[#a69181] mt-1">Registrations, custom answers, uploaded files, and live QR check-in scanner.</p>
+            <p className="text-xs text-[#a69181] mt-1">Registrations, custom answers, uploaded files, and email acknowledgments.</p>
           </div>
 
           <Link 
@@ -181,29 +201,29 @@ export default function EventSubmissionsPage() {
               </>
             ) : (
               <div className="flex flex-col justify-center h-full text-left">
-                <h3 className="text-base font-bold text-white mb-1">QR Attendance System Disabled</h3>
+                <h3 className="text-base font-bold text-white mb-1">Submissions Portal Overview</h3>
                 <p className="text-xs text-[#a69181]">
-                  This event was configured without QR Attendance tracking. Registrations and submitted media files are tracked below.
+                  Review submissions, verify attached files & drive links, and send official Tricolour email acknowledgments to participants.
                 </p>
               </div>
             )}
           </div>
 
           <div className="glass-panel p-6 flex flex-col justify-between">
-            <h3 className="text-sm font-semibold text-[#e6d7c3] mb-4">Event Stats</h3>
+            <h3 className="text-sm font-semibold text-[#e6d7c3] mb-4">Event Submissions Stats</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                <span className="text-xs text-[#a69181]">Registrations</span>
+                <span className="text-xs text-[#a69181]">Total Submissions</span>
                 <span className="text-lg font-bold text-white">{submissions.length}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                <span className="text-xs text-[#a69181]">Checked-In Attendees</span>
-                <span className="text-lg font-bold text-emerald-400">
-                  {submissions.filter(s => s.attendanceStatus === 'CHECKED_IN').length}
+                <span className="text-xs text-[#a69181]">Acknowledged Emails Sent</span>
+                <span className="text-lg font-bold text-[#ff9933]">
+                  {submissions.filter(s => s.acknowledged).length}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-[#a69181]">Media Files Uploaded</span>
+                <span className="text-xs text-[#a69181]">Media Files & Links</span>
                 <span className="text-lg font-bold text-[#e6c594]">
                   {submissions.reduce((acc, s) => acc + (s.files?.length || 0), 0)}
                 </span>
@@ -215,8 +235,8 @@ export default function EventSubmissionsPage() {
         <section className="glass-panel p-6 border border-[#f7f1e5]/10">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-xl font-bold text-white">Attendee Submissions</h2>
-              <p className="text-xs text-[#a69181] mt-0.5">Filter attendees, custom answers, and downloaded files.</p>
+              <h2 className="text-xl font-bold text-white">Attendee Submissions List</h2>
+              <p className="text-xs text-[#a69181] mt-0.5">Filter attendees, view domain details, and send acknowledgment emails.</p>
             </div>
 
             <input 
@@ -249,40 +269,69 @@ export default function EventSubmissionsPage() {
                 <thead>
                   <tr className="border-b border-white/10 text-[#a69181] font-semibold bg-white/[0.02]">
                     <th className="p-3">Ticket ID</th>
-                    <th className="p-3">Attendee</th>
-                    <th className="p-3">Custom Answers</th>
-                    <th className="p-3">Attached Files (PNG/Video)</th>
-                    <th className="p-3">Attendance</th>
-                    <th className="p-3 text-right">Action</th>
+                    <th className="p-3">Attendee & Roll Number</th>
+                    <th className="p-3">Domain & Theme Details</th>
+                    <th className="p-3">Attached Media / Links</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Email Acknowledgment</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {filteredSubmissions.map(sub => (
                     <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-3 font-mono font-bold text-[#e6c594]">
+                      <td className="p-3 font-mono font-bold text-[#ff9933]">
                         {sub.ticketId}
                       </td>
 
                       <td className="p-3">
                         <div className="font-semibold text-white">{sub.fullName}</div>
                         <div className="text-[11px] text-[#a69181]">{sub.email}</div>
-                        {sub.phone && <div className="text-[10px] text-[#a69181]/80">{sub.phone}</div>}
+                        {sub.answers?.['College Roll Number'] && (
+                          <div className="text-[10px] text-[#ff9933] font-mono font-bold mt-0.5">
+                            Roll: {sub.answers['College Roll Number']}
+                          </div>
+                        )}
                       </td>
 
-                      <td className="p-3 text-[#a69181] max-w-[220px]">
-                        {sub.answers && Object.keys(sub.answers).length > 0 ? (
-                          Object.entries(sub.answers).map(([k, v]) => (
-                            <div key={k} className="truncate">
-                              <span className="text-slate-400 font-medium">{k}:</span> {String(v)}
-                            </div>
-                          ))
+                      <td className="p-3 text-[#a69181] max-w-[240px]">
+                        {sub.answers ? (
+                          <div className="space-y-1">
+                            {sub.answers['Selected Domain'] && (
+                              <div className="text-xs font-bold text-white">
+                                {sub.answers['Selected Domain']}
+                              </div>
+                            )}
+                            {sub.answers['Selected Theme'] && (
+                              <div className="text-[11px] text-[#ff9933] font-medium italic">
+                                Theme: {sub.answers['Selected Theme']}
+                              </div>
+                            )}
+                            {Object.entries(sub.answers)
+                              .filter(([k]) => !['Selected Domain', 'Selected Theme', 'College Roll Number', 'Department', 'Academic Year'].includes(k))
+                              .map(([k, v]) => (
+                                <div key={k} className="text-[10px] text-slate-400 truncate">
+                                  <span className="font-semibold">{k}:</span> {String(v)}
+                                </div>
+                              ))
+                            }
+                          </div>
                         ) : (
                           <span className="text-slate-600">None</span>
                         )}
                       </td>
 
                       <td className="p-3">
-                        {sub.files && sub.files.length > 0 ? (
+                        {sub.answers?.['Google Drive Video Reel Link'] ? (
+                          <a 
+                            href={sub.answers['Google Drive Video Reel Link']}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 underline font-semibold truncate max-w-[200px]"
+                          >
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                            <span>View Google Drive Reel</span>
+                          </a>
+                        ) : sub.files && sub.files.length > 0 ? (
                           sub.files.map((f, idx) => (
                             <a 
                               key={idx}
@@ -301,28 +350,33 @@ export default function EventSubmissionsPage() {
                       </td>
 
                       <td className="p-3">
-                        {sub.attendanceStatus === 'CHECKED_IN' ? (
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold inline-flex items-center gap-1">
-                            <Check className="w-3 h-3" />
-                            <span>Present</span>
+                        {sub.acknowledged ? (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Acknowledged</span>
                           </span>
                         ) : (
-                          <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
-                            Pending
+                          <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-medium">
+                            Pending Ack
                           </span>
                         )}
                       </td>
 
                       <td className="p-3 text-right">
-                        {sub.attendanceStatus !== 'CHECKED_IN' ? (
-                          <button 
-                            onClick={() => handleManualCheckIn(sub.ticketId)}
-                            className="px-2.5 py-1 rounded-lg bg-[#800020]/40 hover:bg-[#800020] text-[#e6c594] hover:text-white border border-[#e6c594]/30 text-[11px] font-semibold transition-all"
-                          >
-                            Mark Present
-                          </button>
+                        {sub.acknowledged ? (
+                          <span className="text-[10px] text-emerald-400 font-mono flex items-center justify-end gap-1">
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span>Email Sent</span>
+                          </span>
                         ) : (
-                          <span className="text-[10px] text-slate-500">Done</span>
+                          <button 
+                            onClick={() => handleAcknowledge(sub.id)}
+                            disabled={acknowledgingId === sub.id}
+                            className="btn-tricolour text-[11px] py-1.5 px-3 inline-flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge Submission'}</span>
+                          </button>
                         )}
                       </td>
                     </tr>
