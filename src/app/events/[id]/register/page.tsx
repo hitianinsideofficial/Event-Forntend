@@ -650,36 +650,34 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
           </div>
         ) : (
           /* REGISTRATION WIZARD */
-          <div className="glass-panel p-6 sm:p-8 border border-[#f7f1e5]/10">
-            <div className="mb-6 pb-4 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <div className="glass-panel p-3 sm:p-8 border border-[#f7f1e5]/10">
+            <div className="mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div>
-                <span className="text-[10px] font-black tracking-wider uppercase text-[#ff9933] px-2.5 py-0.5 rounded bg-[#ff9933]/20 border border-[#ff9933]/40">
+                <span className="text-[10px] font-black tracking-wider uppercase text-[#ff9933] px-2 py-0.5 rounded bg-[#ff9933]/20 border border-[#ff9933]/40">
                   🇮🇳 {isSwarajEHind ? 'SWARAJ-E-HIND FLAGSHIP PORTAL' : 'Official Registration Form'}
                 </span>
-                <h1 className="text-2xl font-extrabold text-white mt-1">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-white mt-1">
                   {event.title}
                 </h1>
               </div>
 
               {isSwarajEHind && (
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${activeStep === 1 ? 'bg-[#ff9933] text-black' : 'bg-white/10 text-white'}`}>
+                <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-0">
+                  <span className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold ${activeStep === 1 ? 'bg-[#ff9933] text-black' : 'bg-white/10 text-white'}`}>
                     1. Student Info
                   </span>
                   <span className="text-xs text-[#a69181]">→</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${activeStep === 2 ? 'bg-[#138808] text-white' : 'bg-white/10 text-[#a69181]'}`}>
-                    2. Domain Submission ({submittedDomains.length}/{SWARAJ_DOMAINS.length} Completed)
+                  <span className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold ${activeStep === 2 ? 'bg-[#138808] text-white' : 'bg-white/10 text-[#a69181]'}`}>
+                    2. Domain ({submittedDomains.length}/{SWARAJ_DOMAINS.length})
                   </span>
                 </div>
               )}
             </div>
 
             {/* Queries Contact Banner */}
-            <div className="mb-6 p-3.5 rounded-xl bg-[#180509] border border-[#ff9933]/30 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <span className="text-[#a69181] font-semibold flex items-center gap-1.5">
-                <span>For any queries, please reach out to:</span>
-              </span>
-              <div className="flex items-center gap-4 font-bold text-white">
+            <div className="mb-4 sm:mb-6 p-3 rounded-xl bg-[#180509] border border-[#ff9933]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3 text-xs">
+              <span className="text-[#a69181] font-semibold text-[11px] sm:text-xs">For any queries, please reach out to:</span>
+              <div className="flex items-center gap-3 font-bold text-white text-[11px] sm:text-xs">
                 <a href="tel:9836018190" className="hover:text-[#ff9933] transition-colors">Srijita: 98360 18190</a>
                 <span className="text-[#a69181]">|</span>
                 <a href="tel:9135444297" className="hover:text-[#ff9933] transition-colors">Ayush: 91354 44297</a>
@@ -774,7 +772,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   </div>
 
                   {/* Smart Roll Number Auto-Prefilled Input */}
-                  <div className="form-group bg-[#180509] p-4 rounded-2xl border border-[#ff9933]/30">
+                  <div className="form-group bg-[#180509] p-3 sm:p-4 rounded-2xl border border-[#ff9933]/30">
                     <label className="form-label font-bold text-white flex items-center justify-between text-xs mb-1">
                       <span>College Roll Number *</span>
                       <span className="text-[10px] text-[#ff9933] font-mono">Format: 25/EE/092</span>
@@ -782,11 +780,11 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     
                     <div className="flex items-center gap-2 mt-1">
                       {computedRollPrefix ? (
-                        <span className="px-3 py-2 rounded-xl bg-[#800020] text-[#ff9933] font-mono font-bold text-sm border border-[#ff9933]/40 shrink-0">
+                        <span className="px-2.5 sm:px-3 py-2 rounded-xl bg-[#800020] text-[#ff9933] font-mono font-bold text-xs sm:text-sm border border-[#ff9933]/40 shrink-0">
                           {computedRollPrefix}
                         </span>
                       ) : (
-                        <span className="px-3 py-2 rounded-xl bg-white/5 text-[#a69181] font-mono text-xs border border-white/10 shrink-0">
+                        <span className="px-2 sm:px-3 py-2 rounded-xl bg-white/5 text-[#a69181] font-mono text-[10px] sm:text-xs border border-white/10 shrink-0">
                           [Select Year & Dept First]
                         </span>
                       )}
