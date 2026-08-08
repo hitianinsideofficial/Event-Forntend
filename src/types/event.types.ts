@@ -19,20 +19,29 @@ export interface CustomFormField {
 }
 
 export interface EventItem {
-  id: string;
+  id?: string;
   _id?: string;
   title: string;
   description: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
   location: string;
   organizer: string;
   status: EventStatus;
-  mode?: EventMode;
+  mode: EventMode;
   bannerUrl?: string;
   coverUrl?: string;
-  hasAttendance?: boolean;
-  requireFileUpload?: boolean;
+  hasAttendance: boolean;
+  requireFileUpload: boolean;
   highlights?: EventHighlight[];
   customFields?: CustomFormField[];
   createdAt?: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  count?: number;
 }

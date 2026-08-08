@@ -7,7 +7,7 @@ import Navbar from '../../../../../components/Navbar';
 import ImageCropModal from '../../../../../components/ImageCropModal';
 import { fetchEventById, updateEventDetailsApi } from '../../../../../services/api.service';
 import { EventHighlight, EventStatus, EventMode } from '../../../../../types/event.types';
-import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, Crop, Save } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, Crop, Save, Calendar } from 'lucide-react';
 
 export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -19,6 +19,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    startDate: '',
+    endDate: '',
     date: '',
     location: '',
     organizer: 'HITian Inside',
@@ -64,6 +66,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           setFormData({
             title: ev.title || '',
             description: ev.description || '',
+            startDate: ev.startDate || ev.date || '',
+            endDate: ev.endDate || '',
             date: ev.date || '',
             location: ev.location || '',
             organizer: ev.organizer || 'HITian Inside',
@@ -159,27 +163,41 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     setDraggedIdx(null);
   };
 
+  const formatDisplayDate = (startStr: string, endStr?: string) => {
+    if (!startStr) return '';
+    const startObj = new Date(startStr);
+    const startFormatted = isNaN(startObj.getTime()) ? startStr : startObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (!endStr || endStr === startStr) return startFormatted;
+
+    const endObj = new Date(endStr);
+    const endFormatted = isNaN(endObj.getTime()) ? endStr : endObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startFormatted} – ${endFormatted}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
 
-    if (!formData.title || !formData.description || !formData.date) {
+    if (!formData.title || !formData.description || (!formData.startDate && !formData.date)) {
       setError('Title, Description, and Date are required.');
       return;
     }
 
     setLoading(true);
     try {
+      const formattedDateString = formatDisplayDate(formData.startDate || formData.date, formData.endDate);
+
       const payload = {
         ...formData,
+        date: formattedDateString || formData.date,
         location: formData.location.trim() || (formData.mode === 'ONLINE' ? 'Online Event (Link provided)' : 'Main Campus'),
         highlights: highlights.filter(h => h.title.trim())
       };
 
       const result = await updateEventDetailsApi(eventId, payload);
       if (result.success) {
-        setSuccessMsg('Event details & banner images updated successfully!');
+        setSuccessMsg('Event details & dates updated successfully!');
         setTimeout(() => {
           router.push('/admin');
         }, 1200);
@@ -213,8 +231,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           <div className="glass-panel p-6 sm:p-8 border border-[#f7f1e5]/10">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
               <div>
-                <h1 className="text-2xl font-bold text-white">Edit Event & Banners</h1>
-                <p className="text-xs text-[#a69181] mt-0.5">Update event details or add/replace 16:9 banner & 4:3 cover images at any time.</p>
+                <h1 className="text-2xl font-bold text-white">Edit Event Details & Dates</h1>
+                <p className="text-xs text-[#a69181] mt-0.5">Update single-day or multi-day date ranges and banner assets anytime.</p>
               </div>
               <span className="px-3 py-1 rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1">
                 <Lock className="w-3.5 h-3.5" />
@@ -235,34 +253,24 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Dual Image Uploaders: 16:9 Banner & 4:3 Cover with Crop & Compressor */}
+              {/* Dual Image Uploaders */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#180509] p-5 rounded-2xl border border-white/10">
-                {/* 16:9 Banner Upload */}
                 <div className="form-group mb-0">
                   <label className="form-label font-semibold flex items-center justify-between text-xs mb-2">
                     <span className="flex items-center gap-1.5 text-white">
                       <ImageIcon className="w-4 h-4 text-[#e6c594]" />
-                      <span>Header Banner (16:9 Ratio)</span>
+                      <span>Header Banner (16:9)</span>
                     </span>
                     <span className="text-[10px] text-[#e6c594] font-mono px-2 py-0.5 rounded bg-[#800020]/40">16 : 9</span>
                   </label>
 
                   {formData.bannerUrl ? (
                     <div className="relative rounded-xl overflow-hidden border border-[#e6c594]/40 h-36 bg-black/40 group">
-                      <img 
-                        src={formData.bannerUrl} 
-                        alt="Banner Preview" 
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={formData.bannerUrl} alt="Banner Preview" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <label className="px-3 py-1 rounded bg-[#800020] text-white text-xs font-semibold cursor-pointer">
                           Change Banner
-                          <input 
-                            type="file" 
-                            onChange={(e) => triggerCropModal(e, 'banner')}
-                            accept="image/*"
-                            className="hidden"
-                          />
+                          <input type="file" onChange={(e) => triggerCropModal(e, 'banner')} accept="image/*" className="hidden" />
                         </label>
                         <button 
                           type="button" 
@@ -278,42 +286,27 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                       <Crop className="w-6 h-6 text-[#e6c594] mb-1" />
                       <span className="text-xs font-medium text-white mb-0.5">Upload 16:9 Banner</span>
                       <span className="text-[10px] text-[#a69181]">Optional (Can add later)</span>
-                      <input 
-                        type="file" 
-                        onChange={(e) => triggerCropModal(e, 'banner')}
-                        accept="image/*"
-                        className="hidden"
-                      />
+                      <input type="file" onChange={(e) => triggerCropModal(e, 'banner')} accept="image/*" className="hidden" />
                     </label>
                   )}
                 </div>
 
-                {/* 4:3 Cover Card Upload */}
                 <div className="form-group mb-0">
                   <label className="form-label font-semibold flex items-center justify-between text-xs mb-2">
                     <span className="flex items-center gap-1.5 text-white">
                       <ImageIcon className="w-4 h-4 text-cyan-400" />
-                      <span>Card Cover Image (4:3 Ratio)</span>
+                      <span>Card Cover Image (4:3)</span>
                     </span>
                     <span className="text-[10px] text-cyan-300 font-mono px-2 py-0.5 rounded bg-cyan-500/20">4 : 3</span>
                   </label>
 
                   {formData.coverUrl ? (
                     <div className="relative rounded-xl overflow-hidden border border-cyan-500/40 h-36 bg-black/40 group">
-                      <img 
-                        src={formData.coverUrl} 
-                        alt="Cover Preview" 
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={formData.coverUrl} alt="Cover Preview" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <label className="px-3 py-1 rounded bg-cyan-700 text-white text-xs font-semibold cursor-pointer">
                           Change Cover
-                          <input 
-                            type="file" 
-                            onChange={(e) => triggerCropModal(e, 'cover')}
-                            accept="image/*"
-                            className="hidden"
-                          />
+                          <input type="file" onChange={(e) => triggerCropModal(e, 'cover')} accept="image/*" className="hidden" />
                         </label>
                         <button 
                           type="button" 
@@ -329,12 +322,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                       <Crop className="w-6 h-6 text-cyan-400 mb-1" />
                       <span className="text-xs font-medium text-white mb-0.5">Upload 4:3 Cover</span>
                       <span className="text-[10px] text-[#a69181]">Optional (Can add later)</span>
-                      <input 
-                        type="file" 
-                        onChange={(e) => triggerCropModal(e, 'cover')}
-                        accept="image/*"
-                        className="hidden"
-                      />
+                      <input type="file" onChange={(e) => triggerCropModal(e, 'cover')} accept="image/*" className="hidden" />
                     </label>
                   )}
                 </div>
@@ -366,6 +354,39 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 />
               </div>
 
+              {/* Date Range Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#180509] p-4 rounded-2xl border border-white/10">
+                <div className="form-group mb-0">
+                  <label className="form-label flex items-center gap-1.5 text-xs text-white">
+                    <Calendar className="w-4 h-4 text-[#e6c594]" />
+                    <span>Start Date *</span>
+                  </label>
+                  <input 
+                    type="date"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleChange}
+                    className="form-input text-xs"
+                    required
+                  />
+                </div>
+
+                <div className="form-group mb-0">
+                  <label className="form-label flex items-center gap-1.5 text-xs text-[#e6d7c3]">
+                    <Calendar className="w-4 h-4 text-cyan-400" />
+                    <span>End Date (Optional for multi-day range)</span>
+                  </label>
+                  <input 
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleChange}
+                    min={formData.startDate}
+                    className="form-input text-xs"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label className="form-label">Event Mode *</label>
@@ -381,20 +402,6 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Event Date *</label>
-                  <input 
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                    className="form-input"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="form-group">
                   <label className="form-label">
                     {formData.mode === 'ONLINE' ? 'Online Meeting Link / Platform' : 'Location / Venue *'}
                   </label>
@@ -408,7 +415,9 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                     required={formData.mode === 'OFFLINE'}
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label className="form-label">Event Status</label>
                   <select
@@ -422,9 +431,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                     <option value="DONE">DONE (Archived / Hidden from Homepage)</option>
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label className="form-label">Organizer Name</label>
                   <input 
@@ -436,19 +443,19 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                     className="form-input"
                   />
                 </div>
+              </div>
 
-                <div className="form-group justify-end pb-2">
-                  <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer mt-4">
-                    <input 
-                      type="checkbox"
-                      name="hasAttendance"
-                      checked={formData.hasAttendance}
-                      onChange={handleChange}
-                      className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
-                    />
-                    <span className="font-semibold text-white">Enable QR Code Attendance System</span>
-                  </label>
-                </div>
+              <div className="form-group">
+                <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    name="hasAttendance"
+                    checked={formData.hasAttendance}
+                    onChange={handleChange}
+                    className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
+                  />
+                  <span className="font-semibold text-white">Enable QR Code Attendance System</span>
+                </label>
               </div>
 
               {/* Custom Highlights */}
@@ -531,7 +538,6 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         )}
       </main>
 
-      {/* Interactive Crop & Compressor Modal */}
       <ImageCropModal 
         isOpen={cropModalOpen}
         imageSrc={selectedRawImage}

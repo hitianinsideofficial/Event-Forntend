@@ -7,7 +7,7 @@ import Navbar from '../../../../components/Navbar';
 import ImageCropModal from '../../../../components/ImageCropModal';
 import { createEventApi } from '../../../../services/api.service';
 import { EventHighlight, EventStatus, EventMode } from '../../../../types/event.types';
-import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, UploadCloud, Crop } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, Crop, Calendar } from 'lucide-react';
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -16,7 +16,8 @@ export default function CreateEventPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    date: '',
+    startDate: '',
+    endDate: '',
     location: '',
     organizer: 'HITian Inside',
     status: 'UPCOMING' as EventStatus,
@@ -76,7 +77,7 @@ export default function CreateEventPage() {
       setCropModalOpen(true);
     };
     reader.readAsDataURL(file);
-    e.target.value = ''; // reset input
+    e.target.value = '';
   };
 
   const handleCropUploadSuccess = (url: string, type: 'banner' | 'cover') => {
@@ -103,7 +104,6 @@ export default function CreateEventPage() {
     setHighlights(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Drag & Drop Reorder Handlers
   const handleDragStart = (index: number) => {
     setDraggedIdx(index);
   };
@@ -126,19 +126,33 @@ export default function CreateEventPage() {
     setDraggedIdx(null);
   };
 
+  const formatDisplayDate = (startStr: string, endStr?: string) => {
+    if (!startStr) return '';
+    const startObj = new Date(startStr);
+    const startFormatted = startObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (!endStr || endStr === startStr) return startFormatted;
+
+    const endObj = new Date(endStr);
+    const endFormatted = endObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startFormatted} – ${endFormatted}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.title || !formData.description || !formData.date) {
-      setError('Title, Description, and Date are required.');
+    if (!formData.title || !formData.description || !formData.startDate) {
+      setError('Title, Description, and Start Date are required.');
       return;
     }
 
     setLoading(true);
     try {
+      const formattedDateString = formatDisplayDate(formData.startDate, formData.endDate);
+
       const payload = {
         ...formData,
+        date: formattedDateString || formData.startDate,
         location: formData.location.trim() || (formData.mode === 'ONLINE' ? 'Online Event (Link provided)' : 'Main Campus'),
         highlights: highlights.filter(h => h.title.trim())
       };
@@ -172,7 +186,7 @@ export default function CreateEventPage() {
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div>
               <h1 className="text-2xl font-bold text-white">Create New Event</h1>
-              <p className="text-xs text-[#a69181] mt-0.5">Crop & compress 16:9 banner & 4:3 cover images for ImageKit CDN delivery.</p>
+              <p className="text-xs text-[#a69181] mt-0.5">Supports single-day or multi-day date range events.</p>
             </div>
             <span className="px-3 py-1 rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1">
               <Lock className="w-3.5 h-3.5" />
@@ -187,25 +201,20 @@ export default function CreateEventPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Dual Image Uploaders: 16:9 Banner & 4:3 Cover with Crop & Compressor */}
+            {/* Dual Image Uploaders */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#180509] p-5 rounded-2xl border border-white/10">
-              {/* 16:9 Banner Upload */}
               <div className="form-group mb-0">
                 <label className="form-label font-semibold flex items-center justify-between text-xs mb-2">
                   <span className="flex items-center gap-1.5 text-white">
                     <ImageIcon className="w-4 h-4 text-[#e6c594]" />
-                    <span>Header Banner (16:9 Ratio)</span>
+                    <span>Header Banner (16:9)</span>
                   </span>
                   <span className="text-[10px] text-[#e6c594] font-mono px-2 py-0.5 rounded bg-[#800020]/40">16 : 9</span>
                 </label>
 
                 {formData.bannerUrl ? (
                   <div className="relative rounded-xl overflow-hidden border border-[#e6c594]/40 h-36 bg-black/40 group">
-                    <img 
-                      src={formData.bannerUrl} 
-                      alt="Banner Preview" 
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={formData.bannerUrl} alt="Banner Preview" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <button 
                         type="button" 
@@ -220,34 +229,24 @@ export default function CreateEventPage() {
                   <label className="flex flex-col items-center justify-center p-4 h-36 border-2 border-dashed border-white/10 rounded-xl bg-white/[0.02] hover:border-[#e6c594]/40 transition-colors cursor-pointer text-center">
                     <Crop className="w-6 h-6 text-[#e6c594] mb-1" />
                     <span className="text-xs font-medium text-white mb-0.5">Crop & Compress Banner</span>
-                    <span className="text-[10px] text-[#a69181]">16:9 Aspect Ratio</span>
-                    <input 
-                      type="file" 
-                      onChange={(e) => triggerCropModal(e, 'banner')}
-                      accept="image/*"
-                      className="hidden"
-                    />
+                    <span className="text-[10px] text-[#a69181]">Optional (Can add later)</span>
+                    <input type="file" onChange={(e) => triggerCropModal(e, 'banner')} accept="image/*" className="hidden" />
                   </label>
                 )}
               </div>
 
-              {/* 4:3 Cover Card Upload */}
               <div className="form-group mb-0">
                 <label className="form-label font-semibold flex items-center justify-between text-xs mb-2">
                   <span className="flex items-center gap-1.5 text-white">
                     <ImageIcon className="w-4 h-4 text-cyan-400" />
-                    <span>Card Cover Image (4:3 Ratio)</span>
+                    <span>Card Cover (4:3)</span>
                   </span>
                   <span className="text-[10px] text-cyan-300 font-mono px-2 py-0.5 rounded bg-cyan-500/20">4 : 3</span>
                 </label>
 
                 {formData.coverUrl ? (
                   <div className="relative rounded-xl overflow-hidden border border-cyan-500/40 h-36 bg-black/40 group">
-                    <img 
-                      src={formData.coverUrl} 
-                      alt="Cover Preview" 
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={formData.coverUrl} alt="Cover Preview" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <button 
                         type="button" 
@@ -262,13 +261,8 @@ export default function CreateEventPage() {
                   <label className="flex flex-col items-center justify-center p-4 h-36 border-2 border-dashed border-white/10 rounded-xl bg-white/[0.02] hover:border-cyan-400/40 transition-colors cursor-pointer text-center">
                     <Crop className="w-6 h-6 text-cyan-400 mb-1" />
                     <span className="text-xs font-medium text-white mb-0.5">Crop & Compress Cover</span>
-                    <span className="text-[10px] text-[#a69181]">4:3 Aspect Ratio</span>
-                    <input 
-                      type="file" 
-                      onChange={(e) => triggerCropModal(e, 'cover')}
-                      accept="image/*"
-                      className="hidden"
-                    />
+                    <span className="text-[10px] text-[#a69181]">Optional (Can add later)</span>
+                    <input type="file" onChange={(e) => triggerCropModal(e, 'cover')} accept="image/*" className="hidden" />
                   </label>
                 )}
               </div>
@@ -300,6 +294,39 @@ export default function CreateEventPage() {
               />
             </div>
 
+            {/* Date Range Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#180509] p-4 rounded-2xl border border-white/10">
+              <div className="form-group mb-0">
+                <label className="form-label flex items-center gap-1.5 text-xs text-white">
+                  <Calendar className="w-4 h-4 text-[#e6c594]" />
+                  <span>Start Date *</span>
+                </label>
+                <input 
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                  className="form-input text-xs"
+                  required
+                />
+              </div>
+
+              <div className="form-group mb-0">
+                <label className="form-label flex items-center gap-1.5 text-xs text-[#e6d7c3]">
+                  <Calendar className="w-4 h-4 text-cyan-400" />
+                  <span>End Date (Optional for multi-day range)</span>
+                </label>
+                <input 
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                  min={formData.startDate}
+                  className="form-input text-xs"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="form-group">
                 <label className="form-label">Event Mode *</label>
@@ -315,20 +342,6 @@ export default function CreateEventPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Event Date *</label>
-                <input 
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleChange}
-                  className="form-input"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="form-group">
                 <label className="form-label">
                   {formData.mode === 'ONLINE' ? 'Online Meeting Link / Platform' : 'Location / Venue *'}
                 </label>
@@ -342,7 +355,9 @@ export default function CreateEventPage() {
                   required={formData.mode === 'OFFLINE'}
                 />
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="form-group">
                 <label className="form-label">Initial Event Status</label>
                 <select
@@ -356,9 +371,7 @@ export default function CreateEventPage() {
                   <option value="DONE">DONE (Archived / Hidden from Homepage)</option>
                 </select>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="form-group">
                 <label className="form-label">Organizer Name</label>
                 <input 
@@ -370,22 +383,22 @@ export default function CreateEventPage() {
                   className="form-input"
                 />
               </div>
-
-              <div className="form-group justify-end pb-2">
-                <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer mt-4">
-                  <input 
-                    type="checkbox"
-                    name="hasAttendance"
-                    checked={formData.hasAttendance}
-                    onChange={handleChange}
-                    className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
-                  />
-                  <span className="font-semibold text-white">Enable QR Code Attendance System</span>
-                </label>
-              </div>
             </div>
 
-            {/* Custom Highlights with Drag & Drop Reordering */}
+            <div className="form-group">
+              <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+                <input 
+                  type="checkbox"
+                  name="hasAttendance"
+                  checked={formData.hasAttendance}
+                  onChange={handleChange}
+                  className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
+                />
+                <span className="font-semibold text-white">Enable QR Code Attendance System</span>
+              </label>
+            </div>
+
+            {/* Custom Highlights */}
             <div className="space-y-4 pt-4 border-t border-white/10">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-[#e6c594] flex items-center gap-1.5">
@@ -414,7 +427,7 @@ export default function CreateEventPage() {
                       type="text"
                       value={item.title}
                       onChange={e => handleUpdateHighlight(idx, 'title', e.target.value)}
-                      placeholder="Highlight Title (e.g. Prize Pool)"
+                      placeholder="Highlight Title"
                       className="form-input flex-1 text-xs"
                     />
 
@@ -422,7 +435,7 @@ export default function CreateEventPage() {
                       type="text"
                       value={item.description}
                       onChange={e => handleUpdateHighlight(idx, 'description', e.target.value)}
-                      placeholder="Description (e.g. INR 50,000 Cash)"
+                      placeholder="Description"
                       className="form-input flex-1 text-xs"
                     />
 
@@ -463,7 +476,6 @@ export default function CreateEventPage() {
         </div>
       </main>
 
-      {/* Interactive Crop & Compressor Modal */}
       <ImageCropModal 
         isOpen={cropModalOpen}
         imageSrc={selectedRawImage}
