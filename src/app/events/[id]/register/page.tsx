@@ -43,6 +43,7 @@ const DEPT_CODES: Record<string, string> = {
   'Chemical Engineering': 'CHE',
   'Electrical Engineering': 'EE',
   'Electronics & Communication Engineering': 'ECE',
+  'Information Technology': 'IT',
   'Civil Engineering': 'CE',
   'Food Technology': 'FT',
   'Mechanical Engineering': 'ME'
