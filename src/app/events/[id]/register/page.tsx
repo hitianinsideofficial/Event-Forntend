@@ -674,6 +674,18 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
               )}
             </div>
 
+            {/* Queries Contact Banner */}
+            <div className="mb-6 p-3.5 rounded-xl bg-[#180509] border border-[#ff9933]/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <span className="text-[#a69181] font-semibold flex items-center gap-1.5">
+                <span>📞 For any queries, please reach out to:</span>
+              </span>
+              <div className="flex items-center gap-4 font-bold text-white">
+                <a href="tel:9836018190" className="hover:text-[#ff9933] transition-colors">Srijita: 98360 18190</a>
+                <span className="text-[#a69181]">|</span>
+                <a href="tel:9135444297" className="hover:text-[#ff9933] transition-colors">Ayush: 91354 44297</a>
+              </div>
+            </div>
+
             {error && (
               <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />

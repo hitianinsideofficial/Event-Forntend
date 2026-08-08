@@ -17,7 +17,8 @@ import {
   Globe,
   Award,
   ArrowRight,
-  Flag
+  Flag,
+  Phone
 } from 'lucide-react';
 
 export default function DedicatedEventDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -149,7 +150,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
           </div>
 
           {/* Quick Key Metadata Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
             <div className="bg-[#180509] p-4 rounded-xl border border-white/5 flex items-center gap-3">
               <div className={`p-2.5 rounded-lg ${isTricolour ? 'bg-[#ff9933]/20 text-[#ff9933]' : 'bg-[#800020]/30 text-[#e6c594]'}`}>
                 <Calendar className="w-5 h-5" />
@@ -177,6 +178,19 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
               <div>
                 <span className="text-[10px] text-[#a69181] uppercase font-semibold block">Organizer</span>
                 <span className="text-xs font-bold text-white">{event.organizer || 'HITian Inside'}</span>
+              </div>
+            </div>
+
+            <div className="bg-[#180509] p-4 rounded-xl border border-[#ff9933]/30 flex items-start gap-3">
+              <div className="p-2.5 rounded-lg bg-[#ff9933]/20 text-[#ff9933] shrink-0 mt-0.5">
+                <Phone className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] text-[#a69181] uppercase font-semibold block">Event Queries Contact</span>
+                <div className="text-xs font-bold text-white space-y-0.5 mt-0.5">
+                  <a href="tel:9836018190" className="hover:text-[#ff9933] transition-colors block">📞 Srijita: 98360 18190</a>
+                  <a href="tel:9135444297" className="hover:text-[#ff9933] transition-colors block">📞 Ayush: 91354 44297</a>
+                </div>
               </div>
             </div>
           </div>
