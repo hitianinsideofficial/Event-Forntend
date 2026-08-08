@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import EventCard from '../components/EventCard';
-import CertificateVerifierModal from '../components/CertificateVerifierModal';
 import { fetchEvents } from '../services/api.service';
 import { EventItem } from '../types/event.types';
 import { CalendarX, Search } from 'lucide-react';
@@ -12,7 +11,6 @@ export default function Home() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState<boolean>(false);
 
   const loadEvents = async () => {
     setLoading(true);
@@ -40,17 +38,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#150408] text-[#fdfbf7] w-full">
-      <Navbar onOpenVerifyModal={() => setIsVerifyModalOpen(true)} />
+      <Navbar />
 
       <main className="flex-1 w-full container-custom py-10">
         {/* Main Section Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#f7f1e5]/10">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Event Registrations & <span className="gradient-text">Verification</span>
+              Official Event <span className="gradient-text">Registrations</span>
             </h1>
             <p className="text-xs text-[#a69181] mt-1 font-medium">
-              Official event portal for HITian Inside club registrations & certificate authentication.
+              Official portal for HITian Inside club event registrations & details.
             </p>
           </div>
 
@@ -108,14 +106,9 @@ export default function Home() {
 
       <footer className="border-t border-[#f7f1e5]/10 bg-[#100306] py-6 mt-auto w-full">
         <div className="container-custom text-center text-xs text-[#a69181]">
-          <p>© 2026 HITian Inside. Official Event & Certificate Verification Portal.</p>
+          <p>© 2026 HITian Inside. Official Event Portal.</p>
         </div>
       </footer>
-
-      <CertificateVerifierModal 
-        isOpen={isVerifyModalOpen}
-        onClose={() => setIsVerifyModalOpen(false)}
-      />
     </div>
   );
 }
