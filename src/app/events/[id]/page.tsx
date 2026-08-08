@@ -119,11 +119,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
                   {event.organizer || 'HITian Inside'}
                 </span>
 
-                {isTricolour && (
-                  <span className="px-3 py-0.5 text-[10px] font-black rounded-full bg-[#ff9933]/20 text-[#ff9933] border border-[#ff9933]/40 uppercase tracking-wider">
-                    🇮🇳 TRICOLOUR EDITION
-                  </span>
-                )}
+
 
                 {event.status === 'LIVE' ? (
                   <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1">
