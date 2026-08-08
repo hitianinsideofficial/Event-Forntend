@@ -62,7 +62,7 @@ export default function Home() {
                 placeholder="Search events..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="form-input text-xs pl-10 pr-4 py-2.5 w-full"
+                className="form-input text-xs !pl-10 pr-4 py-2.5 w-full"
               />
             </div>
           </div>
