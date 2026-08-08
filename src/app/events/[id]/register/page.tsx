@@ -78,8 +78,8 @@ export default function DedicatedEventRegistrationPage() {
     e.preventDefault();
     setError('');
 
-    if (!fullName || !email) {
-      setError('Please provide your Full Name and Email address.');
+    if (!fullName || !email || !phone) {
+      setError('Please provide your Full Name, Email address, and Mobile Phone Number.');
       return;
     }
 
@@ -265,13 +265,14 @@ export default function DedicatedEventRegistrationPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Phone Number (Optional)</label>
+                    <label className="form-label">Mobile Phone Number *</label>
                     <input 
                       type="tel" 
                       value={phone}
                       onChange={e => setPhone(e.target.value)}
                       placeholder="+91 9876543210"
                       className="form-input text-sm"
+                      required
                     />
                   </div>
                 </div>
