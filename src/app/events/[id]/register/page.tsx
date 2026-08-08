@@ -23,7 +23,9 @@ import {
   Camera,
   BookOpen,
   AlertCircle,
-  FileCheck
+  FileCheck,
+  Link as LinkIcon,
+  Video
 } from 'lucide-react';
 
 const DEPT_CODES: Record<string, string> = {
@@ -56,6 +58,7 @@ interface SwarajDomain {
   icon: any;
   accept: string;
   maxSize: string;
+  isDriveLinkRequired?: boolean;
   themes: string[];
   rules: string[];
 }
@@ -66,8 +69,9 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     title: 'TRICOLENS',
     subtitle: 'REEL MAKING',
     icon: Film,
-    accept: 'video/mp4,video/*',
+    accept: 'Google Drive Link',
     maxSize: '1 GB',
+    isDriveLinkRequired: true,
     themes: [
       'The Price of Freedom',
       'One Minute Through India\'s Journey',
@@ -75,10 +79,10 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     ],
     rules: [
       'Participants can submit a single entry per theme and participate in max of 2 themes.',
-      'Reel size should be within 1 GB.',
-      'Videos should be submitted only in MP4 format.',
+      'MANDATORY: Upload your video reel to your personal Google Drive and set access to "Anyone with the link can view".',
+      'Paste the viewable Google Drive link in the input field below.',
+      'Reel size should be within 1 GB. Videos must be in MP4 format.',
       'Plagiarised submission is strictly forbidden and will be rejected.',
-      'All submission should be done through this portal only.',
       'Deadline for submission of entries: 15 August, 11:59 pm.'
     ]
   },
@@ -89,6 +93,7 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     icon: Palette,
     accept: '.jpg,.jpeg,.png,.psd,.tiff,.ai,image/*',
     maxSize: '100 MB',
+    isDriveLinkRequired: false,
     themes: [
       'Threads of Unity',
       'Pixels of Patriotism',
@@ -111,6 +116,7 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     icon: Camera,
     accept: '.jpg,.jpeg,.png,image/*',
     maxSize: '100 MB',
+    isDriveLinkRequired: false,
     themes: [
       'Roots of India',
       'Unsung Heroes',
@@ -134,6 +140,7 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     icon: BookOpen,
     accept: '.pdf,.doc,.docx',
     maxSize: '10 MB',
+    isDriveLinkRequired: false,
     themes: [
       'The Price of Silence',
       'Dreaming India 2047',
@@ -173,6 +180,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const [activeStep, setActiveStep] = useState<number>(1); // 1 = Registration, 2 = Domain Submission
   const [selectedDomainId, setSelectedDomainId] = useState<string>('tricolens');
   const [selectedTheme, setSelectedTheme] = useState<string>('');
+  const [driveReelUrl, setDriveReelUrl] = useState<string>('');
   const [caption, setCaption] = useState<string>('');
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
 
@@ -241,6 +249,18 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         setError('Please select a theme for your chosen competition domain.');
         return;
       }
+
+      // If TRICOLENS Reel domain, validate Google Drive Link presence
+      const activeDomainObj = SWARAJ_DOMAINS.find(d => d.id === selectedDomainId);
+      if (activeDomainObj?.isDriveLinkRequired && !driveReelUrl.trim()) {
+        setError('Google Drive Video Link is mandatory for TRICOLENS Reel submissions. Please upload your video to Google Drive and paste the shareable link.');
+        return;
+      }
+
+      if (!activeDomainObj?.isDriveLinkRequired && !submissionFile && !file) {
+        setError(`Please upload your submission file for ${activeDomainObj?.title}.`);
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -257,6 +277,9 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       if (isSwarajEHind && activeDomainObj) {
         combinedAnswers['Selected Domain'] = `${activeDomainObj.title} (${activeDomainObj.subtitle})`;
         combinedAnswers['Selected Theme'] = selectedTheme;
+        if (activeDomainObj.isDriveLinkRequired) {
+          combinedAnswers['Google Drive Video Reel Link'] = driveReelUrl.trim();
+        }
         if (caption) combinedAnswers['Caption / Write-up / Raw Notes'] = caption;
       }
 
@@ -268,7 +291,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       formPayload.append('answers', JSON.stringify(combinedAnswers));
 
       const fileToUpload = submissionFile || file;
-      if (fileToUpload) {
+      if (fileToUpload && !activeDomainObj?.isDriveLinkRequired) {
         formPayload.append('files', fileToUpload);
       }
 
@@ -354,7 +377,13 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   {Object.entries(ticket.answers).map(([key, val], idx) => (
                     <div key={idx} className="flex justify-between text-[11px]">
                       <span className="text-[#a69181]">{key}:</span>
-                      <span className="text-white font-medium truncate max-w-[240px]">{String(val)}</span>
+                      {String(val).startsWith('http') ? (
+                        <a href={String(val)} target="_blank" rel="noreferrer" className="text-cyan-400 underline font-semibold truncate max-w-[220px]">
+                          {String(val)}
+                        </a>
+                      ) : (
+                        <span className="text-white font-medium truncate max-w-[240px]">{String(val)}</span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -590,7 +619,9 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                               <span className="text-[10px] text-[#ff9933] font-bold block uppercase">{domain.subtitle}</span>
                             </div>
                           </div>
-                          <span className="text-[10px] text-[#a69181]">Max File: {domain.maxSize}</span>
+                          <span className="text-[10px] text-[#a69181]">
+                            {domain.isDriveLinkRequired ? 'Required: Google Drive Video Link' : `Max File: ${domain.maxSize}`}
+                          </span>
                         </div>
                       );
                     })}
@@ -599,10 +630,16 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
                 {/* Selected Domain Rules & Theme Options */}
                 <div className="glass-panel p-6 border-2 border-[#ff9933]/40 bg-[#180509] space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/10">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
                     <span className="px-2.5 py-0.5 rounded bg-[#ff9933]/20 text-[#ff9933] text-xs font-bold">
                       {selectedDomainObj.title} ({selectedDomainObj.subtitle})
                     </span>
+                    {selectedDomainObj.isDriveLinkRequired && (
+                      <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold flex items-center gap-1">
+                        <LinkIcon className="w-3 h-3" />
+                        Google Drive Link Mandatory
+                      </span>
+                    )}
                   </div>
 
                   {/* Theme Selector */}
@@ -637,7 +674,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
                     <h5 className="text-xs font-bold text-[#ff9933] flex items-center gap-1.5">
                       <FileCheck className="w-3.5 h-3.5" />
-                      <span>Domain Rules & Submission Requirements:</span>
+                      <span>Domain Rules & Submission Instructions:</span>
                     </h5>
                     <ul className="list-disc list-inside text-[11px] text-[#a69181] space-y-1">
                       {selectedDomainObj.rules.map((rule, idx) => (
@@ -646,28 +683,54 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     </ul>
                   </div>
 
-                  {/* File Upload Dropzone */}
-                  <div className="form-group mb-0">
-                    <label className="form-label font-bold text-white text-xs">
-                      Upload {selectedDomainObj.title} Submission File *
-                    </label>
-                    <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#ff9933]/40 rounded-2xl bg-white/[0.02] hover:border-[#ff9933] transition-colors cursor-pointer text-center mt-2">
-                      <UploadCloud className="w-8 h-8 text-[#ff9933] mb-2 animate-bounce" />
-                      <span className="text-xs font-bold text-white mb-1">
-                        {submissionFile ? submissionFile.name : `Click to Upload ${selectedDomainObj.subtitle} File`}
-                      </span>
-                      <span className="text-[10px] text-[#a69181]">
-                        Accepted: {selectedDomainObj.accept} (Max Size: {selectedDomainObj.maxSize})
-                      </span>
+                  {/* MANDATORY GOOGLE DRIVE LINK FIELD FOR TRICOLENS REEL MAKING */}
+                  {selectedDomainObj.isDriveLinkRequired ? (
+                    <div className="form-group bg-[#22080f] p-4 rounded-2xl border-2 border-[#ff9933]/50 space-y-2">
+                      <label className="form-label font-bold text-white text-xs flex items-center gap-1.5">
+                        <LinkIcon className="w-4 h-4 text-[#ff9933]" />
+                        <span>Google Drive Video Reel Link * (Mandatory)</span>
+                      </label>
+
+                      <div className="p-3 rounded-xl bg-black/40 text-[11px] text-[#a69181] space-y-1 border border-white/5">
+                        <p className="font-bold text-[#ff9933]">How to share your Google Drive link:</p>
+                        <p>1. Upload your MP4 Reel (Max 1GB) to your personal Google Drive.</p>
+                        <p>2. Right click the video ➔ <strong>Share</strong> ➔ Change General access to <strong>"Anyone with the link can view"</strong>.</p>
+                        <p>3. Copy the link and paste it in the field below.</p>
+                      </div>
+
                       <input 
-                        type="file" 
-                        onChange={e => setSubmissionFile(e.target.files?.[0] || null)}
-                        accept={selectedDomainObj.accept}
-                        className="hidden"
+                        type="url" 
+                        value={driveReelUrl}
+                        onChange={e => setDriveReelUrl(e.target.value)}
+                        placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+                        className="form-input font-mono text-xs"
                         required
                       />
-                    </label>
-                  </div>
+                    </div>
+                  ) : (
+                    /* DIRECT FILE UPLOAD DROPZONE FOR ARTWORK, PHOTOGRAPHY & CREATIVE WRITING */
+                    <div className="form-group mb-0">
+                      <label className="form-label font-bold text-white text-xs">
+                        Upload {selectedDomainObj.title} Submission File *
+                      </label>
+                      <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#ff9933]/40 rounded-2xl bg-white/[0.02] hover:border-[#ff9933] transition-colors cursor-pointer text-center mt-2">
+                        <UploadCloud className="w-8 h-8 text-[#ff9933] mb-2 animate-bounce" />
+                        <span className="text-xs font-bold text-white mb-1">
+                          {submissionFile ? submissionFile.name : `Click to Upload ${selectedDomainObj.subtitle} File`}
+                        </span>
+                        <span className="text-[10px] text-[#a69181]">
+                          Accepted: {selectedDomainObj.accept} (Max Size: {selectedDomainObj.maxSize})
+                        </span>
+                        <input 
+                          type="file" 
+                          onChange={e => setSubmissionFile(e.target.files?.[0] || null)}
+                          accept={selectedDomainObj.accept}
+                          className="hidden"
+                          required
+                        />
+                      </label>
+                    </div>
+                  )}
 
                   {/* Caption / Note Optional */}
                   <div className="form-group mb-0">
