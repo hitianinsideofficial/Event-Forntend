@@ -807,14 +807,14 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/10 flex justify-between items-center">
-                  <Link href={`/events/${eventId}`} className="btn-secondary text-xs">
+                <div className="pt-4 border-t border-white/10 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                  <Link href={`/events/${eventId}`} className="btn-secondary text-xs py-3 sm:py-2.5 px-5 text-center justify-center">
                     ← Cancel
                   </Link>
 
                   <button 
                     type="submit"
-                    className="btn-tricolour text-sm py-2.5 px-6 inline-flex items-center gap-2"
+                    className="btn-tricolour text-sm py-3 sm:py-2.5 px-6 inline-flex items-center justify-center gap-2 font-extrabold w-full sm:w-auto shadow-lg"
                   >
                     <span>Proceed to Domain Selection →</span>
                   </button>
@@ -1053,11 +1053,11 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   </div>
                 )}
 
-                <div className="pt-4 border-t border-white/10 flex justify-between items-center">
+                <div className="pt-4 border-t border-white/10 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
                   <button 
                     type="button" 
                     onClick={() => setActiveStep(1)} 
-                    className="btn-secondary text-xs"
+                    className="btn-secondary text-xs py-3 sm:py-2.5 px-5 text-center justify-center"
                   >
                     ← Back to Step 1
                   </button>
@@ -1065,7 +1065,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   <button 
                     type="submit"
                     disabled={submitting || compressing || isSelectedDomainSubmitted}
-                    className="btn-tricolour text-sm min-w-[200px] justify-center inline-flex items-center gap-2 py-3 px-6 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-tricolour text-sm min-w-full sm:min-w-[200px] justify-center inline-flex items-center gap-2 py-3 px-6 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                   >
                     <Send className="w-4 h-4" />
                     <span>{submitting ? 'Submitting to Swaraj-E-Hind...' : 'Submit to Swaraj-E-Hind 🇮🇳'}</span>
