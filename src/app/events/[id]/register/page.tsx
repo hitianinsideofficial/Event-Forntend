@@ -25,7 +25,8 @@ import {
   AlertCircle,
   FileCheck,
   Link as LinkIcon,
-  Video
+  Video,
+  ShieldAlert
 } from 'lucide-react';
 
 const DEPT_CODES: Record<string, string> = {
@@ -79,7 +80,7 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     ],
     rules: [
       'Participants can submit a single entry per theme and participate in max of 2 themes.',
-      'MANDATORY: Upload your video reel to your personal Google Drive and set access to "Anyone with the link can view".',
+      'MANDATORY: Upload your video reel to personal Google Drive and set access to "Anyone with the link can view".',
       'Paste the viewable Google Drive link in the input field below.',
       'Reel size should be within 1 GB. Videos must be in MP4 format.',
       'Plagiarised submission is strictly forbidden and will be rejected.',
@@ -208,7 +209,12 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
     loadEventDetails();
   }, [eventId]);
 
-  const isSwarajEHind = event?.isFlagship || event?.theme === 'TRICOLOUR' || event?.title.toLowerCase().includes('swaraj');
+  const isSwarajEHind = Boolean(
+    event?.isFlagship || 
+    event?.theme === 'TRICOLOUR' || 
+    event?.title?.toLowerCase()?.includes('swaraj') ||
+    event?.title?.toLowerCase()?.includes('hind')
+  );
 
   // Computed Auto-Prefilled Roll Number Prefix
   const deptCode = DEPT_CODES[selectedDept] || '';
@@ -683,29 +689,45 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     </ul>
                   </div>
 
-                  {/* MANDATORY GOOGLE DRIVE LINK FIELD FOR TRICOLENS REEL MAKING */}
+                  {/* MANDATORY GOOGLE DRIVE LINK FIELD & CAUTION NOTICE FOR TRICOLENS REEL MAKING */}
                   {selectedDomainObj.isDriveLinkRequired ? (
-                    <div className="form-group bg-[#22080f] p-4 rounded-2xl border-2 border-[#ff9933]/50 space-y-2">
-                      <label className="form-label font-bold text-white text-xs flex items-center gap-1.5">
-                        <LinkIcon className="w-4 h-4 text-[#ff9933]" />
-                        <span>Google Drive Video Reel Link * (Mandatory)</span>
-                      </label>
-
-                      <div className="p-3 rounded-xl bg-black/40 text-[11px] text-[#a69181] space-y-1 border border-white/5">
-                        <p className="font-bold text-[#ff9933]">How to share your Google Drive link:</p>
-                        <p>1. Upload your MP4 Reel (Max 1GB) to your personal Google Drive.</p>
-                        <p>2. Right click the video ➔ <strong>Share</strong> ➔ Change General access to <strong>"Anyone with the link can view"</strong>.</p>
-                        <p>3. Copy the link and paste it in the field below.</p>
+                    <div className="space-y-4">
+                      {/* PROMINENT CAUTION NOTICE BOX */}
+                      <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/50 text-amber-200 text-xs space-y-2">
+                        <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                          <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
+                          <span>⚠️ MANDATORY CAUTION FOR REEL SUBMISSIONS:</span>
+                        </div>
+                        <p className="leading-relaxed">
+                          Direct file uploads for Reels are disabled due to large video sizes. You <strong>MUST</strong> upload your video reel to your personal Google Drive, set sharing access permissions to <strong>"Anyone with the link can view"</strong>, and paste the public link below.
+                        </p>
+                        <p className="text-[11px] text-amber-300 font-mono">
+                          ❌ Submissions with restricted Google Drive links or missing viewing permissions will be automatically disqualified.
+                        </p>
                       </div>
 
-                      <input 
-                        type="url" 
-                        value={driveReelUrl}
-                        onChange={e => setDriveReelUrl(e.target.value)}
-                        placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
-                        className="form-input font-mono text-xs"
-                        required
-                      />
+                      <div className="form-group bg-[#22080f] p-4 rounded-2xl border-2 border-[#ff9933]/50 space-y-2">
+                        <label className="form-label font-bold text-white text-xs flex items-center gap-1.5">
+                          <LinkIcon className="w-4 h-4 text-[#ff9933]" />
+                          <span>Google Drive Video Reel Link * (Mandatory)</span>
+                        </label>
+
+                        <div className="p-3 rounded-xl bg-black/40 text-[11px] text-[#a69181] space-y-1 border border-white/5">
+                          <p className="font-bold text-[#ff9933]">How to share your Google Drive link:</p>
+                          <p>1. Upload your MP4 Reel (Max 1GB) to your personal Google Drive.</p>
+                          <p>2. Right click the video ➔ <strong>Share</strong> ➔ Change General access to <strong>"Anyone with the link can view"</strong>.</p>
+                          <p>3. Copy the link and paste it in the field below.</p>
+                        </div>
+
+                        <input 
+                          type="url" 
+                          value={driveReelUrl}
+                          onChange={e => setDriveReelUrl(e.target.value)}
+                          placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+                          className="form-input font-mono text-xs"
+                          required
+                        />
+                      </div>
                     </div>
                   ) : (
                     /* DIRECT FILE UPLOAD DROPZONE FOR ARTWORK, PHOTOGRAPHY & CREATIVE WRITING */
