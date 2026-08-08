@@ -21,7 +21,14 @@ import {
   ExternalLink,
   Send,
   CheckCircle2,
-  Flag
+  Flag,
+  Grid,
+  List,
+  Filter,
+  Layers,
+  Image as ImageIcon,
+  User,
+  Hash
 } from 'lucide-react';
 
 export default function EventSubmissionsPage() {
@@ -39,6 +46,11 @@ export default function EventSubmissionsPage() {
   const [checkInResult, setCheckInResult] = useState<ApiResponse<SubmissionItem> | null>(null);
   const [checkInLoading, setCheckInLoading] = useState<boolean>(false);
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+
+  // Gallery View & Domain -> Theme Filter state
+  const [viewMode, setViewMode] = useState<'gallery' | 'table'>('gallery');
+  const [selectedDomainFilter, setSelectedDomainFilter] = useState<string>('ALL');
+  const [selectedThemeFilter, setSelectedThemeFilter] = useState<string>('ALL');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -118,11 +130,39 @@ export default function EventSubmissionsPage() {
     }
   };
 
-  const filteredSubmissions = submissions.filter(sub => 
-    sub.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    sub.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    sub.ticketId?.toLowerCase().includes(searchQuery.toLowerCase())
+  // Extract unique domains present in submissions
+  const availableDomains = Array.from(
+    new Set(
+      submissions
+        .map(s => s.answers?.['Selected Domain'])
+        .filter(Boolean) as string[]
+    )
   );
+
+  // Extract unique themes present for the active domain
+  const availableThemes = Array.from(
+    new Set(
+      submissions
+        .filter(s => selectedDomainFilter === 'ALL' || s.answers?.['Selected Domain'] === selectedDomainFilter)
+        .map(s => s.answers?.['Selected Theme'])
+        .filter(Boolean) as string[]
+    )
+  );
+
+  const filteredSubmissions = submissions.filter(sub => {
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = 
+      sub.fullName?.toLowerCase().includes(query) ||
+      sub.email?.toLowerCase().includes(query) ||
+      sub.ticketId?.toLowerCase().includes(query) ||
+      sub.answers?.['College Roll Number']?.toLowerCase().includes(query) ||
+      sub.answers?.['Department']?.toLowerCase().includes(query);
+
+    const matchesDomain = selectedDomainFilter === 'ALL' || sub.answers?.['Selected Domain'] === selectedDomainFilter;
+    const matchesTheme = selectedThemeFilter === 'ALL' || sub.answers?.['Selected Theme'] === selectedThemeFilter;
+
+    return matchesSearch && matchesDomain && matchesTheme;
+  });
 
   return (
     <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
@@ -233,19 +273,92 @@ export default function EventSubmissionsPage() {
         </div>
 
         <section className="glass-panel p-6 border border-[#f7f1e5]/10">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          {/* HEADER BAR WITH VIEW TOGGLE & SEARCH */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
             <div>
-              <h2 className="text-xl font-bold text-white">Attendee Submissions List</h2>
-              <p className="text-xs text-[#a69181] mt-0.5">Filter attendees, view domain details, and send acknowledgment emails.</p>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <span>Submissions Console</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#ff9933]/20 text-[#ff9933] border border-[#ff9933]/40 text-xs font-mono">
+                  {filteredSubmissions.length} Items
+                </span>
+              </h2>
+              <p className="text-xs text-[#a69181] mt-0.5">Filter by Domain & Theme to view participant images and submission media.</p>
             </div>
 
-            <input 
-              type="text" 
-              placeholder="Search name, email, ticket..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="bg-[#20070d] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-[#a69181] outline-none w-full sm:w-64"
-            />
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+              {/* VIEW MODE TOGGLE BUTTONS */}
+              <div className="flex items-center p-1 rounded-xl bg-[#180509] border border-white/10 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('gallery')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    viewMode === 'gallery' ? 'bg-[#ff9933] text-black shadow-md' : 'text-[#a69181] hover:text-white'
+                  }`}
+                >
+                  <Grid className="w-3.5 h-3.5" />
+                  <span>Image Gallery View</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    viewMode === 'table' ? 'bg-[#ff9933] text-black shadow-md' : 'text-[#a69181] hover:text-white'
+                  }`}
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Table View</span>
+                </button>
+              </div>
+
+              {/* SEARCH INPUT */}
+              <input 
+                type="text" 
+                placeholder="Search name, roll, ticket..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="bg-[#20070d] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-[#a69181] outline-none w-full sm:w-56"
+              />
+            </div>
+          </div>
+
+          {/* DOMAIN & THEME FILTERING DROPDOWN BAR */}
+          <div className="mb-6 p-4 rounded-xl bg-[#180509] border border-[#ff9933]/30 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="form-group mb-0">
+              <label className="form-label text-xs text-[#ff9933] font-bold flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5" />
+                <span>1. View Submissions by Domain:</span>
+              </label>
+              <select
+                value={selectedDomainFilter}
+                onChange={e => {
+                  setSelectedDomainFilter(e.target.value);
+                  setSelectedThemeFilter('ALL'); // Reset theme filter when domain changes
+                }}
+                className="form-select text-xs"
+              >
+                <option value="ALL">All Domains ({submissions.length} total)</option>
+                {availableDomains.map((dom, i) => (
+                  <option key={i} value={dom}>{dom}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group mb-0">
+              <label className="form-label text-xs text-[#e6c594] font-bold flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5" />
+                <span>2. View Submissions by Theme:</span>
+              </label>
+              <select
+                value={selectedThemeFilter}
+                onChange={e => setSelectedThemeFilter(e.target.value)}
+                className="form-select text-xs"
+              >
+                <option value="ALL">All Themes</option>
+                {availableThemes.map((thm, i) => (
+                  <option key={i} value={thm}>{thm}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {loading ? (
@@ -258,12 +371,137 @@ export default function EventSubmissionsPage() {
               <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3">
                 <FileX className="w-6 h-6" />
               </div>
-              <p className="text-sm font-semibold text-white mb-1">No Submissions Found</p>
+              <p className="text-sm font-semibold text-white mb-1">No Submissions Match Filters</p>
               <p className="text-xs text-[#a69181]">
-                {searchQuery ? 'No submission records match your search query.' : 'No attendees have registered for this event yet.'}
+                {selectedDomainFilter !== 'ALL' || selectedThemeFilter !== 'ALL' || searchQuery
+                  ? 'No submissions found matching the selected Domain, Theme, or Search criteria.'
+                  : 'No attendees have registered for this event yet.'}
               </p>
             </div>
+          ) : viewMode === 'gallery' ? (
+            /* SEPARATE SECTION: DOMAIN & THEME IMAGE & MEDIA GALLERY VIEW */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredSubmissions.map(sub => {
+                const mediaUrl = sub.files && sub.files.length > 0
+                  ? (sub.files[0].localUrl || sub.files[0].driveLink || null)
+                  : null;
+
+                const isImage = mediaUrl ? /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(mediaUrl) || mediaUrl.includes('cloudinary') || mediaUrl.includes('imagekit') : false;
+
+                return (
+                  <div key={sub.id} className="bg-[#1c060b] rounded-2xl border border-white/10 overflow-hidden shadow-xl hover:border-[#ff9933]/50 transition-all flex flex-col justify-between group">
+                    {/* TOP MEDIA PREVIEW AREA */}
+                    <div className="relative w-full h-56 bg-black/60 border-b border-white/10 flex items-center justify-center overflow-hidden">
+                      {mediaUrl && isImage ? (
+                        <img 
+                          src={mediaUrl} 
+                          alt={sub.fullName} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : sub.answers?.['Google Drive Video Reel Link'] ? (
+                        <div className="p-4 text-center space-y-2">
+                          <div className="w-12 h-12 rounded-full bg-[#ff9933]/20 text-[#ff9933] flex items-center justify-center mx-auto border border-[#ff9933]/40">
+                            <ExternalLink className="w-6 h-6" />
+                          </div>
+                          <p className="text-xs font-bold text-white">Google Drive Video Reel</p>
+                          <a 
+                            href={sub.answers['Google Drive Video Reel Link']} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="btn-tricolour text-[11px] py-1 px-3 inline-flex items-center gap-1"
+                          >
+                            <span>Watch Reel ↗</span>
+                          </a>
+                        </div>
+                      ) : mediaUrl ? (
+                        <div className="p-4 text-center space-y-2">
+                          <div className="w-12 h-12 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center mx-auto border border-cyan-500/40">
+                            <ImageIcon className="w-6 h-6" />
+                          </div>
+                          <p className="text-xs font-bold text-white truncate max-w-[200px]">{sub.files?.[0]?.originalName || 'Attached Media File'}</p>
+                          <a 
+                            href={mediaUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="px-3 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px] font-bold inline-flex items-center gap-1"
+                          >
+                            <span>Open Media File ↗</span>
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center text-[#a69181]">
+                          <FileX className="w-8 h-8 mx-auto mb-1 opacity-40" />
+                          <span className="text-xs">No media file attached</span>
+                        </div>
+                      )}
+
+                      {/* DOMAIN OVERLAY BADGE */}
+                      {sub.answers?.['Selected Domain'] && (
+                        <span className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-md border border-[#ff9933]/50 text-[#ff9933] text-[10px] font-black uppercase tracking-wider shadow-lg">
+                          {sub.answers['Selected Domain']}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* PARTICIPANT DETAILS & ROLL NUMBER UNDERNEATH IMAGE */}
+                    <div className="p-4 space-y-3">
+                      <div>
+                        <div className="text-sm font-bold text-white flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-[#ff9933] shrink-0" />
+                          <span>{sub.fullName}</span>
+                        </div>
+
+                        <div className="text-xs font-mono font-bold text-[#ff9933] mt-1 bg-[#800020]/25 px-2.5 py-1 rounded-lg border border-[#ff9933]/30 inline-flex items-center gap-1.5">
+                          <Hash className="w-3.5 h-3.5 text-[#ff9933]" />
+                          <span>Roll: {sub.answers?.['College Roll Number'] || 'N/A'}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] text-[#a69181] space-y-1 pt-2 border-t border-white/5">
+                        <div><strong className="text-white">Dept & Year:</strong> {sub.answers?.['Department'] || 'N/A'} ({sub.answers?.['Academic Year'] || 'N/A'})</div>
+                        {sub.answers?.['Selected Theme'] && (
+                          <div className="text-[#e6c594] font-medium italic">
+                            <strong className="text-white">Theme:</strong> {sub.answers['Selected Theme']}
+                          </div>
+                        )}
+                        <div className="font-mono text-[10px] text-slate-400">
+                          <strong className="text-white">Ticket ID:</strong> {sub.ticketId}
+                        </div>
+                      </div>
+
+                      {/* ACKNOWLEDGMENT EMAIL BUTTON */}
+                      <div className="pt-2">
+                        {sub.acknowledged ? (
+                          <div className="flex items-center justify-between">
+                            <span className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Ack Sent
+                            </span>
+                            <button 
+                              onClick={() => handleAcknowledge(sub.id)}
+                              disabled={acknowledgingId === sub.id}
+                              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition-all disabled:opacity-50"
+                            >
+                              {acknowledgingId === sub.id ? 'Sending...' : 'Resend Email 🔄'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => handleAcknowledge(sub.id)}
+                            disabled={acknowledgingId === sub.id}
+                            className="btn-tricolour text-xs py-1.5 px-4 w-full justify-center inline-flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge Submission'}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
+            /* TRADITIONAL TABLE VIEW */
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
