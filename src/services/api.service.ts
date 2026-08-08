@@ -204,9 +204,46 @@ export async function adminLoginApi(email: string, password: string): Promise<{ 
   }
 }
 
-export async function submitRegistrationApi(formData: FormData): Promise<ApiResponse<SubmissionItem>> {
+export async function submitRegistrationApi(
+  formData: FormData, 
+  onProgress?: (progress: number) => void
+): Promise<ApiResponse<SubmissionItem>> {
   try {
     const baseUrl = await getApiBaseUrl();
+
+    if (onProgress && typeof window !== 'undefined') {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${baseUrl}/submissions`);
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            onProgress(percentComplete);
+          }
+        };
+
+        xhr.onload = () => {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(data);
+            } else {
+              reject(new Error(data.message || 'Failed to submit registration'));
+            }
+          } catch (e) {
+            reject(new Error('Invalid server response'));
+          }
+        };
+
+        xhr.onerror = () => {
+          reject(new Error('Network error during file submission'));
+        };
+
+        xhr.send(formData);
+      });
+    }
+
     const res = await fetch(`${baseUrl}/submissions`, {
       method: 'POST',
       body: formData,

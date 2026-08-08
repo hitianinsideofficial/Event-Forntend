@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import Navbar from '../../../../components/Navbar';
-import { fetchEventById, submitRegistrationApi } from '../../../../services/api.service';
+import { fetchEventById, submitRegistrationApi, fetchSubmissionsApi } from '../../../../services/api.service';
 import { EventItem } from '../../../../types/event.types';
 import { SubmissionItem } from '../../../../types/submission.types';
 import { 
@@ -220,6 +220,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [compressing, setCompressing] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
@@ -303,7 +304,19 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const computedRollPrefix = (yearCode && deptCode) ? `${yearCode}/${deptCode}/` : '';
   const fullRollNumber = computedRollPrefix ? `${computedRollPrefix}${rollSuffix.trim()}` : rollSuffix.trim();
 
-  const handleNextToDomainSubmission = (e: React.FormEvent) => {
+  const normalizeRollString = (rollStr: string): string => {
+    if (!rollStr) return '';
+    const parts = rollStr.trim().split('/');
+    if (parts.length === 3) {
+      const yearCode = parts[0].trim();
+      const deptCode = parts[1].trim();
+      const cleanNum = parts[2].trim().replace(/^0+/, '') || '0';
+      return `${yearCode}/${deptCode}/${cleanNum}`;
+    }
+    return rollStr.trim().toLowerCase();
+  };
+
+  const handleNextToDomainSubmission = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -325,8 +338,40 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         }));
       }
 
+      // Fetch existing submissions for this event to check roll number submissions
+      let currentSubmitted: string[] = [...submittedDomains];
+      try {
+        const existingSubs = await fetchSubmissionsApi(eventId);
+        const normCurrentRoll = normalizeRollString(fullRollNumber);
+
+        const matchedDomains: string[] = [];
+        existingSubs.forEach((sub: SubmissionItem) => {
+          const subRoll = normalizeRollString(sub.answers?.['College Roll Number'] || '');
+          const subDomainText = sub.answers?.['Selected Domain'] || '';
+          
+          if (subRoll === normCurrentRoll && subDomainText) {
+            // Match against SWARAJ_DOMAINS
+            const foundDomain = SWARAJ_DOMAINS.find(d => 
+              subDomainText.toLowerCase().includes(d.title.toLowerCase()) || 
+              subDomainText.toLowerCase().includes(d.id.toLowerCase())
+            );
+            if (foundDomain && !matchedDomains.includes(foundDomain.id)) {
+              matchedDomains.push(foundDomain.id);
+            }
+          }
+        });
+
+        currentSubmitted = Array.from(new Set([...currentSubmitted, ...matchedDomains]));
+        setSubmittedDomains(currentSubmitted);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('swaraj_submitted_domains', JSON.stringify(currentSubmitted));
+        }
+      } catch (checkErr) {
+        console.warn('Could not check existing domain submissions from server:', checkErr);
+      }
+
       // Pick first unsubmitted domain
-      const unsubmitted = SWARAJ_DOMAINS.find(d => !submittedDomains.includes(d.id));
+      const unsubmitted = SWARAJ_DOMAINS.find(d => !currentSubmitted.includes(d.id));
       if (unsubmitted) {
         setSelectedDomainId(unsubmitted.id);
       }
@@ -391,6 +436,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
     }
 
     setSubmitting(true);
+    setUploadProgress(0);
     try {
       const activeDomainObj = SWARAJ_DOMAINS.find(d => d.id === selectedDomainId);
 
@@ -423,7 +469,10 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         formPayload.append('files', fileToUpload);
       }
 
-      const res = await submitRegistrationApi(formPayload);
+      const res = await submitRegistrationApi(formPayload, (pct) => {
+        setUploadProgress(pct);
+      });
+
       if (res.success && res.data) {
         setTicket(res.data);
         
@@ -440,6 +489,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       setError(err.message || 'Failed to submit registration. Please try again.');
     } finally {
       setSubmitting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -1053,11 +1103,38 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   </div>
                 )}
 
+                {submitting && (
+                  <div className="p-4 rounded-2xl bg-[#ff9933]/10 border-2 border-[#ff9933]/40 space-y-2.5">
+                    <div className="flex justify-between items-center text-xs font-bold text-[#ff9933]">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#ff9933] animate-ping" />
+                        <span>Uploading & Registering to Swaraj-E-Hind...</span>
+                      </span>
+                      <span className="font-mono text-sm">{uploadProgress}%</span>
+                    </div>
+
+                    {/* Progress Bar Container */}
+                    <div className="w-full h-3 bg-black/60 rounded-full overflow-hidden p-0.5 border border-[#ff9933]/30">
+                      <div 
+                        className="h-full bg-gradient-to-r from-[#ff9933] via-amber-400 to-emerald-400 rounded-full transition-all duration-300 ease-out shadow-lg"
+                        style={{ width: `${Math.max(uploadProgress, 5)}%` }}
+                      />
+                    </div>
+
+                    <p className="text-[11px] text-[#a69181] text-center italic">
+                      {uploadProgress < 100 
+                        ? 'Please keep this page open while your submission is being transmitted...' 
+                        : 'Finalizing server verification & ticket issuance...'}
+                    </p>
+                  </div>
+                )}
+
                 <div className="pt-4 border-t border-white/10 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
                   <button 
                     type="button" 
                     onClick={() => setActiveStep(1)} 
-                    className="btn-secondary text-xs py-3 sm:py-2.5 px-5 text-center justify-center"
+                    disabled={submitting}
+                    className="btn-secondary text-xs py-3 sm:py-2.5 px-5 text-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     ← Back to Step 1
                   </button>
@@ -1065,10 +1142,10 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   <button 
                     type="submit"
                     disabled={submitting || compressing || isSelectedDomainSubmitted}
-                    className="btn-tricolour text-sm min-w-full sm:min-w-[200px] justify-center inline-flex items-center gap-2 py-3 px-6 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                    className="btn-tricolour text-sm min-w-full sm:min-w-[220px] justify-center inline-flex items-center gap-2 py-3 px-6 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                   >
                     <Send className="w-4 h-4" />
-                    <span>{submitting ? 'Submitting to Swaraj-E-Hind...' : 'Submit to Swaraj-E-Hind 🇮🇳'}</span>
+                    <span>{submitting ? `Uploading... (${uploadProgress}%)` : 'Submit to Swaraj-E-Hind 🇮🇳'}</span>
                   </button>
                 </div>
               </form>
