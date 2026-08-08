@@ -56,13 +56,13 @@ export default function Home() {
 
           <div className="w-full md:w-72">
             <div className="relative w-full">
-              <Search className="w-4 h-4 text-[#a69181] absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[#a69181] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
               <input 
                 type="text" 
                 placeholder="Search events..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="form-input text-xs pl-9 py-2 w-full"
+                className="form-input text-xs pl-10 pr-4 py-2.5 w-full"
               />
             </div>
           </div>

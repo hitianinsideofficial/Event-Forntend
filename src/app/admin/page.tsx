@@ -18,7 +18,8 @@ import {
   FileText, 
   Users, 
   CalendarX,
-  Trash2
+  Trash2,
+  Pencil
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -269,6 +270,15 @@ export default function AdminDashboardPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <Link 
+                        href={`/admin/events/${eventId}/edit`}
+                        className="px-3 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-all"
+                        title="Edit Details & Upload Banners"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Edit Banners & Details</span>
+                      </Link>
+
                       <Link 
                         href={`/admin/events/${eventId}/form-builder`}
                         className="px-3 py-2 rounded-xl bg-[#800020]/30 hover:bg-[#800020] text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-all"

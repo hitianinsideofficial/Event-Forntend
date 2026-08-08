@@ -61,6 +61,26 @@ export async function createEventApi(eventData: Partial<EventItem>): Promise<Api
   }
 }
 
+export async function updateEventDetailsApi(id: string, eventData: Partial<EventItem>): Promise<ApiResponse<EventItem>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/events/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(eventData),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || 'Failed to update event details');
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating event details:', err);
+    throw err;
+  }
+}
+
 export async function updateEventStatusApi(id: string, status: EventStatus): Promise<ApiResponse<EventItem>> {
   try {
     const res = await fetch(`${API_BASE_URL}/events/${id}/status`, {
