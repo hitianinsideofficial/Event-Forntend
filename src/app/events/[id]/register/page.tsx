@@ -720,9 +720,8 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     </div>
                     
                     {fullRollNumber && (
-                      <p className="text-[11px] text-emerald-400 mt-2 font-mono flex items-center justify-between">
-                        <span>Full Roll: <strong>{fullRollNumber}</strong></span>
-                        <span className="text-[#a69181]">Normalized (092 === 92): <strong>{normalizedRollNumber}</strong></span>
+                      <p className="text-[11px] text-emerald-400 mt-2 font-mono">
+                        Full Roll Number: <strong>{fullRollNumber}</strong>
                       </p>
                     )}
                   </div>
