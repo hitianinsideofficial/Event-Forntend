@@ -34,15 +34,16 @@ import {
 
 const DEPT_CODES: Record<string, string> = {
   'Agriculture Engineering': 'AGE',
-  'Applied Electronics and Instrumentation Engineering': 'AEIE',
+  'Applied Electronics & Instrumentation Engineering': 'AEIE',
   'Biotechnology': 'BT',
-  'Computer Science Engineering': 'CSE',
-  'Computer Science Engineering (AIML)': 'AIML',
-  'Computer Science Engineering (CS)': 'CS',
-  'Computer Science Engineering (DS)': 'DS',
+  'Computer Science & Engineering': 'CSE',
+  'Computer Science & Engineering (AIML)': 'AIML',
+  'Computer Science & Engineering (Cyber Security)': 'CS',
+  'Computer Science & Engineering (Data Science)': 'DS',
   'Chemical Engineering': 'CHE',
   'Electrical Engineering': 'EE',
-  'Electronics and Communication Engineering': 'ECE',
+  'Electronics & Communication Engineering': 'ECE',
+  'Information Technology': 'IT',
   'Civil Engineering': 'CE',
   'Food Technology': 'FT',
   'Mechanical Engineering': 'ME'
@@ -747,7 +748,9 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                       >
                         <option value="">Select Department...</option>
                         {Object.keys(DEPT_CODES).map((dept, i) => (
-                          <option key={i} value={dept}>{dept} ({DEPT_CODES[dept]})</option>
+                          <option key={i} value={dept}>
+                            {dept.includes('(') ? dept : `${dept} (${DEPT_CODES[dept]})`}
+                          </option>
                         ))}
                       </select>
                     </div>

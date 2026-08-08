@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Award, ExternalLink } from 'lucide-react';
+
 
 interface NavbarProps {
   onOpenVerifyModal?: () => void;
@@ -36,18 +36,6 @@ export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
           </div>
         </Link>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <a 
-            href="https://www.hitianinside.in/" 
-            target="_blank" 
-            rel="noreferrer"
-            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-[#800020]/30 hover:bg-[#800020] text-[#e6c594] hover:text-white border border-[#e6c594]/30 text-[11px] sm:text-xs font-semibold inline-flex items-center gap-1 sm:gap-1.5 transition-all shadow-md shrink-0"
-          >
-            <span>Visit Main Website</span>
-            <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-          </a>
-        </div>
       </div>
     </header>
   );
