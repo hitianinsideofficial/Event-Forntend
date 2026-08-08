@@ -102,7 +102,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
           <div className="relative w-full p-8 rounded-2xl bg-gradient-to-r from-[#ff9933]/20 via-[#ffffff]/5 to-[#138808]/20 border-2 border-[#ff9933]/40 mb-8 text-center shadow-xl">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ff9933]/20 border border-[#ff9933]/50 text-[#ff9933] text-xs font-black uppercase tracking-wider mb-3">
               <Flag className="w-4 h-4 text-[#ff9933]" />
-              <span>🇮🇳 TRADEMARK INDEPENDENCE DAY EVENT</span>
+              <span>🇮🇳 FLAGSHIP INDEPENDENCE DAY EVENT</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tricolour-gradient-text">
               {event.title}

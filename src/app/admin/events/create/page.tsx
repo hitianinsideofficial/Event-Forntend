@@ -61,7 +61,7 @@ export default function CreateEventPage() {
     setFormData(prev => ({
       ...prev,
       title: 'SWARAJ-E-HIND 4.0',
-      description: 'The official trademark Independence Day celebration event of HITian Inside! Showcasing patriotism through music, dance, poetry, drama, and digital arts.',
+      description: 'The official Independence Day celebration event of HITian Inside! Showcasing patriotism through music, dance, poetry, drama, and digital arts.',
       startDate: '2026-08-15',
       endDate: '2026-08-15',
       location: 'Main Campus Auditorium & Open Air Stage',
@@ -223,7 +223,7 @@ export default function CreateEventPage() {
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div>
               <h1 className="text-2xl font-bold text-white">Create New Event</h1>
-              <p className="text-xs text-[#a69181] mt-0.5">Publish trademark events like Swaraj-E-Hind or custom club activities.</p>
+              <p className="text-xs text-[#a69181] mt-0.5">Publish flagship events like Swaraj-E-Hind or custom club activities.</p>
             </div>
             <span className="px-3 py-1 rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1">
               <Lock className="w-3.5 h-3.5" />
