@@ -278,11 +278,24 @@ body::after {
   box-shadow: 0 0 0 2px rgba(230, 197, 148, 0.25);
 }
 
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ff9933'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.1rem 1.1rem;
+  padding-right: 2.5rem !important;
+  cursor: pointer;
+}
+
 /* Custom Select Dropdown Options Styling */
 select option {
-  background-color: #20070d !important;
+  background-color: #1a050a !important;
   color: #fdfbf7 !important;
-  padding: 10px 14px;
+  padding: 12px 16px;
+  font-size: 13px;
 }
 
 select option:hover,
@@ -290,7 +303,7 @@ select option:focus,
 select option:active,
 select option:checked {
   background-color: #800020 !important;
-  color: #e6c594 !important;
+  color: #ff9933 !important;
 }
 
 /* Animations */
