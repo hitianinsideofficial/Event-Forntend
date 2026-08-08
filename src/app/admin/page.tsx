@@ -6,7 +6,8 @@ import Navbar from '../../components/Navbar';
 import { 
   adminLoginApi, 
   fetchEvents, 
-  updateEventStatusApi 
+  updateEventStatusApi,
+  deleteEventApi
 } from '../../services/api.service';
 import { EventItem, EventStatus } from '../../types/event.types';
 import { 
@@ -16,7 +17,8 @@ import {
   Calendar, 
   FileText, 
   Users, 
-  CalendarX 
+  CalendarX,
+  Trash2
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -29,6 +31,7 @@ export default function AdminDashboardPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +88,22 @@ export default function AdminDashboardPage() {
       alert(err.message || 'Failed to update status');
     } finally {
       setUpdatingStatusId(null);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string, title: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${title}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(eventId);
+    try {
+      await deleteEventApi(eventId);
+      await loadAdminEvents();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete event');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -180,7 +199,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Hosted Events List */}
+        {/* Hosted Events Directory */}
         <section className="glass-panel p-6 border border-[#f7f1e5]/10">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -255,7 +274,7 @@ export default function AdminDashboardPage() {
                         className="px-3 py-2 rounded-xl bg-[#800020]/30 hover:bg-[#800020] text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-all"
                       >
                         <FileText className="w-3.5 h-3.5" />
-                        <span>Create / Edit Registration Form</span>
+                        <span>Form Builder</span>
                       </Link>
 
                       <Link 
@@ -263,8 +282,18 @@ export default function AdminDashboardPage() {
                         className="btn-secondary text-xs py-2 inline-flex items-center gap-1.5"
                       >
                         <Users className="w-3.5 h-3.5" />
-                        <span>View Registrations</span>
+                        <span>Registrations</span>
                       </Link>
+
+                      {/* Delete Event Button */}
+                      <button
+                        onClick={() => handleDeleteEvent(eventId, ev.title)}
+                        disabled={deletingId === eventId}
+                        className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all text-xs font-semibold"
+                        title="Delete Event"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 );

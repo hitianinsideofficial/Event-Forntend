@@ -93,6 +93,20 @@ export async function updateEventFormApi(id: string, customFields: CustomFormFie
   }
 }
 
+export async function deleteEventApi(id: string): Promise<ApiResponse<void>> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/events/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting event:', err);
+    throw err;
+  }
+}
+
 export async function uploadToImageKitApi(file: File): Promise<{ url: string; fileId: string }> {
   try {
     const formData = new FormData();
