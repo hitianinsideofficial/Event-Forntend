@@ -6,8 +6,8 @@ import Link from 'next/link';
 import Navbar from '../../../../components/Navbar';
 import ImageCropModal from '../../../../components/ImageCropModal';
 import { createEventApi } from '../../../../services/api.service';
-import { EventHighlight, EventStatus, EventMode } from '../../../../types/event.types';
-import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, Crop, Calendar } from 'lucide-react';
+import { EventHighlight, EventStatus, EventMode, EventTheme } from '../../../../types/event.types';
+import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, Crop, Calendar, Flag } from 'lucide-react';
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -22,9 +22,11 @@ export default function CreateEventPage() {
     organizer: 'HITian Inside',
     status: 'UPCOMING' as EventStatus,
     mode: 'OFFLINE' as EventMode,
+    theme: 'DEFAULT' as EventTheme,
+    isFlagship: false,
     bannerUrl: '',
     coverUrl: '',
-    hasAttendance: false,
+    hasAttendance: true,
     requireFileUpload: false
   });
 
@@ -54,6 +56,29 @@ export default function CreateEventPage() {
   }, [router]);
 
   if (!isAuthenticated) return null;
+
+  const loadSwarajEHindTemplate = () => {
+    setFormData(prev => ({
+      ...prev,
+      title: 'SWARAJ-E-HIND 4.0',
+      description: 'The official trademark Independence Day celebration event of HITian Inside! Showcasing patriotism through music, dance, poetry, drama, and digital arts.',
+      startDate: '2026-08-15',
+      endDate: '2026-08-15',
+      location: 'Main Campus Auditorium & Open Air Stage',
+      organizer: 'HITian Inside',
+      status: 'UPCOMING',
+      mode: 'OFFLINE',
+      theme: 'TRICOLOUR',
+      isFlagship: true,
+      hasAttendance: true
+    }));
+
+    setHighlights([
+      { title: 'Grand Stage Performances', description: 'Patriotic Singing, Dancing & Drama Skits' },
+      { title: 'Poetry & Declamation', description: 'Recitation and Freedom Keynote Speeches' },
+      { title: 'Digital Arts Showcase', description: 'Patriotic Painting & Photography Exhibition' }
+    ]);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -129,11 +154,11 @@ export default function CreateEventPage() {
   const formatDisplayDate = (startStr: string, endStr?: string) => {
     if (!startStr) return '';
     const startObj = new Date(startStr);
-    const startFormatted = startObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const startFormatted = isNaN(startObj.getTime()) ? startStr : startObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     if (!endStr || endStr === startStr) return startFormatted;
 
     const endObj = new Date(endStr);
-    const endFormatted = endObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const endFormatted = isNaN(endObj.getTime()) ? endStr : endObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     return `${startFormatted} – ${endFormatted}`;
   };
 
@@ -174,19 +199,31 @@ export default function CreateEventPage() {
       <Navbar />
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10">
-        <Link 
-          href="/admin" 
-          className="inline-flex items-center gap-1.5 text-xs text-[#a69181] hover:text-white mb-6 transition-colors font-medium"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Admin Console</span>
-        </Link>
+        <div className="flex items-center justify-between mb-6">
+          <Link 
+            href="/admin" 
+            className="inline-flex items-center gap-1.5 text-xs text-[#a69181] hover:text-white transition-colors font-medium"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Admin Console</span>
+          </Link>
+
+          {/* Quick Preset Button for Swaraj-E-Hind */}
+          <button
+            type="button"
+            onClick={loadSwarajEHindTemplate}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#ff9933]/30 via-white/10 to-[#138808]/30 hover:from-[#ff9933]/50 hover:to-[#138808]/50 text-[#ff9933] border border-[#ff9933]/40 text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-md"
+          >
+            <Flag className="w-3.5 h-3.5 text-[#ff9933]" />
+            <span>🇮🇳 Load Swaraj-E-Hind Template</span>
+          </button>
+        </div>
 
         <div className="glass-panel p-6 sm:p-8 border border-[#f7f1e5]/10">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div>
               <h1 className="text-2xl font-bold text-white">Create New Event</h1>
-              <p className="text-xs text-[#a69181] mt-0.5">Supports single-day or multi-day date range events.</p>
+              <p className="text-xs text-[#a69181] mt-0.5">Publish trademark events like Swaraj-E-Hind or custom club activities.</p>
             </div>
             <span className="px-3 py-1 rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1">
               <Lock className="w-3.5 h-3.5" />
@@ -275,7 +312,7 @@ export default function CreateEventPage() {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                placeholder="e.g. HITian Tech Symposium 2026"
+                placeholder="e.g. SWARAJ-E-HIND 4.0 or HITian Tech Symposium"
                 className="form-input"
                 required
               />
@@ -287,7 +324,7 @@ export default function CreateEventPage() {
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Provide detailed event description and agenda..."
+                placeholder="Provide detailed event description..."
                 rows={4}
                 className="form-textarea"
                 required
@@ -314,7 +351,7 @@ export default function CreateEventPage() {
               <div className="form-group mb-0">
                 <label className="form-label flex items-center gap-1.5 text-xs text-[#e6d7c3]">
                   <Calendar className="w-4 h-4 text-cyan-400" />
-                  <span>End Date (Optional for multi-day range)</span>
+                  <span>End Date (Optional)</span>
                 </label>
                 <input 
                   type="date"
@@ -343,14 +380,14 @@ export default function CreateEventPage() {
 
               <div className="form-group">
                 <label className="form-label">
-                  {formData.mode === 'ONLINE' ? 'Online Meeting Link / Platform' : 'Location / Venue *'}
+                  {formData.mode === 'ONLINE' ? 'Online Meeting Link' : 'Location / Venue *'}
                 </label>
                 <input 
                   type="text"
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
-                  placeholder={formData.mode === 'ONLINE' ? 'e.g. Google Meet Link / Zoom' : 'e.g. Main Auditorium / Lab 3'}
+                  placeholder={formData.mode === 'ONLINE' ? 'e.g. Google Meet Link' : 'e.g. Main Auditorium'}
                   className="form-input"
                   required={formData.mode === 'OFFLINE'}
                 />
@@ -358,6 +395,19 @@ export default function CreateEventPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="form-group">
+                <label className="form-label">Event Theme / Aesthetic</label>
+                <select
+                  name="theme"
+                  value={formData.theme}
+                  onChange={handleChange}
+                  className="form-select font-semibold"
+                >
+                  <option value="DEFAULT">DEFAULT (Maroon & Gold)</option>
+                  <option value="TRICOLOUR">🇮🇳 TRICOLOUR (Swaraj-E-Hind Independence Day Theme)</option>
+                </select>
+              </div>
+
               <div className="form-group">
                 <label className="form-label">Initial Event Status</label>
                 <select
@@ -368,24 +418,23 @@ export default function CreateEventPage() {
                 >
                   <option value="UPCOMING">UPCOMING (Registration Open)</option>
                   <option value="LIVE">LIVE Now</option>
-                  <option value="DONE">DONE (Archived / Hidden from Homepage)</option>
+                  <option value="DONE">DONE (Archived / Hidden)</option>
                 </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Organizer Name</label>
-                <input 
-                  type="text"
-                  name="organizer"
-                  value={formData.organizer}
-                  onChange={handleChange}
-                  placeholder="e.g. HITian Tech Club"
-                  className="form-input"
-                />
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-wrap items-center gap-6 pt-2">
+              <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+                <input 
+                  type="checkbox"
+                  name="isFlagship"
+                  checked={formData.isFlagship}
+                  onChange={handleChange}
+                  className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
+                />
+                <span className="font-bold text-[#ff9933]">Flagship Swaraj-E-Hind Event</span>
+              </label>
+
               <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
                 <input 
                   type="checkbox"

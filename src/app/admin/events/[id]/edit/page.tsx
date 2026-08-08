@@ -6,8 +6,8 @@ import Link from 'next/link';
 import Navbar from '../../../../../components/Navbar';
 import ImageCropModal from '../../../../../components/ImageCropModal';
 import { fetchEventById, updateEventDetailsApi } from '../../../../../services/api.service';
-import { EventHighlight, EventStatus, EventMode } from '../../../../../types/event.types';
-import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, Crop, Save, Calendar } from 'lucide-react';
+import { EventHighlight, EventStatus, EventMode, EventTheme } from '../../../../../types/event.types';
+import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, Crop, Save, Calendar, Flag } from 'lucide-react';
 
 export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -26,6 +26,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     organizer: 'HITian Inside',
     status: 'UPCOMING' as EventStatus,
     mode: 'OFFLINE' as EventMode,
+    theme: 'DEFAULT' as EventTheme,
+    isFlagship: false,
     bannerUrl: '',
     coverUrl: '',
     hasAttendance: false,
@@ -73,6 +75,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             organizer: ev.organizer || 'HITian Inside',
             status: ev.status || 'UPCOMING',
             mode: ev.mode || 'OFFLINE',
+            theme: ev.theme || (ev.title.toLowerCase().includes('swaraj') ? 'TRICOLOUR' : 'DEFAULT'),
+            isFlagship: Boolean(ev.isFlagship || ev.title.toLowerCase().includes('swaraj')),
             bannerUrl: ev.bannerUrl || '',
             coverUrl: ev.coverUrl || '',
             hasAttendance: Boolean(ev.hasAttendance),
@@ -197,7 +201,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
       const result = await updateEventDetailsApi(eventId, payload);
       if (result.success) {
-        setSuccessMsg('Event details & dates updated successfully!');
+        setSuccessMsg('Event edition, banners & details updated successfully!');
         setTimeout(() => {
           router.push('/admin');
         }, 1200);
@@ -231,8 +235,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           <div className="glass-panel p-6 sm:p-8 border border-[#f7f1e5]/10">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
               <div>
-                <h1 className="text-2xl font-bold text-white">Edit Event Details & Dates</h1>
-                <p className="text-xs text-[#a69181] mt-0.5">Update single-day or multi-day date ranges and banner assets anytime.</p>
+                <h1 className="text-2xl font-bold text-white">Edit Event Details & Banners</h1>
+                <p className="text-xs text-[#a69181] mt-0.5">Update edition name (e.g. 4.0 to 5.0), banners, and themes anytime.</p>
               </div>
               <span className="px-3 py-1 rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1">
                 <Lock className="w-3.5 h-3.5" />
@@ -329,13 +333,13 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
               </div>
 
               <div className="form-group">
-                <label className="form-label">Event Name *</label>
+                <label className="form-label">Event Name / Edition Title *</label>
                 <input 
                   type="text"
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
-                  placeholder="e.g. HITian Tech Symposium 2026"
+                  placeholder="e.g. SWARAJ-E-HIND 5.0"
                   className="form-input"
                   required
                 />
@@ -374,7 +378,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 <div className="form-group mb-0">
                   <label className="form-label flex items-center gap-1.5 text-xs text-[#e6d7c3]">
                     <Calendar className="w-4 h-4 text-cyan-400" />
-                    <span>End Date (Optional for multi-day range)</span>
+                    <span>End Date (Optional)</span>
                   </label>
                   <input 
                     type="date"
@@ -403,14 +407,14 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
                 <div className="form-group">
                   <label className="form-label">
-                    {formData.mode === 'ONLINE' ? 'Online Meeting Link / Platform' : 'Location / Venue *'}
+                    {formData.mode === 'ONLINE' ? 'Online Meeting Link' : 'Location / Venue *'}
                   </label>
                   <input 
                     type="text"
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
-                    placeholder={formData.mode === 'ONLINE' ? 'e.g. Google Meet Link / Zoom' : 'e.g. Main Auditorium / Lab 3'}
+                    placeholder={formData.mode === 'ONLINE' ? 'e.g. Google Meet Link' : 'e.g. Main Auditorium'}
                     className="form-input"
                     required={formData.mode === 'OFFLINE'}
                   />
@@ -418,6 +422,19 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="form-group">
+                  <label className="form-label">Event Theme / Aesthetic</label>
+                  <select
+                    name="theme"
+                    value={formData.theme}
+                    onChange={handleChange}
+                    className="form-select font-semibold"
+                  >
+                    <option value="DEFAULT">DEFAULT (Maroon & Gold)</option>
+                    <option value="TRICOLOUR">🇮🇳 TRICOLOUR (Swaraj-E-Hind Independence Day Theme)</option>
+                  </select>
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">Event Status</label>
                   <select
@@ -428,24 +445,23 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                   >
                     <option value="UPCOMING">UPCOMING (Registration Open)</option>
                     <option value="LIVE">LIVE Now</option>
-                    <option value="DONE">DONE (Archived / Hidden from Homepage)</option>
+                    <option value="DONE">DONE (Archived / Hidden)</option>
                   </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Organizer Name</label>
-                  <input 
-                    type="text"
-                    name="organizer"
-                    value={formData.organizer}
-                    onChange={handleChange}
-                    placeholder="e.g. HITian Tech Club"
-                    className="form-input"
-                  />
                 </div>
               </div>
 
-              <div className="form-group">
+              <div className="flex flex-wrap items-center gap-6 pt-2">
+                <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    name="isFlagship"
+                    checked={formData.isFlagship}
+                    onChange={handleChange}
+                    className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
+                  />
+                  <span className="font-bold text-[#ff9933]">Flagship Swaraj-E-Hind Event</span>
+                </label>
+
                 <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
                   <input 
                     type="checkbox"
