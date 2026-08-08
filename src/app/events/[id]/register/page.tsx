@@ -653,10 +653,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
           <div className="glass-panel p-3 sm:p-8 border border-[#f7f1e5]/10">
             <div className="mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div>
-                <span className="text-[10px] font-black tracking-wider uppercase text-[#ff9933] px-2 py-0.5 rounded bg-[#ff9933]/20 border border-[#ff9933]/40">
-                  🇮🇳 {isSwarajEHind ? 'SWARAJ-E-HIND FLAGSHIP PORTAL' : 'Official Registration Form'}
-                </span>
-                <h1 className="text-xl sm:text-2xl font-extrabold text-white mt-1">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-white">
                   {event.title}
                 </h1>
               </div>
