@@ -71,37 +71,57 @@ export default function EventFormBuilderPage() {
 
   const handleUpdateQuestion = (index: number, key: keyof CustomFormField, value: any) => {
     setCustomFields(prev => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], [key]: value };
-      return copy;
+      return prev.map((q, idx) => {
+        if (idx !== index) return q;
+        const updated = { ...q, [key]: value };
+        if (key === 'type' && ['select', 'checkbox', 'radio'].includes(value as string) && (!updated.options || updated.options.length === 0)) {
+          updated.options = ['Option 1', 'Option 2'];
+        }
+        return updated;
+      });
     });
   };
 
   const handleUpdateOption = (qIndex: number, optIndex: number, value: string) => {
     setCustomFields(prev => {
-      const copy = [...prev];
-      const opts = [...(copy[qIndex].options || [])];
-      opts[optIndex] = value;
-      copy[qIndex].options = opts;
-      return copy;
+      return prev.map((q, idx) => {
+        if (idx !== qIndex) return q;
+        const currentOpts = [...(q.options || [])];
+        currentOpts[optIndex] = value;
+        return {
+          ...q,
+          options: currentOpts
+        };
+      });
     });
   };
 
-  const handleAddOption = (qIndex: number) => {
+  const handleAddOption = (e: React.MouseEvent, qIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
     setCustomFields(prev => {
-      const copy = [...prev];
-      const opts = [...(copy[qIndex].options || [])];
-      opts.push(`Option ${opts.length + 1}`);
-      copy[qIndex].options = opts;
-      return copy;
+      return prev.map((q, idx) => {
+        if (idx !== qIndex) return q;
+        const currentOpts = q.options ? [...q.options] : [];
+        return {
+          ...q,
+          options: [...currentOpts, `Option ${currentOpts.length + 1}`]
+        };
+      });
     });
   };
 
-  const handleRemoveOption = (qIndex: number, optIndex: number) => {
+  const handleRemoveOption = (e: React.MouseEvent, qIndex: number, optIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
     setCustomFields(prev => {
-      const copy = [...prev];
-      copy[qIndex].options = (copy[qIndex].options || []).filter((_, i) => i !== optIndex);
-      return copy;
+      return prev.map((q, idx) => {
+        if (idx !== qIndex) return q;
+        return {
+          ...q,
+          options: (q.options || []).filter((_, i) => i !== optIndex)
+        };
+      });
     });
   };
 
@@ -283,7 +303,7 @@ export default function EventFormBuilderPage() {
                           />
                           <button 
                             type="button" 
-                            onClick={() => handleRemoveOption(qIdx, optIdx)}
+                            onClick={(e) => handleRemoveOption(e, qIdx, optIdx)}
                             className="text-rose-400 text-xs p-1"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -294,7 +314,7 @@ export default function EventFormBuilderPage() {
                       {/* Add Option Button positioned at the BOTTOM of options */}
                       <button 
                         type="button" 
-                        onClick={() => handleAddOption(qIdx)}
+                        onClick={(e) => handleAddOption(e, qIdx)}
                         className="mt-2 py-1.5 px-3 rounded-lg bg-white/5 hover:bg-white/10 text-[#e6c594] text-xs font-medium inline-flex items-center gap-1 transition-all"
                       >
                         <Plus className="w-3.5 h-3.5" />
