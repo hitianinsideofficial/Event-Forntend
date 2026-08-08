@@ -765,7 +765,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   <div className="form-group bg-[#180509] p-4 rounded-2xl border border-[#ff9933]/30">
                     <label className="form-label font-bold text-white flex items-center justify-between text-xs mb-1">
                       <span>College Roll Number *</span>
-                      <span className="text-[10px] text-[#ff9933] font-mono">Format: [Year_code]/[Dept_code]/[number]</span>
+                      <span className="text-[10px] text-[#ff9933] font-mono">Format: 25/EE/092</span>
                     </label>
                     
                     <div className="flex items-center gap-2 mt-1">

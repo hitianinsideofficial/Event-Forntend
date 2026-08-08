@@ -102,7 +102,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
           <div className="relative w-full p-8 rounded-2xl bg-gradient-to-r from-[#ff9933]/20 via-[#ffffff]/5 to-[#138808]/20 border-2 border-[#ff9933]/40 mb-8 text-center shadow-xl">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ff9933]/20 border border-[#ff9933]/50 text-[#ff9933] text-xs font-black uppercase tracking-wider mb-3">
               <Flag className="w-4 h-4 text-[#ff9933]" />
-              <span>🇮🇳 TRADEMARK INDEPENDENCE DAY EVENT</span>
+              <span>🇮🇳 FLAGSHIP INDEPENDENCE DAY EVENT</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tricolour-gradient-text">
               {event.title}
@@ -187,9 +187,41 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
           <h2 className="text-lg font-bold text-[#e6c594] border-b border-white/10 pb-2">
             Event Overview & Description
           </h2>
-          <p className="text-sm text-[#e6d7c3]/90 leading-relaxed whitespace-pre-line">
+          <div className="text-sm text-[#e6d7c3]/90 leading-relaxed whitespace-pre-line space-y-4">
             {event.description}
-          </p>
+
+            {isTricolour && !event.description?.includes('1. What is Swaraj-e-Hind?') && (
+              <div className="mt-6 pt-4 border-t border-white/10 space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-[#ff9933]">1. What is Swaraj-e-Hind?</h3>
+                  <p className="text-xs text-[#e6d7c3]/90 mt-1">
+                    Swaraj-e-Hind is more than just an event, it’s a celebration of India, its freedom, and the voices of its youth. It brings together ideas, creativity, and expressions that reflect what India means to us today.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold text-[#ff9933]">2. What happens here?</h3>
+                  <p className="text-xs text-[#e6d7c3]/90 mt-1">
+                    From conversations and performances to creative expressions, Swaraj-e-Hind gives everyone a chance to share their thoughts and showcase their talent. It’s a space to speak, create, question, and celebrate together.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold text-[#ff9933]">3. Evaluation Process</h3>
+                  <p className="text-xs text-[#e6d7c3]/90 mt-1">
+                    Participants will be judged on creativity, originality, relevance to the theme, and how effectively they present their ideas. We’re not just looking for the “perfect” answer, we’re looking for something that stands out and has meaning.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold text-[#ff9933]">4. Value Edition</h3>
+                  <p className="text-xs text-[#e6d7c3]/90 mt-1">
+                    The Value Edition is about going beyond celebration and looking at the values that make us who we are—freedom, unity, courage, responsibility, and respect. Because independence isn’t just something we remember; it’s something we carry forward.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Custom Event Highlights */}
