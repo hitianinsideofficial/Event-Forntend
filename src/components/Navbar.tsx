@@ -31,7 +31,7 @@ export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
               HITian Inside
             </span>
             <span className="text-[9px] sm:text-[10px] font-medium text-[#a69181] tracking-wider uppercase truncate max-w-[170px] sm:max-w-none">
-              Official Event Portal
+              Haldia Institute of Technology • Event Portal
             </span>
           </div>
         </Link>

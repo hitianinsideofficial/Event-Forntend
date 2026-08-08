@@ -106,7 +106,7 @@ export default function Home() {
 
       <footer className="border-t border-[#f7f1e5]/10 bg-[#100306] py-6 mt-auto w-full">
         <div className="container-custom text-center text-xs text-[#a69181]">
-          <p>© 2026 HITian Inside. Official Event Portal.</p>
+          <p>© 2026 HITian Inside • Haldia Institute of Technology. Official Event Portal.</p>
         </div>
       </footer>
     </div>

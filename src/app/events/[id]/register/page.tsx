@@ -719,7 +719,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                         type="email" 
                         value={email}
                         onChange={e => setEmail(e.target.value)}
-                        placeholder="student@heritageit.edu.in"
+                        placeholder="student@gmail.com"
                         className="form-input text-sm"
                         required
                       />
