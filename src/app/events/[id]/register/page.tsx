@@ -677,7 +677,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
             {/* Queries Contact Banner */}
             <div className="mb-6 p-3.5 rounded-xl bg-[#180509] border border-[#ff9933]/30 flex flex-wrap items-center justify-between gap-3 text-xs">
               <span className="text-[#a69181] font-semibold flex items-center gap-1.5">
-                <span>📞 For any queries, please reach out to:</span>
+                <span>For any queries, please reach out to:</span>
               </span>
               <div className="flex items-center gap-4 font-bold text-white">
                 <a href="tel:9836018190" className="hover:text-[#ff9933] transition-colors">Srijita: 98360 18190</a>

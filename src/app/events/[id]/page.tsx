@@ -188,8 +188,8 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
               <div>
                 <span className="text-[10px] text-[#a69181] uppercase font-semibold block">Event Queries Contact</span>
                 <div className="text-xs font-bold text-white space-y-0.5 mt-0.5">
-                  <a href="tel:9836018190" className="hover:text-[#ff9933] transition-colors block">📞 Srijita: 98360 18190</a>
-                  <a href="tel:9135444297" className="hover:text-[#ff9933] transition-colors block">📞 Ayush: 91354 44297</a>
+                  <a href="tel:9836018190" className="hover:text-[#ff9933] transition-colors block">Srijita: 98360 18190</a>
+                  <a href="tel:9135444297" className="hover:text-[#ff9933] transition-colors block">Ayush: 91354 44297</a>
                 </div>
               </div>
             </div>
