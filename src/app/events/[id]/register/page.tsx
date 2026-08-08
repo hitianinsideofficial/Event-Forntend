@@ -26,7 +26,8 @@ import {
   FileCheck,
   Link as LinkIcon,
   Video,
-  ShieldAlert
+  ShieldAlert,
+  Zap
 } from 'lucide-react';
 
 const DEPT_CODES: Record<string, string> = {
@@ -59,6 +60,7 @@ interface SwarajDomain {
   icon: any;
   accept: string;
   maxSize: string;
+  maxBytesMb: number;
   isDriveLinkRequired?: boolean;
   themes: string[];
   rules: string[];
@@ -71,7 +73,8 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     subtitle: 'REEL MAKING',
     icon: Film,
     accept: 'Google Drive Link',
-    maxSize: '1 GB',
+    maxSize: '1 GB (MP4 format)',
+    maxBytesMb: 1024,
     isDriveLinkRequired: true,
     themes: [
       'The Price of Freedom',
@@ -80,9 +83,8 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     ],
     rules: [
       'Participants can submit a single entry per theme and participate in max of 2 themes.',
-      'MANDATORY: Upload your video reel to personal Google Drive and set access to "Anyone with the link can view".',
+      'MANDATORY: Upload your video reel (Max 1GB, MP4) to personal Google Drive and set access to "Anyone with the link can view".',
       'Paste the viewable Google Drive link in the input field below.',
-      'Reel size should be within 1 GB. Videos must be in MP4 format.',
       'Plagiarised submission is strictly forbidden and will be rejected.',
       'Deadline for submission of entries: 15 August, 11:59 pm.'
     ]
@@ -93,7 +95,8 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     subtitle: 'ARTWORK AND DIGITAL ART',
     icon: Palette,
     accept: '.jpg,.jpeg,.png,.psd,.tiff,.ai,image/*',
-    maxSize: '100 MB',
+    maxSize: 'Under 10 MB (Auto-compressed to < 4 MB)',
+    maxBytesMb: 10,
     isDriveLinkRequired: false,
     themes: [
       'Threads of Unity',
@@ -103,7 +106,7 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     rules: [
       'Participants can submit a single entry per theme and participate in max of 2 themes.',
       'Judgement for Digital Art and Canvas Art will be done separately.',
-      'File size should not exceed 100 MB.',
+      'File size MUST be under 10 MB (our portal automatically compresses image artwork down to < 4 MB to optimize cloud storage).',
       'The raw file of Digital Art (psd, tiff or ai) has to be attached with the edited artwork.',
       'Artworks should be submitted only in JPG/PNG format.',
       'Plagiarised submission is strictly forbidden and will be rejected.',
@@ -116,7 +119,8 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     subtitle: 'PHOTOGRAPHY',
     icon: Camera,
     accept: '.jpg,.jpeg,.png,image/*',
-    maxSize: '100 MB',
+    maxSize: 'Under 10 MB (Auto-compressed to < 4 MB)',
+    maxBytesMb: 10,
     isDriveLinkRequired: false,
     themes: [
       'Roots of India',
@@ -125,8 +129,7 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     ],
     rules: [
       'Participants can submit a single entry per theme and participate in max of 2 themes.',
-      'The clicked pictures should be in line with the themes mentioned.',
-      'The pictures clicked should be of size less than 100 MB.',
+      'File size MUST be under 10 MB (our portal automatically compresses photos down to < 4 MB to optimize cloud storage).',
       'Write a caption along with your submission mentioning the theme (not compulsory).',
       'If necessary, you can be asked to submit the raw file of the submission.',
       'Only minimal editing is allowed. Any use of AI is strictly prohibited.',
@@ -140,7 +143,8 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
     subtitle: 'CREATIVE WRITING',
     icon: BookOpen,
     accept: '.pdf,.doc,.docx',
-    maxSize: '10 MB',
+    maxSize: 'Less than 4 MB',
+    maxBytesMb: 4,
     isDriveLinkRequired: false,
     themes: [
       'The Price of Silence',
@@ -151,13 +155,62 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
       'Participants can submit a single entry per theme and participate in max of 2 themes.',
       'Participants can submit their entries only in English, Bengali and Hindi.',
       'Word limit: 300 words.',
-      'File size should not exceed 10 MB.',
+      'File size MUST be strictly less than 4 MB.',
       'Write-ups should be submitted only in PDF/DOC format.',
       'Plagiarised submission is strictly forbidden and will be rejected.',
       'Deadline for submission of entries: 15 August, 11:59 pm.'
     ]
   }
 ];
+
+// Helper: Client-Side Image Compressor (Compresses images < 10MB down to < 4MB WebP)
+async function compressImageFile(file: File): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Resize max dimension if over 2500px
+        const maxDim = 2500;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+              type: 'image/webp',
+              lastModified: Date.now()
+            });
+            console.log(`⚡ Compressed image from ${(file.size / (1024 * 1024)).toFixed(2)} MB to ${(compressedFile.size / (1024 * 1024)).toFixed(2)} MB`);
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        }, 'image/webp', 0.80);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function DedicatedEventRegistrationPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -167,6 +220,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [compressing, setCompressing] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
   // Step 1: Attendee Info
@@ -238,11 +292,39 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       }
     }
 
-    // Advance to Step 2 for Swaraj-E-Hind domain & theme submission
     if (isSwarajEHind) {
       setActiveStep(2);
     } else {
       handleFinalSubmission(e);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, maxAllowedMb: number) => {
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+
+    setError('');
+    const rawMb = rawFile.size / (1024 * 1024);
+
+    if (rawMb > maxAllowedMb) {
+      setError(`File size (${rawMb.toFixed(1)} MB) exceeds the maximum allowed limit of ${maxAllowedMb} MB.`);
+      setSubmissionFile(null);
+      e.target.value = '';
+      return;
+    }
+
+    if (rawFile.type.startsWith('image/')) {
+      setCompressing(true);
+      try {
+        const compressed = await compressImageFile(rawFile);
+        setSubmissionFile(compressed);
+      } catch (err) {
+        setSubmissionFile(rawFile);
+      } finally {
+        setCompressing(false);
+      }
+    } else {
+      setSubmissionFile(rawFile);
     }
   };
 
@@ -256,7 +338,6 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         return;
       }
 
-      // If TRICOLENS Reel domain, validate Google Drive Link presence
       const activeDomainObj = SWARAJ_DOMAINS.find(d => d.id === selectedDomainId);
       if (activeDomainObj?.isDriveLinkRequired && !driveReelUrl.trim()) {
         setError('Google Drive Video Link is mandatory for TRICOLENS Reel submissions. Please upload your video to Google Drive and paste the shareable link.');
@@ -609,6 +690,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                           onClick={() => {
                             setSelectedDomainId(domain.id);
                             setSelectedTheme(''); // Reset theme choice on domain change
+                            setSubmissionFile(null);
                           }}
                           className={`p-4 rounded-2xl border cursor-pointer transition-all ${
                             isSelected 
@@ -626,7 +708,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                             </div>
                           </div>
                           <span className="text-[10px] text-[#a69181]">
-                            {domain.isDriveLinkRequired ? 'Required: Google Drive Video Link' : `Max File: ${domain.maxSize}`}
+                            {domain.isDriveLinkRequired ? 'Required: Google Drive Video Link' : `Limit: ${domain.maxSize}`}
                           </span>
                         </div>
                       );
@@ -689,10 +771,9 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     </ul>
                   </div>
 
-                  {/* MANDATORY GOOGLE DRIVE LINK FIELD & CAUTION NOTICE FOR TRICOLENS REEL MAKING */}
+                  {/* MANDATORY GOOGLE DRIVE LINK FIELD FOR TRICOLENS REEL MAKING */}
                   {selectedDomainObj.isDriveLinkRequired ? (
                     <div className="space-y-4">
-                      {/* PROMINENT CAUTION NOTICE BOX */}
                       <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/50 text-amber-200 text-xs space-y-2">
                         <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
                           <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
@@ -731,21 +812,37 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     </div>
                   ) : (
                     /* DIRECT FILE UPLOAD DROPZONE FOR ARTWORK, PHOTOGRAPHY & CREATIVE WRITING */
-                    <div className="form-group mb-0">
-                      <label className="form-label font-bold text-white text-xs">
-                        Upload {selectedDomainObj.title} Submission File *
+                    <div className="form-group mb-0 space-y-2">
+                      <label className="form-label font-bold text-white text-xs flex items-center justify-between">
+                        <span>Upload {selectedDomainObj.title} Submission File *</span>
+                        <span className="text-[10px] text-[#ff9933] font-mono">Limit: {selectedDomainObj.maxSize}</span>
                       </label>
+
+                      {compressing && (
+                        <div className="p-3 rounded-xl bg-[#ff9933]/20 border border-[#ff9933]/40 text-[#ff9933] text-xs flex items-center gap-2 animate-pulse">
+                          <Zap className="w-4 h-4" />
+                          <span>Auto-Compressing file to save cloud storage... Please wait.</span>
+                        </div>
+                      )}
+
                       <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#ff9933]/40 rounded-2xl bg-white/[0.02] hover:border-[#ff9933] transition-colors cursor-pointer text-center mt-2">
                         <UploadCloud className="w-8 h-8 text-[#ff9933] mb-2 animate-bounce" />
                         <span className="text-xs font-bold text-white mb-1">
-                          {submissionFile ? submissionFile.name : `Click to Upload ${selectedDomainObj.subtitle} File`}
+                          {submissionFile ? (
+                            <span className="text-emerald-400 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4 inline" />
+                              {submissionFile.name} ({(submissionFile.size / (1024 * 1024)).toFixed(2)} MB)
+                            </span>
+                          ) : (
+                            `Click to Upload ${selectedDomainObj.subtitle} File`
+                          )}
                         </span>
                         <span className="text-[10px] text-[#a69181]">
-                          Accepted: {selectedDomainObj.accept} (Max Size: {selectedDomainObj.maxSize})
+                          Accepted: {selectedDomainObj.accept} (Limit: {selectedDomainObj.maxSize})
                         </span>
                         <input 
                           type="file" 
-                          onChange={e => setSubmissionFile(e.target.files?.[0] || null)}
+                          onChange={e => handleFileChange(e, selectedDomainObj.maxBytesMb)}
                           accept={selectedDomainObj.accept}
                           className="hidden"
                           required
@@ -778,7 +875,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
                   <button 
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || compressing}
                     className="btn-tricolour text-sm min-w-[200px] justify-center inline-flex items-center gap-2 py-3 px-6"
                   >
                     <Send className="w-4 h-4" />
