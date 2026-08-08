@@ -27,7 +27,9 @@ import {
   Link as LinkIcon,
   Video,
   ShieldAlert,
-  Zap
+  Zap,
+  PlusCircle,
+  Check
 } from 'lucide-react';
 
 const DEPT_CODES: Record<string, string> = {
@@ -176,7 +178,6 @@ async function compressImageFile(file: File): Promise<File> {
         let width = img.width;
         let height = img.height;
 
-        // Resize max dimension if over 2500px
         const maxDim = 2500;
         if (width > maxDim || height > maxDim) {
           if (width > height) {
@@ -199,7 +200,6 @@ async function compressImageFile(file: File): Promise<File> {
               type: 'image/webp',
               lastModified: Date.now()
             });
-            console.log(`⚡ Compressed image from ${(file.size / (1024 * 1024)).toFixed(2)} MB to ${(compressedFile.size / (1024 * 1024)).toFixed(2)} MB`);
             resolve(compressedFile);
           } else {
             resolve(file);
@@ -215,7 +215,6 @@ async function compressImageFile(file: File): Promise<File> {
 export default function DedicatedEventRegistrationPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const eventId = resolvedParams.id;
-  const router = useRouter();
 
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -223,7 +222,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const [compressing, setCompressing] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  // Step 1: Attendee Info
+  // Step 1: Attendee Credentials
   const [fullName, setFullName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
@@ -232,18 +231,45 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const [rollSuffix, setRollSuffix] = useState<string>('');
 
   // Step 2: Domain & Theme Selection
-  const [activeStep, setActiveStep] = useState<number>(1); // 1 = Registration, 2 = Domain Submission
+  const [activeStep, setActiveStep] = useState<number>(1);
   const [selectedDomainId, setSelectedDomainId] = useState<string>('tricolens');
   const [selectedTheme, setSelectedTheme] = useState<string>('');
   const [driveReelUrl, setDriveReelUrl] = useState<string>('');
   const [caption, setCaption] = useState<string>('');
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+  
+  // Track domains submitted by participant during session
+  const [submittedDomains, setSubmittedDomains] = useState<string[]>([]);
 
   // Generic fallback custom field answers
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [file, setFile] = useState<File | null>(null);
-
   const [ticket, setTicket] = useState<SubmissionItem | null>(null);
+
+  // Load saved student credentials from session
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('swaraj_user_credentials');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.fullName) setFullName(parsed.fullName);
+          if (parsed.email) setEmail(parsed.email);
+          if (parsed.phone) setPhone(parsed.phone);
+          if (parsed.selectedDept) setSelectedDept(parsed.selectedDept);
+          if (parsed.selectedYear) setSelectedYear(parsed.selectedYear);
+          if (parsed.rollSuffix) setRollSuffix(parsed.rollSuffix);
+        } catch (e) {}
+      }
+
+      const savedSubmitted = sessionStorage.getItem('swaraj_submitted_domains');
+      if (savedSubmitted) {
+        try {
+          setSubmittedDomains(JSON.parse(savedSubmitted));
+        } catch (e) {}
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!eventId) return;
@@ -270,11 +296,15 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
     event?.title?.toLowerCase()?.includes('hind')
   );
 
-  // Computed Auto-Prefilled Roll Number Prefix
+  // Computed Auto-Prefilled Roll Number Prefix & Normalized Roll (092 === 92)
   const deptCode = DEPT_CODES[selectedDept] || '';
   const yearCode = YEAR_CODES[selectedYear] || '';
   const computedRollPrefix = (yearCode && deptCode) ? `${yearCode}/${deptCode}/` : '';
+  
+  // Normalize roll digits e.g. "092" -> "92"
+  const cleanRollSuffixDigits = rollSuffix.trim().replace(/^0+/, '') || '0';
   const fullRollNumber = computedRollPrefix ? `${computedRollPrefix}${rollSuffix.trim()}` : rollSuffix.trim();
+  const normalizedRollNumber = computedRollPrefix ? `${computedRollPrefix}${cleanRollSuffixDigits}` : cleanRollSuffixDigits;
 
   const handleNextToDomainSubmission = (e: React.FormEvent) => {
     e.preventDefault();
@@ -289,6 +319,19 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       if (!selectedDept || !selectedYear || !rollSuffix) {
         setError('Please select your Department, Academic Year, and enter your Roll Number.');
         return;
+      }
+
+      // Persist credentials in sessionStorage for fast pre-filling on multi-domain submissions
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('swaraj_user_credentials', JSON.stringify({
+          fullName, email, phone, selectedDept, selectedYear, rollSuffix
+        }));
+      }
+
+      // Pick first unsubmitted domain
+      const unsubmitted = SWARAJ_DOMAINS.find(d => !submittedDomains.includes(d.id));
+      if (unsubmitted) {
+        setSelectedDomainId(unsubmitted.id);
       }
     }
 
@@ -358,7 +401,8 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         ...answers,
         'Department': selectedDept,
         'Academic Year': selectedYear,
-        'College Roll Number': fullRollNumber
+        'College Roll Number': fullRollNumber,
+        'Normalized Roll Number': normalizedRollNumber
       };
 
       if (isSwarajEHind && activeDomainObj) {
@@ -385,12 +429,38 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       const res = await submitRegistrationApi(formPayload);
       if (res.success && res.data) {
         setTicket(res.data);
+        
+        // Track submitted domain
+        if (activeDomainObj) {
+          const updatedSubmitted = Array.from(new Set([...submittedDomains, activeDomainObj.id]));
+          setSubmittedDomains(updatedSubmitted);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('swaraj_submitted_domains', JSON.stringify(updatedSubmitted));
+          }
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to submit registration. Please try again.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleStartAnotherDomainSubmission = () => {
+    setTicket(null);
+    setSelectedTheme('');
+    setDriveReelUrl('');
+    setCaption('');
+    setSubmissionFile(null);
+    setFile(null);
+    setError('');
+
+    // Pick next unsubmitted domain
+    const nextUnsubmitted = SWARAJ_DOMAINS.find(d => !submittedDomains.includes(d.id));
+    if (nextUnsubmitted) {
+      setSelectedDomainId(nextUnsubmitted.id);
+    }
+    setActiveStep(2); // Jump straight to domain selection step with personal details pre-filled!
   };
 
   if (loading) {
@@ -421,6 +491,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   }
 
   const selectedDomainObj = SWARAJ_DOMAINS.find(d => d.id === selectedDomainId) || SWARAJ_DOMAINS[0];
+  const isSelectedDomainSubmitted = submittedDomains.includes(selectedDomainId);
 
   return (
     <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
@@ -436,7 +507,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         </Link>
 
         {ticket ? (
-          /* REGISTRATION CONFIRMED TICKET SCREEN */
+          /* REGISTRATION CONFIRMED TICKET SCREEN WITH "SUBMIT ANOTHER DOMAIN" BUTTON */
           <div className="glass-panel p-8 text-center border-2 border-emerald-500/40 shadow-2xl shadow-emerald-500/10 animate-fadeIn">
             <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-7 h-7" />
@@ -486,12 +557,23 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
               )}
             </div>
 
+            {/* SEAMLESS MULTI-DOMAIN SUBMISSION ACTION BUTTONS */}
             <div className="flex flex-wrap items-center justify-center gap-3">
+              {isSwarajEHind && submittedDomains.length < SWARAJ_DOMAINS.length && (
+                <button 
+                  onClick={handleStartAnotherDomainSubmission} 
+                  className="btn-tricolour text-xs py-2.5 px-6 font-extrabold inline-flex items-center gap-1.5 shadow-xl animate-pulse"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Submit Entry for Another Domain 🎨</span>
+                </button>
+              )}
+
               <button onClick={() => window.print()} className="btn-secondary text-xs inline-flex items-center gap-1.5">
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print Confirmation Ticket</span>
               </button>
-              <Link href="/" className="btn-tricolour text-xs py-2 px-5">
+              <Link href="/" className="btn-secondary text-xs py-2.5 px-5">
                 Back to Events Catalog
               </Link>
             </div>
@@ -516,7 +598,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   </span>
                   <span className="text-xs text-[#a69181]">→</span>
                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${activeStep === 2 ? 'bg-[#138808] text-white' : 'bg-white/10 text-[#a69181]'}`}>
-                    2. Domain & File Submission
+                    2. Domain Submission ({submittedDomains.length}/{SWARAJ_DOMAINS.length} Completed)
                   </span>
                 </div>
               )}
@@ -533,8 +615,9 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
             {activeStep === 1 && (
               <form onSubmit={handleNextToDomainSubmission} className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-[#ff9933] pb-1 border-b border-white/5 flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-[#ff9933] pb-1 border-b border-white/5 flex items-center justify-between">
                     <span>1. Participant Information & Academic Details</span>
+                    {fullName && <span className="text-[10px] text-emerald-400 font-mono">✓ Credentials Pre-filled</span>}
                   </h3>
 
                   <div className="form-group">
@@ -630,15 +713,16 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                         type="text" 
                         value={rollSuffix}
                         onChange={e => setRollSuffix(e.target.value)}
-                        placeholder="Enter roll number digits (e.g. 042)"
+                        placeholder="Enter roll number digits (e.g. 092)"
                         className="form-input font-mono text-sm flex-1"
                         required
                       />
                     </div>
                     
                     {fullRollNumber && (
-                      <p className="text-[11px] text-emerald-400 mt-2 font-mono">
-                        Formatted Full Roll: <strong>{fullRollNumber}</strong>
+                      <p className="text-[11px] text-emerald-400 mt-2 font-mono flex items-center justify-between">
+                        <span>Full Roll: <strong>{fullRollNumber}</strong></span>
+                        <span className="text-[#a69181]">Normalized (092 === 92): <strong>{normalizedRollNumber}</strong></span>
                       </p>
                     )}
                   </div>
@@ -672,11 +756,11 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                       onClick={() => setActiveStep(1)}
                       className="text-xs text-[#a69181] hover:text-white underline"
                     >
-                      ← Edit Student Info
+                      ← Edit Student Info ({fullName} | {fullRollNumber})
                     </button>
                   </div>
                   <p className="text-xs text-[#a69181] mb-4">
-                    Participants can participate in up to 2 domains and submit 1 entry per theme.
+                    Participants can submit entries for all 4 domains! If a domain has been submitted, it will be locked.
                   </p>
 
                   {/* 4 Domain Cards Grid */}
@@ -684,29 +768,45 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     {SWARAJ_DOMAINS.map((domain) => {
                       const IconComp = domain.icon;
                       const isSelected = selectedDomainId === domain.id;
+                      const isSubmitted = submittedDomains.includes(domain.id);
+
                       return (
                         <div 
                           key={domain.id}
                           onClick={() => {
-                            setSelectedDomainId(domain.id);
-                            setSelectedTheme(''); // Reset theme choice on domain change
-                            setSubmissionFile(null);
+                            if (!isSubmitted) {
+                              setSelectedDomainId(domain.id);
+                              setSelectedTheme('');
+                              setSubmissionFile(null);
+                            }
                           }}
-                          className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                            isSelected 
-                              ? 'bg-gradient-to-r from-[#ff9933]/20 via-white/5 to-[#138808]/20 border-2 border-[#ff9933] shadow-lg shadow-[#ff9933]/10' 
-                              : 'bg-[#180509] border-white/10 hover:border-white/30 opacity-80'
+                          className={`p-4 rounded-2xl border transition-all ${
+                            isSubmitted
+                              ? 'bg-emerald-950/30 border-emerald-500/40 cursor-not-allowed opacity-75'
+                              : isSelected 
+                                ? 'bg-gradient-to-r from-[#ff9933]/20 via-white/5 to-[#138808]/20 border-2 border-[#ff9933] shadow-lg shadow-[#ff9933]/10 cursor-pointer' 
+                                : 'bg-[#180509] border-white/10 hover:border-white/30 cursor-pointer opacity-80'
                           }`}
                         >
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className={`p-2.5 rounded-xl ${isSelected ? 'bg-[#ff9933] text-black' : 'bg-white/10 text-white'}`}>
-                              <IconComp className="w-5 h-5" />
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2.5 rounded-xl ${isSubmitted ? 'bg-emerald-500/20 text-emerald-400' : isSelected ? 'bg-[#ff9933] text-black' : 'bg-white/10 text-white'}`}>
+                                <IconComp className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-extrabold text-white">{domain.title}</h4>
+                                <span className="text-[10px] text-[#ff9933] font-bold block uppercase">{domain.subtitle}</span>
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="text-xs font-extrabold text-white">{domain.title}</h4>
-                              <span className="text-[10px] text-[#ff9933] font-bold block uppercase">{domain.subtitle}</span>
-                            </div>
+
+                            {isSubmitted && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold flex items-center gap-1 border border-emerald-500/40">
+                                <Check className="w-3 h-3" />
+                                Submitted
+                              </span>
+                            )}
                           </div>
+                          
                           <span className="text-[10px] text-[#a69181]">
                             {domain.isDriveLinkRequired ? 'Required: Google Drive Video Link' : `Limit: ${domain.maxSize}`}
                           </span>
@@ -716,153 +816,163 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   </div>
                 </div>
 
-                {/* Selected Domain Rules & Theme Options */}
-                <div className="glass-panel p-6 border-2 border-[#ff9933]/40 bg-[#180509] space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                    <span className="px-2.5 py-0.5 rounded bg-[#ff9933]/20 text-[#ff9933] text-xs font-bold">
-                      {selectedDomainObj.title} ({selectedDomainObj.subtitle})
-                    </span>
-                    {selectedDomainObj.isDriveLinkRequired && (
-                      <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold flex items-center gap-1">
-                        <LinkIcon className="w-3 h-3" />
-                        Google Drive Link Mandatory
-                      </span>
-                    )}
+                {isSelectedDomainSubmitted ? (
+                  <div className="p-6 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/40 text-center space-y-3">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+                    <h4 className="text-base font-bold text-white">Domain Already Submitted</h4>
+                    <p className="text-xs text-[#a69181]">
+                      You have already submitted an entry for <strong className="text-white">{selectedDomainObj.title}</strong>. Please select another unsubmitted domain card above!
+                    </p>
                   </div>
+                ) : (
+                  /* Selected Domain Rules & Theme Options */
+                  <div className="glass-panel p-6 border-2 border-[#ff9933]/40 bg-[#180509] space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                      <span className="px-2.5 py-0.5 rounded bg-[#ff9933]/20 text-[#ff9933] text-xs font-bold">
+                        {selectedDomainObj.title} ({selectedDomainObj.subtitle})
+                      </span>
+                      {selectedDomainObj.isDriveLinkRequired && (
+                        <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold flex items-center gap-1">
+                          <LinkIcon className="w-3 h-3" />
+                          Google Drive Link Mandatory
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Theme Selector */}
-                  <div className="form-group mb-4">
-                    <label className="form-label font-bold text-white text-xs">
-                      Select Theme for {selectedDomainObj.title} *
-                    </label>
-                    <div className="space-y-2 mt-2">
-                      {selectedDomainObj.themes.map((thm, idx) => (
-                        <label 
-                          key={idx} 
-                          className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                            selectedTheme === thm ? 'bg-[#ff9933]/20 border-[#ff9933] text-white font-bold' : 'bg-black/30 border-white/10 text-[#e6d7c3]'
-                          }`}
-                        >
+                    {/* Theme Selector */}
+                    <div className="form-group mb-4">
+                      <label className="form-label font-bold text-white text-xs">
+                        Select Theme for {selectedDomainObj.title} *
+                      </label>
+                      <div className="space-y-2 mt-2">
+                        {selectedDomainObj.themes.map((thm, idx) => (
+                          <label 
+                            key={idx} 
+                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                              selectedTheme === thm ? 'bg-[#ff9933]/20 border-[#ff9933] text-white font-bold' : 'bg-black/30 border-white/10 text-[#e6d7c3]'
+                            }`}
+                          >
+                            <input 
+                              type="radio" 
+                              name="swarajTheme" 
+                              value={thm} 
+                              checked={selectedTheme === thm}
+                              onChange={() => setSelectedTheme(thm)}
+                              className="text-[#ff9933] accent-[#ff9933]"
+                              required
+                            />
+                            <span className="text-xs">{thm}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Domain Specific Rules */}
+                    <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+                      <h5 className="text-xs font-bold text-[#ff9933] flex items-center gap-1.5">
+                        <FileCheck className="w-3.5 h-3.5" />
+                        <span>Domain Rules & Submission Instructions:</span>
+                      </h5>
+                      <ul className="list-disc list-inside text-[11px] text-[#a69181] space-y-1">
+                        {selectedDomainObj.rules.map((rule, idx) => (
+                          <li key={idx}>{rule}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* MANDATORY GOOGLE DRIVE LINK FIELD FOR TRICOLENS REEL MAKING */}
+                    {selectedDomainObj.isDriveLinkRequired ? (
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/50 text-amber-200 text-xs space-y-2">
+                          <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                            <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
+                            <span>⚠️ MANDATORY CAUTION FOR REEL SUBMISSIONS:</span>
+                          </div>
+                          <p className="leading-relaxed">
+                            Direct file uploads for Reels are disabled due to large video sizes. You <strong>MUST</strong> upload your video reel to your personal Google Drive, set sharing access permissions to <strong>"Anyone with the link can view"</strong>, and paste the public link below.
+                          </p>
+                          <p className="text-[11px] text-amber-300 font-mono">
+                            ❌ Submissions with restricted Google Drive links or missing viewing permissions will be automatically disqualified.
+                          </p>
+                        </div>
+
+                        <div className="form-group bg-[#22080f] p-4 rounded-2xl border-2 border-[#ff9933]/50 space-y-2">
+                          <label className="form-label font-bold text-white text-xs flex items-center gap-1.5">
+                            <LinkIcon className="w-4 h-4 text-[#ff9933]" />
+                            <span>Google Drive Video Reel Link * (Mandatory)</span>
+                          </label>
+
+                          <div className="p-3 rounded-xl bg-black/40 text-[11px] text-[#a69181] space-y-1 border border-white/5">
+                            <p className="font-bold text-[#ff9933]">How to share your Google Drive link:</p>
+                            <p>1. Upload your MP4 Reel (Max 1GB) to your personal Google Drive.</p>
+                            <p>2. Right click the video ➔ <strong>Share</strong> ➔ Change General access to <strong>"Anyone with the link can view"</strong>.</p>
+                            <p>3. Copy the link and paste it in the field below.</p>
+                          </div>
+
                           <input 
-                            type="radio" 
-                            name="swarajTheme" 
-                            value={thm} 
-                            checked={selectedTheme === thm}
-                            onChange={() => setSelectedTheme(thm)}
-                            className="text-[#ff9933] accent-[#ff9933]"
+                            type="url" 
+                            value={driveReelUrl}
+                            onChange={e => setDriveReelUrl(e.target.value)}
+                            placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+                            className="form-input font-mono text-xs"
                             required
                           />
-                          <span className="text-xs">{thm}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Domain Specific Rules */}
-                  <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
-                    <h5 className="text-xs font-bold text-[#ff9933] flex items-center gap-1.5">
-                      <FileCheck className="w-3.5 h-3.5" />
-                      <span>Domain Rules & Submission Instructions:</span>
-                    </h5>
-                    <ul className="list-disc list-inside text-[11px] text-[#a69181] space-y-1">
-                      {selectedDomainObj.rules.map((rule, idx) => (
-                        <li key={idx}>{rule}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* MANDATORY GOOGLE DRIVE LINK FIELD FOR TRICOLENS REEL MAKING */}
-                  {selectedDomainObj.isDriveLinkRequired ? (
-                    <div className="space-y-4">
-                      <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/50 text-amber-200 text-xs space-y-2">
-                        <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
-                          <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
-                          <span>⚠️ MANDATORY CAUTION FOR REEL SUBMISSIONS:</span>
                         </div>
-                        <p className="leading-relaxed">
-                          Direct file uploads for Reels are disabled due to large video sizes. You <strong>MUST</strong> upload your video reel to your personal Google Drive, set sharing access permissions to <strong>"Anyone with the link can view"</strong>, and paste the public link below.
-                        </p>
-                        <p className="text-[11px] text-amber-300 font-mono">
-                          ❌ Submissions with restricted Google Drive links or missing viewing permissions will be automatically disqualified.
-                        </p>
                       </div>
-
-                      <div className="form-group bg-[#22080f] p-4 rounded-2xl border-2 border-[#ff9933]/50 space-y-2">
-                        <label className="form-label font-bold text-white text-xs flex items-center gap-1.5">
-                          <LinkIcon className="w-4 h-4 text-[#ff9933]" />
-                          <span>Google Drive Video Reel Link * (Mandatory)</span>
+                    ) : (
+                      /* DIRECT FILE UPLOAD DROPZONE FOR ARTWORK, PHOTOGRAPHY & CREATIVE WRITING */
+                      <div className="form-group mb-0 space-y-2">
+                        <label className="form-label font-bold text-white text-xs flex items-center justify-between">
+                          <span>Upload {selectedDomainObj.title} Submission File *</span>
+                          <span className="text-[10px] text-[#ff9933] font-mono">Limit: {selectedDomainObj.maxSize}</span>
                         </label>
 
-                        <div className="p-3 rounded-xl bg-black/40 text-[11px] text-[#a69181] space-y-1 border border-white/5">
-                          <p className="font-bold text-[#ff9933]">How to share your Google Drive link:</p>
-                          <p>1. Upload your MP4 Reel (Max 1GB) to your personal Google Drive.</p>
-                          <p>2. Right click the video ➔ <strong>Share</strong> ➔ Change General access to <strong>"Anyone with the link can view"</strong>.</p>
-                          <p>3. Copy the link and paste it in the field below.</p>
-                        </div>
+                        {compressing && (
+                          <div className="p-3 rounded-xl bg-[#ff9933]/20 border border-[#ff9933]/40 text-[#ff9933] text-xs flex items-center gap-2 animate-pulse">
+                            <Zap className="w-4 h-4" />
+                            <span>Auto-Compressing file to save cloud storage... Please wait.</span>
+                          </div>
+                        )}
 
-                        <input 
-                          type="url" 
-                          value={driveReelUrl}
-                          onChange={e => setDriveReelUrl(e.target.value)}
-                          placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
-                          className="form-input font-mono text-xs"
-                          required
-                        />
+                        <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#ff9933]/40 rounded-2xl bg-white/[0.02] hover:border-[#ff9933] transition-colors cursor-pointer text-center mt-2">
+                          <UploadCloud className="w-8 h-8 text-[#ff9933] mb-2 animate-bounce" />
+                          <span className="text-xs font-bold text-white mb-1">
+                            {submissionFile ? (
+                              <span className="text-emerald-400 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4 inline" />
+                                {submissionFile.name} ({(submissionFile.size / (1024 * 1024)).toFixed(2)} MB)
+                              </span>
+                            ) : (
+                              `Click to Upload ${selectedDomainObj.subtitle} File`
+                            )}
+                          </span>
+                          <span className="text-[10px] text-[#a69181]">
+                            Accepted: {selectedDomainObj.accept} (Limit: {selectedDomainObj.maxSize})
+                          </span>
+                          <input 
+                            type="file" 
+                            onChange={e => handleFileChange(e, selectedDomainObj.maxBytesMb)}
+                            accept={selectedDomainObj.accept}
+                            className="hidden"
+                            required
+                          />
+                        </label>
                       </div>
+                    )}
+
+                    {/* Caption / Note Optional */}
+                    <div className="form-group mb-0">
+                      <label className="form-label text-xs">Caption / Description / Raw File Notes (Optional)</label>
+                      <textarea 
+                        rows={2}
+                        value={caption}
+                        onChange={e => setCaption(e.target.value)}
+                        placeholder="Write a brief caption or mention raw file link if applicable..."
+                        className="form-textarea text-xs"
+                      />
                     </div>
-                  ) : (
-                    /* DIRECT FILE UPLOAD DROPZONE FOR ARTWORK, PHOTOGRAPHY & CREATIVE WRITING */
-                    <div className="form-group mb-0 space-y-2">
-                      <label className="form-label font-bold text-white text-xs flex items-center justify-between">
-                        <span>Upload {selectedDomainObj.title} Submission File *</span>
-                        <span className="text-[10px] text-[#ff9933] font-mono">Limit: {selectedDomainObj.maxSize}</span>
-                      </label>
-
-                      {compressing && (
-                        <div className="p-3 rounded-xl bg-[#ff9933]/20 border border-[#ff9933]/40 text-[#ff9933] text-xs flex items-center gap-2 animate-pulse">
-                          <Zap className="w-4 h-4" />
-                          <span>Auto-Compressing file to save cloud storage... Please wait.</span>
-                        </div>
-                      )}
-
-                      <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#ff9933]/40 rounded-2xl bg-white/[0.02] hover:border-[#ff9933] transition-colors cursor-pointer text-center mt-2">
-                        <UploadCloud className="w-8 h-8 text-[#ff9933] mb-2 animate-bounce" />
-                        <span className="text-xs font-bold text-white mb-1">
-                          {submissionFile ? (
-                            <span className="text-emerald-400 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4 inline" />
-                              {submissionFile.name} ({(submissionFile.size / (1024 * 1024)).toFixed(2)} MB)
-                            </span>
-                          ) : (
-                            `Click to Upload ${selectedDomainObj.subtitle} File`
-                          )}
-                        </span>
-                        <span className="text-[10px] text-[#a69181]">
-                          Accepted: {selectedDomainObj.accept} (Limit: {selectedDomainObj.maxSize})
-                        </span>
-                        <input 
-                          type="file" 
-                          onChange={e => handleFileChange(e, selectedDomainObj.maxBytesMb)}
-                          accept={selectedDomainObj.accept}
-                          className="hidden"
-                          required
-                        />
-                      </label>
-                    </div>
-                  )}
-
-                  {/* Caption / Note Optional */}
-                  <div className="form-group mb-0">
-                    <label className="form-label text-xs">Caption / Description / Raw File Notes (Optional)</label>
-                    <textarea 
-                      rows={2}
-                      value={caption}
-                      onChange={e => setCaption(e.target.value)}
-                      placeholder="Write a brief caption or mention raw file link if applicable..."
-                      className="form-textarea text-xs"
-                    />
                   </div>
-                </div>
+                )}
 
                 <div className="pt-4 border-t border-white/10 flex justify-between items-center">
                   <button 
@@ -875,8 +985,8 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
                   <button 
                     type="submit"
-                    disabled={submitting || compressing}
-                    className="btn-tricolour text-sm min-w-[200px] justify-center inline-flex items-center gap-2 py-3 px-6"
+                    disabled={submitting || compressing || isSelectedDomainSubmitted}
+                    className="btn-tricolour text-sm min-w-[200px] justify-center inline-flex items-center gap-2 py-3 px-6 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-4 h-4" />
                     <span>{submitting ? 'Submitting to Swaraj-E-Hind...' : 'Submit to Swaraj-E-Hind 🇮🇳'}</span>
