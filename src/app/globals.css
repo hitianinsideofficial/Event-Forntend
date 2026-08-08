@@ -315,3 +315,30 @@ select option:checked {
   background: #ef4444;
   box-shadow: 0 0 8px #ef4444;
 }
+
+/* Print Ticket Layout Styling */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  nav, footer, .no-print {
+    display: none !important;
+  }
+
+  .print-ticket-container {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 2px solid #ff9933 !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+    box-shadow: none !important;
+    max-width: 600px !important;
+    margin: 0 auto !important;
+  }
+
+  .print-ticket-container * {
+    color: #111111 !important;
+  }
+}

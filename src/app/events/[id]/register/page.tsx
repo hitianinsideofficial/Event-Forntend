@@ -300,11 +300,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const deptCode = DEPT_CODES[selectedDept] || '';
   const yearCode = YEAR_CODES[selectedYear] || '';
   const computedRollPrefix = (yearCode && deptCode) ? `${yearCode}/${deptCode}/` : '';
-  
-  // Normalize roll digits e.g. "092" -> "92"
-  const cleanRollSuffixDigits = rollSuffix.trim().replace(/^0+/, '') || '0';
   const fullRollNumber = computedRollPrefix ? `${computedRollPrefix}${rollSuffix.trim()}` : rollSuffix.trim();
-  const normalizedRollNumber = computedRollPrefix ? `${computedRollPrefix}${cleanRollSuffixDigits}` : cleanRollSuffixDigits;
 
   const handleNextToDomainSubmission = (e: React.FormEvent) => {
     e.preventDefault();
@@ -397,12 +393,12 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
     try {
       const activeDomainObj = SWARAJ_DOMAINS.find(d => d.id === selectedDomainId);
 
+      // Construct clean answers without normalized roll string
       const combinedAnswers: Record<string, any> = {
         ...answers,
         'Department': selectedDept,
         'Academic Year': selectedYear,
-        'College Roll Number': fullRollNumber,
-        'Normalized Roll Number': normalizedRollNumber
+        'College Roll Number': fullRollNumber
       };
 
       if (isSwarajEHind && activeDomainObj) {
@@ -495,70 +491,118 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
   return (
     <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
-      <Navbar />
+      <div className="no-print">
+        <Navbar />
+      </div>
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10">
         <Link 
           href={`/events/${eventId}`} 
-          className="inline-flex items-center gap-1.5 text-xs text-[#a69181] hover:text-white mb-6 transition-colors font-medium"
+          className="no-print inline-flex items-center gap-1.5 text-xs text-[#a69181] hover:text-white mb-6 transition-colors font-medium"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to Event Details & Rules</span>
         </Link>
 
         {ticket ? (
-          /* REGISTRATION CONFIRMED TICKET SCREEN WITH "SUBMIT ANOTHER DOMAIN" BUTTON */
-          <div className="glass-panel p-8 text-center border-2 border-emerald-500/40 shadow-2xl shadow-emerald-500/10 animate-fadeIn">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-7 h-7" />
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Registration & Submission Confirmed!</h1>
-            <p className="text-xs text-[#a69181] mb-6">
-              You are officially registered for <strong className="text-white">{ticket.eventTitle}</strong>. A confirmation email with your ticket details has been dispatched.
-            </p>
-
-            {/* Ticket Badge */}
-            <div className="bg-[#180509] p-6 rounded-2xl text-left text-xs space-y-3 mb-6 border border-white/10 max-w-lg mx-auto">
-              <div className="flex justify-between pb-2 border-b border-white/10">
-                <span className="text-[#a69181]">Ticket ID:</span> 
-                <span className="font-mono font-bold text-[#ff9933] text-sm">{ticket.ticketId}</span>
+          /* REGISTRATION CONFIRMED TICKET SCREEN WITH STANDALONE PRINTABLE TICKET PASS */
+          <div className="space-y-6">
+            <div className="no-print glass-panel p-6 text-center border-2 border-emerald-500/40">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 className="w-6 h-6" />
               </div>
-              <div className="flex justify-between"><span className="text-[#a69181]">Attendee Name:</span> <span className="font-semibold text-white">{ticket.fullName}</span></div>
-              <div className="flex justify-between"><span className="text-[#a69181]">Email Address:</span> <span className="font-semibold text-white">{ticket.email}</span></div>
-              <div className="flex justify-between"><span className="text-[#a69181]">Mobile Number:</span> <span className="font-semibold text-white">{ticket.phone}</span></div>
-              <div className="flex justify-between"><span className="text-[#a69181]">Status:</span> <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">Registered & Submitted</span></div>
-
-              {ticket.answers && (
-                <div className="pt-3 border-t border-white/10 space-y-1.5">
-                  <span className="text-[11px] text-[#ff9933] font-bold uppercase block">Submission Details:</span>
-                  {Object.entries(ticket.answers).map(([key, val], idx) => (
-                    <div key={idx} className="flex justify-between text-[11px]">
-                      <span className="text-[#a69181]">{key}:</span>
-                      {String(val).startsWith('http') ? (
-                        <a href={String(val)} target="_blank" rel="noreferrer" className="text-cyan-400 underline font-semibold truncate max-w-[220px]">
-                          {String(val)}
-                        </a>
-                      ) : (
-                        <span className="text-white font-medium truncate max-w-[240px]">{String(val)}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {ticket.files && ticket.files.length > 0 && (
-                <div className="flex justify-between items-center pt-3 border-t border-white/10">
-                  <span className="text-[#a69181]">Submitted Media File:</span>
-                  <a href={ticket.files[0].driveLink || ticket.files[0].localUrl} target="_blank" rel="noreferrer" className="text-cyan-400 font-semibold underline truncate max-w-[200px]">
-                    {ticket.files[0].originalName}
-                  </a>
-                </div>
-              )}
+              <h1 className="text-2xl font-extrabold text-white mb-1">Registration & Submission Confirmed!</h1>
+              <p className="text-xs text-[#a69181]">
+                Official Ticket Pass issued for <strong className="text-white">{ticket.eventTitle}</strong>. A confirmation email has been sent.
+              </p>
             </div>
 
-            {/* SEAMLESS MULTI-DOMAIN SUBMISSION ACTION BUTTONS */}
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            {/* STANDALONE OFFICIAL TICKET PASS CARD (PRINTABLE) */}
+            <div className="print-ticket-container bg-[#1c060b] border-2 border-[#ff9933] rounded-3xl p-6 sm:p-8 text-left space-y-6 shadow-2xl shadow-[#ff9933]/10">
+              {/* Header Bar */}
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-[#ff9933] uppercase tracking-widest font-mono">🇮🇳 HITian Inside</span>
+                    <span className="text-xs text-[#a69181]">• Official Event Ticket</span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                    {ticket.eventTitle}
+                  </h2>
+                </div>
+
+                <div className="text-right">
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
+                    ✓ Verified Pass
+                  </span>
+                </div>
+              </div>
+
+              {/* Grid: Details + QR Code */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+                <div className="sm:col-span-2 space-y-3 text-xs">
+                  <div className="flex justify-between pb-1.5 border-b border-white/5">
+                    <span className="text-[#a69181]">Ticket ID:</span>
+                    <span className="font-mono font-extrabold text-[#ff9933] text-sm">{ticket.ticketId}</span>
+                  </div>
+                  <div className="flex justify-between pb-1.5 border-b border-white/5">
+                    <span className="text-[#a69181]">Attendee Name:</span>
+                    <span className="font-bold text-white">{ticket.fullName}</span>
+                  </div>
+                  <div className="flex justify-between pb-1.5 border-b border-white/5">
+                    <span className="text-[#a69181]">Email Address:</span>
+                    <span className="font-medium text-white">{ticket.email}</span>
+                  </div>
+                  <div className="flex justify-between pb-1.5 border-b border-white/5">
+                    <span className="text-[#a69181]">Mobile Phone:</span>
+                    <span className="font-medium text-white">{ticket.phone}</span>
+                  </div>
+
+                  {ticket.answers && (
+                    <div className="pt-2 space-y-1.5">
+                      {Object.entries(ticket.answers).map(([key, val], idx) => (
+                        <div key={idx} className="flex justify-between text-[11px] pb-1 border-b border-white/5">
+                          <span className="text-[#a69181] font-semibold">{key}:</span>
+                          {String(val).startsWith('http') ? (
+                            <a href={String(val)} target="_blank" rel="noreferrer" className="text-cyan-400 underline font-semibold truncate max-w-[200px]">
+                              {String(val)}
+                            </a>
+                          ) : (
+                            <span className="text-white font-bold truncate max-w-[220px]">{String(val)}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {ticket.files && ticket.files.length > 0 && (
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-[#a69181]">Attached File:</span>
+                      <a href={ticket.files[0].driveLink || ticket.files[0].localUrl} target="_blank" rel="noreferrer" className="text-cyan-400 font-semibold underline truncate max-w-[200px]">
+                        {ticket.files[0].originalName}
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* QR Code Pass */}
+                <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 border-[#ff9933]/50">
+                  <QRCodeSVG value={ticket.ticketId} size={140} />
+                  <span className="font-mono text-[10px] font-bold text-black mt-2">
+                    {ticket.ticketId}
+                  </span>
+                </div>
+              </div>
+
+              {/* Ticket Footer */}
+              <div className="pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-[#a69181]">
+                <span>Issued by <strong>HITian Inside Team</strong></span>
+                <span>www.hitianinside.in</span>
+              </div>
+            </div>
+
+            {/* SEAMLESS MULTI-DOMAIN SUBMISSION ACTION BUTTONS (HIDDEN ON PRINT) */}
+            <div className="no-print flex flex-wrap items-center justify-center gap-3 pt-4">
               {isSwarajEHind && submittedDomains.length < SWARAJ_DOMAINS.length && (
                 <button 
                   onClick={handleStartAnotherDomainSubmission} 
@@ -569,9 +613,9 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                 </button>
               )}
 
-              <button onClick={() => window.print()} className="btn-secondary text-xs inline-flex items-center gap-1.5">
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Confirmation Ticket</span>
+              <button onClick={() => window.print()} className="btn-secondary text-xs py-2.5 px-5 inline-flex items-center gap-1.5">
+                <Printer className="w-4 h-4" />
+                <span>Print Official Ticket Pass</span>
               </button>
               <Link href="/" className="btn-secondary text-xs py-2.5 px-5">
                 Back to Events Catalog
@@ -713,7 +757,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                         type="text" 
                         value={rollSuffix}
                         onChange={e => setRollSuffix(e.target.value)}
-                        placeholder="Enter roll number digits (e.g. 092)"
+                        placeholder="Enter roll number digits (e.g. 92)"
                         className="form-input font-mono text-sm flex-1"
                         required
                       />
