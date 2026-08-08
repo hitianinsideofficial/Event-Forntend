@@ -3,11 +3,42 @@ import { SubmissionItem } from '../types/submission.types';
 import { CertificateItem } from '../types/certificate.types';
 import { ApiResponse, BackendHealthResponse } from '../types/api.types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const LOCAL_API_URL = 'http://localhost:5000/api';
+const LIVE_API_URL = process.env.NEXT_PUBLIC_LIVE_API_URL || 'https://hitianinside-event-backend-jq4ibl1ks-hitian-inside.vercel.app/api';
+
+let cachedApiUrl: string | null = null;
+
+export async function getApiBaseUrl(): Promise<string> {
+  if (typeof window !== 'undefined' && cachedApiUrl) {
+    return cachedApiUrl;
+  }
+
+  // Quick 600ms health check to see if local backend (localhost:5000) is active
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 600);
+    const res = await fetch(`${LOCAL_API_URL}/health`, {
+      method: 'GET',
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      cachedApiUrl = LOCAL_API_URL;
+      return LOCAL_API_URL;
+    }
+  } catch (e) {
+    // Local backend is offline
+  }
+
+  cachedApiUrl = process.env.NEXT_PUBLIC_API_URL || LIVE_API_URL;
+  return cachedApiUrl;
+}
 
 export async function checkBackendHealth(): Promise<BackendHealthResponse> {
   try {
-    const res = await fetch(`${API_BASE_URL}/health`, { cache: 'no-store' });
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/health`, { cache: 'no-store' });
     if (!res.ok) return { online: false, error: `HTTP ${res.status}` };
     const data = await res.json();
     return { online: true, data };
@@ -18,7 +49,8 @@ export async function checkBackendHealth(): Promise<BackendHealthResponse> {
 
 export async function fetchEvents(includeDone: boolean = false): Promise<EventItem[]> {
   try {
-    const url = includeDone ? `${API_BASE_URL}/events?includeDone=true` : `${API_BASE_URL}/events`;
+    const baseUrl = await getApiBaseUrl();
+    const url = includeDone ? `${baseUrl}/events?includeDone=true` : `${baseUrl}/events`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result: ApiResponse<EventItem[]> = await res.json();
@@ -31,7 +63,8 @@ export async function fetchEvents(includeDone: boolean = false): Promise<EventIt
 
 export async function fetchEventById(id: string): Promise<EventItem> {
   try {
-    const res = await fetch(`${API_BASE_URL}/events/${id}`, { cache: 'no-store' });
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/events/${id}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result: ApiResponse<EventItem> = await res.json();
     return result.data!;
@@ -43,7 +76,8 @@ export async function fetchEventById(id: string): Promise<EventItem> {
 
 export async function createEventApi(eventData: Partial<EventItem>): Promise<ApiResponse<EventItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/events`, {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(eventData),
@@ -63,7 +97,8 @@ export async function createEventApi(eventData: Partial<EventItem>): Promise<Api
 
 export async function updateEventDetailsApi(id: string, eventData: Partial<EventItem>): Promise<ApiResponse<EventItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/events/${id}`, {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/events/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(eventData),
@@ -83,7 +118,8 @@ export async function updateEventDetailsApi(id: string, eventData: Partial<Event
 
 export async function updateEventStatusApi(id: string, status: EventStatus): Promise<ApiResponse<EventItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/events/${id}/status`, {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/events/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
@@ -99,7 +135,8 @@ export async function updateEventStatusApi(id: string, status: EventStatus): Pro
 
 export async function updateEventFormApi(id: string, customFields: CustomFormField[]): Promise<ApiResponse<EventItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/events/${id}/form`, {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/events/${id}/form`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customFields }),
@@ -115,7 +152,8 @@ export async function updateEventFormApi(id: string, customFields: CustomFormFie
 
 export async function deleteEventApi(id: string): Promise<ApiResponse<void>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/events/${id}`, {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/events/${id}`, {
       method: 'DELETE',
     });
 
@@ -129,10 +167,11 @@ export async function deleteEventApi(id: string): Promise<ApiResponse<void>> {
 
 export async function uploadToImageKitApi(file: File): Promise<{ url: string; fileId: string }> {
   try {
+    const baseUrl = await getApiBaseUrl();
     const formData = new FormData();
     formData.append('image', file);
 
-    const res = await fetch(`${API_BASE_URL}/upload/imagekit`, {
+    const res = await fetch(`${baseUrl}/upload/imagekit`, {
       method: 'POST',
       body: formData
     });
@@ -152,7 +191,8 @@ export async function uploadToImageKitApi(file: File): Promise<{ url: string; fi
 
 export async function adminLoginApi(email: string, password: string): Promise<{ success: boolean; token?: string; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE_URL}/admin/login`, {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -166,7 +206,8 @@ export async function adminLoginApi(email: string, password: string): Promise<{ 
 
 export async function submitRegistrationApi(formData: FormData): Promise<ApiResponse<SubmissionItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/submissions`, {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/submissions`, {
       method: 'POST',
       body: formData,
     });
@@ -185,7 +226,8 @@ export async function submitRegistrationApi(formData: FormData): Promise<ApiResp
 
 export async function fetchSubmissionsApi(eventId?: string): Promise<SubmissionItem[]> {
   try {
-    const url = eventId ? `${API_BASE_URL}/events/${eventId}/submissions` : `${API_BASE_URL}/submissions`;
+    const baseUrl = await getApiBaseUrl();
+    const url = eventId ? `${baseUrl}/events/${eventId}/submissions` : `${baseUrl}/submissions`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result: ApiResponse<SubmissionItem[]> = await res.json();
@@ -198,7 +240,8 @@ export async function fetchSubmissionsApi(eventId?: string): Promise<SubmissionI
 
 export async function checkInAttendeeApi(ticketId: string): Promise<ApiResponse<SubmissionItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/submissions/checkin`, {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/submissions/checkin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ticketId }),
@@ -215,7 +258,8 @@ export async function checkInAttendeeApi(ticketId: string): Promise<ApiResponse<
 
 export async function verifyCertificateApi(certificateId: string): Promise<ApiResponse<CertificateItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/certificates/verify/${certificateId}`, { cache: 'no-store' });
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/certificates/verify/${certificateId}`, { cache: 'no-store' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Certificate verification failed');
     return data;
@@ -227,7 +271,8 @@ export async function verifyCertificateApi(certificateId: string): Promise<ApiRe
 
 export async function acknowledgeSubmissionApi(submissionId: string): Promise<ApiResponse<SubmissionItem>> {
   try {
-    const res = await fetch(`${API_BASE_URL}/submissions/${submissionId}/acknowledge`, {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/submissions/${submissionId}/acknowledge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
