@@ -25,7 +25,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/hitianinsidelogo.png" type="image/png" sizes="any" />
         <link rel="apple-touch-icon" href="/hitianinsidelogo.png" />
       </head>
-      <body className="antialiased selection:bg-[#800020] selection:text-[#e6c594]">
+      <body 
+        className="antialiased selection:bg-[#800020] selection:text-[#e6c594]"
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>
