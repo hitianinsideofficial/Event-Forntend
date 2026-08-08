@@ -9,8 +9,10 @@ interface EventCardProps {
 }
 
 export default function EventCard({ event }: EventCardProps) {
-  const { id, _id, title, description, date, location, organizer, status, mode, bannerUrl, hasAttendance, requireFileUpload } = event;
+  const { id, _id, title, description, date, location, organizer, status, mode, bannerUrl, coverUrl, hasAttendance, requireFileUpload } = event;
   const eventId = id || _id;
+
+  const cardImage = coverUrl || bannerUrl;
 
   const formattedDate = date ? new Date(date).toLocaleDateString('en-US', {
     month: 'short',
@@ -20,11 +22,11 @@ export default function EventCard({ event }: EventCardProps) {
 
   return (
     <div className="glass-card flex flex-col justify-between h-full group border border-[#f7f1e5]/10 hover:border-[#e6c594]/50 relative overflow-hidden">
-      {/* Optional ImageKit Banner Image */}
-      {bannerUrl ? (
-        <div className="relative w-full h-44 overflow-hidden border-b border-white/10">
+      {/* 4:3 Aspect Ratio Card Cover Image */}
+      {cardImage ? (
+        <div className="relative w-full aspect-[4/3] overflow-hidden border-b border-white/10">
           <img 
-            src={bannerUrl} 
+            src={cardImage} 
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />

@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '../../../../components/Navbar';
-import { createEventApi, uploadToImageKitApi } from '../../../../services/api.service';
+import ImageCropModal from '../../../../components/ImageCropModal';
+import { createEventApi } from '../../../../services/api.service';
 import { EventHighlight, EventStatus, EventMode } from '../../../../types/event.types';
-import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, UploadCloud, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, UploadCloud, Crop } from 'lucide-react';
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -21,11 +22,17 @@ export default function CreateEventPage() {
     status: 'UPCOMING' as EventStatus,
     mode: 'OFFLINE' as EventMode,
     bannerUrl: '',
+    coverUrl: '',
     hasAttendance: false,
     requireFileUpload: false
   });
 
-  const [uploadingBanner, setUploadingBanner] = useState<boolean>(false);
+  // Cropper Modal States
+  const [cropModalOpen, setCropModalOpen] = useState<boolean>(false);
+  const [selectedRawImage, setSelectedRawImage] = useState<string>('');
+  const [targetType, setTargetType] = useState<'banner' | 'cover'>('banner');
+  const [initialAspect, setInitialAspect] = useState<number>(16 / 9);
+
   const [highlights, setHighlights] = useState<EventHighlight[]>([
     { title: 'Schedule Highlight', description: 'Interactive workshops & live keynotes' }
   ]);
@@ -57,22 +64,26 @@ export default function CreateEventPage() {
     }
   };
 
-  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const triggerCropModal = (e: React.ChangeEvent<HTMLInputElement>, type: 'banner' | 'cover') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingBanner(true);
-    setError('');
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedRawImage(reader.result as string);
+      setTargetType(type);
+      setInitialAspect(type === 'banner' ? 16 / 9 : 4 / 3);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // reset input
+  };
 
-    try {
-      const uploadRes = await uploadToImageKitApi(file);
-      if (uploadRes && uploadRes.url) {
-        setFormData(prev => ({ ...prev, bannerUrl: uploadRes.url }));
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to upload event banner to ImageKit.');
-    } finally {
-      setUploadingBanner(false);
+  const handleCropUploadSuccess = (url: string, type: 'banner' | 'cover') => {
+    if (type === 'banner') {
+      setFormData(prev => ({ ...prev, bannerUrl: url }));
+    } else {
+      setFormData(prev => ({ ...prev, coverUrl: url }));
     }
   };
 
@@ -161,7 +172,7 @@ export default function CreateEventPage() {
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div>
               <h1 className="text-2xl font-bold text-white">Create New Event</h1>
-              <p className="text-xs text-[#a69181] mt-0.5">Upload ImageKit event banner, define details and mode. Next step will build the registration form.</p>
+              <p className="text-xs text-[#a69181] mt-0.5">Crop & compress 16:9 banner & 4:3 cover images for ImageKit CDN delivery.</p>
             </div>
             <span className="px-3 py-1 rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1">
               <Lock className="w-3.5 h-3.5" />
@@ -176,62 +187,91 @@ export default function CreateEventPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Event Banner Upload (ImageKit CDN) */}
-            <div className="form-group">
-              <label className="form-label font-semibold flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <ImageIcon className="w-4 h-4 text-[#e6c594]" />
-                  <span>Event Banner Image (ImageKit CDN Upload)</span>
-                </span>
-                <span className="text-[10px] text-emerald-400 font-mono">ImageKit CDN</span>
-              </label>
+            {/* Dual Image Uploaders: 16:9 Banner & 4:3 Cover with Crop & Compressor */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#180509] p-5 rounded-2xl border border-white/10">
+              {/* 16:9 Banner Upload */}
+              <div className="form-group mb-0">
+                <label className="form-label font-semibold flex items-center justify-between text-xs mb-2">
+                  <span className="flex items-center gap-1.5 text-white">
+                    <ImageIcon className="w-4 h-4 text-[#e6c594]" />
+                    <span>Header Banner (16:9 Ratio)</span>
+                  </span>
+                  <span className="text-[10px] text-[#e6c594] font-mono px-2 py-0.5 rounded bg-[#800020]/40">16 : 9</span>
+                </label>
 
-              {formData.bannerUrl ? (
-                <div className="relative rounded-2xl overflow-hidden border border-[#e6c594]/40 h-48 bg-black/40 group">
-                  <img 
-                    src={formData.bannerUrl} 
-                    alt="Event Banner Preview" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                    <button 
-                      type="button" 
-                      onClick={() => setFormData(prev => ({ ...prev, bannerUrl: '' }))}
-                      className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold"
-                    >
-                      Remove Banner
-                    </button>
+                {formData.bannerUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-[#e6c594]/40 h-36 bg-black/40 group">
+                    <img 
+                      src={formData.bannerUrl} 
+                      alt="Banner Preview" 
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button 
+                        type="button" 
+                        onClick={() => setFormData(prev => ({ ...prev, bannerUrl: '' }))}
+                        className="px-3 py-1 rounded bg-rose-600 text-white text-xs font-semibold"
+                      >
+                        Remove Banner
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <label className="flex-1 flex flex-col items-center justify-center p-4 border-2 border-dashed border-white/10 rounded-xl bg-white/[0.02] hover:border-[#e6c594]/40 transition-colors cursor-pointer text-center">
-                    <UploadCloud className="w-6 h-6 text-[#e6c594] mb-1" />
-                    <span className="text-xs font-medium text-white mb-0.5">
-                      {uploadingBanner ? 'Uploading to ImageKit CDN...' : 'Click to Upload Event Banner'}
-                    </span>
-                    <span className="text-[10px] text-[#a69181]">JPG, PNG, WebP up to 10MB</span>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 h-36 border-2 border-dashed border-white/10 rounded-xl bg-white/[0.02] hover:border-[#e6c594]/40 transition-colors cursor-pointer text-center">
+                    <Crop className="w-6 h-6 text-[#e6c594] mb-1" />
+                    <span className="text-xs font-medium text-white mb-0.5">Crop & Compress Banner</span>
+                    <span className="text-[10px] text-[#a69181]">16:9 Aspect Ratio</span>
                     <input 
                       type="file" 
-                      onChange={handleBannerFileChange}
+                      onChange={(e) => triggerCropModal(e, 'banner')}
                       accept="image/*"
                       className="hidden"
-                      disabled={uploadingBanner}
                     />
                   </label>
+                )}
+              </div>
 
-                  <div className="flex-1">
-                    <input 
-                      type="url"
-                      name="bannerUrl"
-                      value={formData.bannerUrl}
-                      onChange={handleChange}
-                      placeholder="Or paste direct ImageKit URL..."
-                      className="form-input text-xs font-mono"
+              {/* 4:3 Cover Card Upload */}
+              <div className="form-group mb-0">
+                <label className="form-label font-semibold flex items-center justify-between text-xs mb-2">
+                  <span className="flex items-center gap-1.5 text-white">
+                    <ImageIcon className="w-4 h-4 text-cyan-400" />
+                    <span>Card Cover Image (4:3 Ratio)</span>
+                  </span>
+                  <span className="text-[10px] text-cyan-300 font-mono px-2 py-0.5 rounded bg-cyan-500/20">4 : 3</span>
+                </label>
+
+                {formData.coverUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-cyan-500/40 h-36 bg-black/40 group">
+                    <img 
+                      src={formData.coverUrl} 
+                      alt="Cover Preview" 
+                      className="w-full h-full object-cover"
                     />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button 
+                        type="button" 
+                        onClick={() => setFormData(prev => ({ ...prev, coverUrl: '' }))}
+                        className="px-3 py-1 rounded bg-rose-600 text-white text-xs font-semibold"
+                      >
+                        Remove Cover
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 h-36 border-2 border-dashed border-white/10 rounded-xl bg-white/[0.02] hover:border-cyan-400/40 transition-colors cursor-pointer text-center">
+                    <Crop className="w-6 h-6 text-cyan-400 mb-1" />
+                    <span className="text-xs font-medium text-white mb-0.5">Crop & Compress Cover</span>
+                    <span className="text-[10px] text-[#a69181]">4:3 Aspect Ratio</span>
+                    <input 
+                      type="file" 
+                      onChange={(e) => triggerCropModal(e, 'cover')}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             <div className="form-group">
@@ -413,7 +453,7 @@ export default function CreateEventPage() {
               </Link>
               <button 
                 type="submit" 
-                disabled={loading || uploadingBanner}
+                disabled={loading}
                 className="btn-primary text-sm min-w-[180px] justify-center"
               >
                 {loading ? 'Creating...' : 'Save & Build Registration Form →'}
@@ -422,6 +462,16 @@ export default function CreateEventPage() {
           </form>
         </div>
       </main>
+
+      {/* Interactive Crop & Compressor Modal */}
+      <ImageCropModal 
+        isOpen={cropModalOpen}
+        imageSrc={selectedRawImage}
+        initialAspect={initialAspect}
+        targetType={targetType}
+        onClose={() => setCropModalOpen(false)}
+        onUploadSuccess={handleCropUploadSuccess}
+      />
     </div>
   );
 }
