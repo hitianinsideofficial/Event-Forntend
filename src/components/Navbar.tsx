@@ -31,7 +31,7 @@ export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
               HITian Inside
             </span>
             <span className="text-[9px] sm:text-[10px] font-medium text-[#a69181] tracking-wider uppercase truncate max-w-[170px] sm:max-w-none">
-              Event Hub & Verification
+              Official Event Portal
             </span>
           </div>
         </Link>
@@ -47,17 +47,6 @@ export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
             <span>Visit Main Website</span>
             <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </a>
-
-          {onOpenVerifyModal && (
-            <button 
-              onClick={onOpenVerifyModal}
-              className="btn-secondary text-[11px] sm:text-xs py-1.5 sm:py-2 px-2.5 sm:px-4 inline-flex items-center gap-1 sm:gap-1.5 shrink-0"
-            >
-              <Award className="w-3.5 h-3.5 text-[#e6c594]" />
-              <span className="hidden xs:inline sm:inline">Verify Certificate</span>
-              <span className="xs:hidden sm:hidden">Verify</span>
-            </button>
-          )}
         </div>
       </div>
     </header>
