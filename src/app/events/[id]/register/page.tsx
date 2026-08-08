@@ -52,8 +52,8 @@ const DEPT_CODES: Record<string, string> = {
 const YEAR_CODES: Record<string, string> = {
   'First Year (26)': '26',
   'Second Year (25)': '25',
-  'Third Year (27)': '27',
-  'Fourth Year (28)': '28'
+  'Third Year (24)': '24',
+  'Fourth Year (23)': '23'
 };
 
 interface SwarajDomain {
