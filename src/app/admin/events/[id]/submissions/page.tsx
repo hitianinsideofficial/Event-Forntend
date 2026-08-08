@@ -364,10 +364,21 @@ export default function EventSubmissionsPage() {
 
                       <td className="p-3 text-right">
                         {sub.acknowledged ? (
-                          <span className="text-[10px] text-emerald-400 font-mono flex items-center justify-end gap-1">
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span>Email Sent</span>
-                          </span>
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span>Sent</span>
+                            </span>
+                            <button 
+                              onClick={() => handleAcknowledge(sub.id)}
+                              disabled={acknowledgingId === sub.id}
+                              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1"
+                              title="Resend Acknowledgment Email"
+                            >
+                              <Send className="w-3 h-3" />
+                              <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge Again 🔄'}</span>
+                            </button>
+                          </div>
                         ) : (
                           <button 
                             onClick={() => handleAcknowledge(sub.id)}

@@ -540,44 +540,70 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
               {/* Grid: Details + QR Code */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
-                <div className="sm:col-span-2 space-y-3 text-xs">
+                <div className="sm:col-span-2 space-y-2.5 text-xs">
                   <div className="flex justify-between pb-1.5 border-b border-white/5">
                     <span className="text-[#a69181]">Ticket ID:</span>
                     <span className="font-mono font-extrabold text-[#ff9933] text-sm">{ticket.ticketId}</span>
                   </div>
                   <div className="flex justify-between pb-1.5 border-b border-white/5">
-                    <span className="text-[#a69181]">Attendee Name:</span>
+                    <span className="text-[#a69181]">Participant Name:</span>
                     <span className="font-bold text-white">{ticket.fullName}</span>
                   </div>
-                  <div className="flex justify-between pb-1.5 border-b border-white/5">
-                    <span className="text-[#a69181]">Email Address:</span>
-                    <span className="font-medium text-white">{ticket.email}</span>
-                  </div>
-                  <div className="flex justify-between pb-1.5 border-b border-white/5">
-                    <span className="text-[#a69181]">Mobile Phone:</span>
-                    <span className="font-medium text-white">{ticket.phone}</span>
-                  </div>
 
-                  {ticket.answers && (
-                    <div className="pt-2 space-y-1.5">
-                      {Object.entries(ticket.answers).map(([key, val], idx) => (
-                        <div key={idx} className="flex justify-between text-[11px] pb-1 border-b border-white/5">
-                          <span className="text-[#a69181] font-semibold">{key}:</span>
-                          {String(val).startsWith('http') ? (
-                            <a href={String(val)} target="_blank" rel="noreferrer" className="text-cyan-400 underline font-semibold truncate max-w-[200px]">
-                              {String(val)}
-                            </a>
-                          ) : (
-                            <span className="text-white font-bold truncate max-w-[220px]">{String(val)}</span>
-                          )}
-                        </div>
-                      ))}
+                  {ticket.answers?.['Department'] && (
+                    <div className="flex justify-between pb-1.5 border-b border-white/5">
+                      <span className="text-[#a69181]">Department:</span>
+                      <span className="font-semibold text-white">{ticket.answers['Department']}</span>
+                    </div>
+                  )}
+
+                  {ticket.answers?.['Academic Year'] && (
+                    <div className="flex justify-between pb-1.5 border-b border-white/5">
+                      <span className="text-[#a69181]">Academic Year:</span>
+                      <span className="font-semibold text-white">{ticket.answers['Academic Year']}</span>
+                    </div>
+                  )}
+
+                  {ticket.answers?.['College Roll Number'] && (
+                    <div className="flex justify-between pb-1.5 border-b border-white/5">
+                      <span className="text-[#a69181]">College Roll Number:</span>
+                      <span className="font-bold text-[#ff9933] font-mono">{ticket.answers['College Roll Number']}</span>
+                    </div>
+                  )}
+
+                  {ticket.answers?.['Selected Domain'] && (
+                    <div className="flex justify-between pb-1.5 border-b border-white/5">
+                      <span className="text-[#a69181]">Selected Domain:</span>
+                      <span className="font-bold text-emerald-400">{ticket.answers['Selected Domain']}</span>
+                    </div>
+                  )}
+
+                  {ticket.answers?.['Selected Theme'] && (
+                    <div className="flex justify-between pb-1.5 border-b border-white/5">
+                      <span className="text-[#a69181]">Chosen Theme:</span>
+                      <span className="font-semibold text-white italic">{ticket.answers['Selected Theme']}</span>
+                    </div>
+                  )}
+
+                  {ticket.answers?.['Caption / Write-up / Raw Notes'] && (
+                    <div className="flex justify-between pb-1.5 border-b border-white/5">
+                      <span className="text-[#a69181]">Caption / Write-up / Raw Notes:</span>
+                      <span className="font-medium text-white truncate max-w-[200px]">{ticket.answers['Caption / Write-up / Raw Notes']}</span>
+                    </div>
+                  )}
+
+                  {ticket.answers?.['Google Drive Video Reel Link'] && (
+                    <div className="flex justify-between pb-1.5 border-b border-white/5">
+                      <span className="text-[#a69181]">Google Drive Reel Link:</span>
+                      <a href={ticket.answers['Google Drive Video Reel Link']} target="_blank" rel="noreferrer" className="text-cyan-400 font-semibold underline truncate max-w-[200px]">
+                        View Reel Link
+                      </a>
                     </div>
                   )}
 
                   {ticket.files && ticket.files.length > 0 && (
-                    <div className="flex justify-between items-center pt-2">
-                      <span className="text-[#a69181]">Attached File:</span>
+                    <div className="flex justify-between items-center pt-1.5">
+                      <span className="text-[#a69181]">Submitted Media File:</span>
                       <a href={ticket.files[0].driveLink || ticket.files[0].localUrl} target="_blank" rel="noreferrer" className="text-cyan-400 font-semibold underline truncate max-w-[200px]">
                         {ticket.files[0].originalName}
                       </a>
