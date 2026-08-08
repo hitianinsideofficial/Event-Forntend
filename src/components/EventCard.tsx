@@ -9,7 +9,7 @@ interface EventCardProps {
 }
 
 export default function EventCard({ event }: EventCardProps) {
-  const { id, _id, title, description, date, location, organizer, status, mode, theme, isFlagship, bannerUrl, coverUrl, hasAttendance, requireFileUpload } = event;
+  const { id, _id, title, description, date, organizer, status, mode, theme, isFlagship, bannerUrl, coverUrl, hasAttendance } = event;
   const eventId = id || _id;
 
   const isTricolour = isFlagship || theme === 'TRICOLOUR' || title.toLowerCase().includes('swaraj');
@@ -109,18 +109,18 @@ export default function EventCard({ event }: EventCardProps) {
           </p>
         </div>
 
-        <div className="pt-4 border-t border-[#f7f1e5]/10 flex items-center justify-between mt-auto">
-          <span className="text-xs text-[#a69181] flex items-center gap-1 truncate max-w-[50%] font-medium">
-            <MapPin className={`w-3.5 h-3.5 shrink-0 ${isTricolour ? 'text-[#ff9933]' : 'text-[#e6c594]'}`} />
-            <span className="truncate">{location || 'Main Campus'}</span>
-          </span>
-
+        {/* Full Width Registration Action Button */}
+        <div className="pt-4 border-t border-[#f7f1e5]/10 mt-auto">
           <Link 
             href={`/events/${eventId}`}
-            className={isTricolour ? 'btn-tricolour text-xs py-1.5 px-3.5' : 'px-3.5 py-1.5 text-xs font-bold text-[#150408] bg-[#e6c594] hover:bg-[#f7f1e5] rounded-lg transition-all shadow-md shadow-[#e6c594]/20 inline-flex items-center gap-1'}
+            className={
+              isTricolour 
+                ? 'btn-tricolour w-full justify-center text-center text-xs py-2.5 px-4 font-bold shadow-lg' 
+                : 'w-full justify-center text-center py-2.5 px-4 text-xs font-bold text-[#150408] bg-[#e6c594] hover:bg-[#f7f1e5] rounded-xl transition-all shadow-md shadow-[#e6c594]/20 inline-flex items-center gap-1.5'
+            }
           >
             <span>{isTricolour ? 'Register for Swaraj-E-Hind' : 'View Details & Rules'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5 shrink-0" />
           </Link>
         </div>
       </div>
