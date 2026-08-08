@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import BackendStatus from './BackendStatus';
-import { Award } from 'lucide-react';
+import { Award, ExternalLink } from 'lucide-react';
 
 interface NavbarProps {
   onOpenVerifyModal?: () => void;
@@ -36,8 +36,18 @@ export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
           </div>
         </Link>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <BackendStatus />
+
+          <a 
+            href="https://www.hitianinside.in/" 
+            target="_blank" 
+            rel="noreferrer"
+            className="px-3.5 py-2 rounded-xl bg-[#800020]/30 hover:bg-[#800020] text-[#e6c594] hover:text-white border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-md"
+          >
+            <span>Visit Main Website</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
 
           {onOpenVerifyModal && (
             <button 
