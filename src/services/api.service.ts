@@ -4,7 +4,7 @@ import { CertificateItem } from '../types/certificate.types';
 import { ApiResponse, BackendHealthResponse } from '../types/api.types';
 
 const LOCAL_API_URL = 'http://localhost:5000/api';
-const LIVE_API_URL = process.env.NEXT_PUBLIC_LIVE_API_URL || 'https://hitianinside-event-backend-jq4ibl1ks-hitian-inside.vercel.app/api';
+const LIVE_API_URL = process.env.NEXT_PUBLIC_LIVE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://hitianinside-event-backend.vercel.app/api';
 
 let cachedApiUrl: string | null = null;
 
