@@ -187,7 +187,7 @@ export default function EventSubmissionsPage() {
     <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link 
           href="/admin" 
           className="inline-flex items-center gap-1.5 text-xs text-[#a69181] hover:text-white mb-6 transition-colors font-medium"
