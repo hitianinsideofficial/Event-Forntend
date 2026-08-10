@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outfit } from 'next/font/google';
 import './globals.css';
+import AnalyticsTracker from '../components/AnalyticsTracker';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className="antialiased selection:bg-[#800020] selection:text-[#e6c594]"
         suppressHydrationWarning
       >
+        <AnalyticsTracker />
         {children}
       </body>
     </html>
