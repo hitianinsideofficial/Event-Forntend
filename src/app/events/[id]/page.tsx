@@ -216,14 +216,14 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
                 <div>
                   <h3 className="text-sm font-bold text-[#ff9933]">2. What happens here?</h3>
                   <p className="text-xs text-[#e6d7c3]/90 mt-1">
-                    From conversations and performances to creative expressions, Swaraj-e-Hind gives everyone a chance to share their thoughts and showcase their talent. It’s a space to speak, create, question, and celebrate together.
+                    From performances to creative expressions, Swaraj-e-Hind gives everyone a chance to share their thoughts and showcase their talent.
                   </p>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-bold text-[#ff9933]">3. Evaluation Process</h3>
                   <p className="text-xs text-[#e6d7c3]/90 mt-1">
-                    Participants will be judged on creativity, originality, relevance to the theme, and how effectively they present their ideas. We’re not just looking for the “perfect” answer, we’re looking for something that stands out and has meaning.
+                    Participants will be judged on creativity, originality, relevance to the theme, and how effectively they present their ideas.
                   </p>
                 </div>
 
@@ -254,7 +254,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-white">{item.title}</h3>
-                    <p className="text-xs text-[#a69181] mt-0.5">{item.description}</p>
+                    <p className="text-xs text-[#a69181] mt-0.5 whitespace-pre-line">{item.description}</p>
                   </div>
                 </div>
               ))}
