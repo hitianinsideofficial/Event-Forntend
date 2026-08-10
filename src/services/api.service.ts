@@ -322,3 +322,123 @@ export async function acknowledgeSubmissionApi(submissionId: string): Promise<Ap
     throw err;
   }
 }
+
+// Observer Authentication & Submission APIs
+export async function observerLoginApi(email: string, password: string): Promise<{ success: boolean; token?: string; message?: string; observer?: any }> {
+  const baseUrl = await getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/observer/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Observer authentication failed');
+  return data;
+}
+
+export async function fetchObserverSubmissionsApi(eventId?: string): Promise<SubmissionItem[]> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('observerToken') : null;
+
+  const targetUrl = eventId ? `${baseUrl}/observer/events/${eventId}/submissions` : `${baseUrl}/observer/submissions`;
+
+  const res = await fetch(targetUrl, {
+    headers: {
+      'Authorization': `Bearer ${token || ''}`
+    },
+    cache: 'no-store'
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch observer submissions');
+  return data.data || [];
+}
+
+// Admin Observer Credentials Management APIs
+export async function fetchObserversAdminApi(): Promise<any[]> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/admin/observers`, {
+    headers: { 'Authorization': `Bearer ${token || ''}` },
+    cache: 'no-store'
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch observers');
+  return data.data || [];
+}
+
+export async function createObserverAdminApi(name: string, email: string, password: string): Promise<any> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/admin/observers`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || ''}`
+    },
+    body: JSON.stringify({ name, email, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to create observer credentials');
+  return data;
+}
+
+export async function toggleObserverStatusAdminApi(id: string, isActive: boolean): Promise<any> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/admin/observers/${id}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || ''}`
+    },
+    body: JSON.stringify({ isActive })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update observer status');
+  return data;
+}
+
+export async function deleteObserverAdminApi(id: string): Promise<any> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/admin/observers/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token || ''}` }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to delete observer credentials');
+  return data;
+}
+
+export async function deleteSubmissionApi(submissionId: string): Promise<any> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token || ''}`
+    }
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to delete submission');
+  return data;
+}
+
+export async function fetchLogsAndAnalyticsApi(): Promise<any> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/admin/logs-analytics`, {
+    headers: { 'Authorization': `Bearer ${token || ''}` },
+    cache: 'no-store'
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch audit logs and analytics');
+  return data.data;
+}

@@ -8,7 +8,8 @@ import {
   fetchEventById, 
   fetchSubmissionsApi, 
   checkInAttendeeApi,
-  acknowledgeSubmissionApi 
+  acknowledgeSubmissionApi,
+  deleteSubmissionApi
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
@@ -28,7 +29,8 @@ import {
   Layers,
   Image as ImageIcon,
   User,
-  Hash
+  Hash,
+  Trash2
 } from 'lucide-react';
 
 export default function EventSubmissionsPage() {
@@ -46,6 +48,7 @@ export default function EventSubmissionsPage() {
   const [checkInResult, setCheckInResult] = useState<ApiResponse<SubmissionItem> | null>(null);
   const [checkInLoading, setCheckInLoading] = useState<boolean>(false);
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+  const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
 
   // Gallery View & Domain -> Theme Filter state
   const [viewMode, setViewMode] = useState<'gallery' | 'table'>('gallery');
@@ -127,6 +130,22 @@ export default function EventSubmissionsPage() {
       alert(err.message || 'Failed to acknowledge submission');
     } finally {
       setAcknowledgingId(null);
+    }
+  };
+
+  const handleDeleteSubmission = async (subId: string, participantName: string, ticketId: string) => {
+    if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE the registration/submission for "${participantName}" (Ticket: ${ticketId})? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingSubId(subId);
+    try {
+      await deleteSubmissionApi(subId);
+      setSubmissions(prev => prev.filter(s => s.id !== subId && s.ticketId !== ticketId));
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete submission');
+    } finally {
+      setDeletingSubId(null);
     }
   };
 
@@ -469,31 +488,42 @@ export default function EventSubmissionsPage() {
                         </div>
                       </div>
 
-                      {/* ACKNOWLEDGMENT EMAIL BUTTON */}
-                      <div className="pt-2">
-                        {sub.acknowledged ? (
-                          <div className="flex items-center justify-between">
-                            <span className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Ack Sent
-                            </span>
+                      {/* ACKNOWLEDGMENT EMAIL & DELETE BUTTONS */}
+                      <div className="pt-2 flex items-center justify-between gap-2 border-t border-white/5">
+                        <div className="flex-1">
+                          {sub.acknowledged ? (
+                            <div className="flex items-center justify-between">
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Sent
+                              </span>
+                              <button 
+                                onClick={() => handleAcknowledge(sub.id)}
+                                disabled={acknowledgingId === sub.id}
+                                className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition-all disabled:opacity-50"
+                              >
+                                {acknowledgingId === sub.id ? '...' : 'Resend 🔄'}
+                              </button>
+                            </div>
+                          ) : (
                             <button 
                               onClick={() => handleAcknowledge(sub.id)}
                               disabled={acknowledgingId === sub.id}
-                              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition-all disabled:opacity-50"
+                              className="btn-tricolour text-xs py-1 px-3 w-full justify-center inline-flex items-center gap-1 shadow-md disabled:opacity-50"
                             >
-                              {acknowledgingId === sub.id ? 'Sending...' : 'Resend Email 🔄'}
+                              <Send className="w-3 h-3" />
+                              <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge'}</span>
                             </button>
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={() => handleAcknowledge(sub.id)}
-                            disabled={acknowledgingId === sub.id}
-                            className="btn-tricolour text-xs py-1.5 px-4 w-full justify-center inline-flex items-center gap-1.5 shadow-md disabled:opacity-50"
-                          >
-                            <Send className="w-3.5 h-3.5" />
-                            <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge Submission'}</span>
-                          </button>
-                        )}
+                          )}
+                        </div>
+
+                        <button
+                          onClick={() => handleDeleteSubmission(sub.id, sub.fullName, sub.ticketId)}
+                          disabled={deletingSubId === sub.id}
+                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all shrink-0"
+                          title="Delete Submission"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -511,7 +541,7 @@ export default function EventSubmissionsPage() {
                     <th className="p-3">Domain & Theme Details</th>
                     <th className="p-3">Attached Media / Links</th>
                     <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Email Acknowledgment</th>
+                    <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -601,32 +631,43 @@ export default function EventSubmissionsPage() {
                       </td>
 
                       <td className="p-3 text-right">
-                        {sub.acknowledged ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                              <Check className="w-3 h-3 text-emerald-400" />
-                              <span>Sent</span>
-                            </span>
+                        <div className="flex items-center justify-end gap-2">
+                          {sub.acknowledged ? (
+                            <>
+                              <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span>Sent</span>
+                              </span>
+                              <button 
+                                onClick={() => handleAcknowledge(sub.id)}
+                                disabled={acknowledgingId === sub.id}
+                                className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1"
+                                title="Resend Acknowledgment Email"
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>{acknowledgingId === sub.id ? '...' : 'Resend 🔄'}</span>
+                              </button>
+                            </>
+                          ) : (
                             <button 
                               onClick={() => handleAcknowledge(sub.id)}
                               disabled={acknowledgingId === sub.id}
-                              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1"
-                              title="Resend Acknowledgment Email"
+                              className="btn-tricolour text-[11px] py-1.5 px-3 inline-flex items-center gap-1.5 shadow-md disabled:opacity-50"
                             >
                               <Send className="w-3 h-3" />
-                              <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge Again 🔄'}</span>
+                              <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge'}</span>
                             </button>
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={() => handleAcknowledge(sub.id)}
-                            disabled={acknowledgingId === sub.id}
-                            className="btn-tricolour text-[11px] py-1.5 px-3 inline-flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                          )}
+
+                          <button
+                            onClick={() => handleDeleteSubmission(sub.id, sub.fullName, sub.ticketId)}
+                            disabled={deletingSubId === sub.id}
+                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all shrink-0"
+                            title="Delete Submission"
                           >
-                            <Send className="w-3 h-3" />
-                            <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge Submission'}</span>
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   ))}
