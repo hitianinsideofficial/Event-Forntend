@@ -76,6 +76,33 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
 
   const isTricolour = event.isFlagship || event.theme === 'TRICOLOUR' || event.title.toLowerCase().includes('swaraj');
 
+  const SWARAJ_HIGHLIGHTS = [
+    { 
+      title: 'Art Beyond Boundaries', 
+      description: 'Photography • Digital Art\nExplore India through creativity, colour, and perspective.' 
+    },
+    { 
+      title: 'Stories That Move', 
+      description: 'Reel Making\nTurn stories of freedom and India into powerful visual narratives.' 
+    },
+    { 
+      title: 'Words That Speak', 
+      description: 'Creative Writing\nGive your thoughts a voice through stories, reflections, and imagination.' 
+    }
+  ];
+
+  const hasOldHighlights = event.highlights?.some(h => 
+    h.title?.includes('Grand Stage') || 
+    h.title?.includes('Poetry') || 
+    h.title?.includes('Digital Arts') ||
+    h.title?.startsWith('1.') ||
+    h.title?.startsWith('2.')
+  );
+
+  const displayHighlights = (isTricolour || hasOldHighlights)
+    ? SWARAJ_HIGHLIGHTS
+    : (event.highlights || []);
+
   return (
     <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
       <Navbar />
@@ -119,8 +146,6 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
                 <span className="px-3 py-0.5 text-[10px] font-bold rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 uppercase tracking-wider">
                   {event.organizer || 'HITian Inside'}
                 </span>
-
-
 
                 {event.status === 'LIVE' ? (
                   <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1">
@@ -239,7 +264,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
         </section>
 
         {/* Custom Event Highlights */}
-        {event.highlights && event.highlights.length > 0 && (
+        {displayHighlights && displayHighlights.length > 0 && (
           <section className="glass-panel p-6 sm:p-8 border border-[#f7f1e5]/10 mb-8">
             <h2 className="text-lg font-bold text-[#e6c594] border-b border-white/10 pb-4 mb-6 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#e6c594]" />
@@ -247,7 +272,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {event.highlights.map((item, idx) => (
+              {displayHighlights.map((item, idx) => (
                 <div key={idx} className="bg-[#180509] p-4 rounded-xl border border-white/5 flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-[#800020]/25 text-[#e6c594] shrink-0 mt-0.5">
                     <CheckCircle className="w-4 h-4 text-[#e6c594]" />
