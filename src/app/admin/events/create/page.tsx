@@ -61,15 +61,16 @@ export default function CreateEventPage() {
     setFormData(prev => ({
       ...prev,
       title: 'SWARAJ-E-HIND 4.0',
-      description: `The official Independence Day celebration event of HITian Inside! Showcasing patriotism through photography, reel making, creative writing and arts.
+      description: `The official trademark Independence Day celebration event of HITian Inside! Showcasing patriotism through photography, reel making, creative writing and arts.
+
 1. What is Swaraj-e-Hind?
 Swaraj-e-Hind is more than just an event, it’s a celebration of India, its freedom, and the voices of its youth. It brings together ideas, creativity, and expressions that reflect what India means to us today.
 
 2. What happens here?
-From performances to creative expressions, Swaraj-e-Hind gives everyone a chance to share their thoughts and showcase their talent. 
+From performances to creative expressions, Swaraj-e-Hind gives everyone a chance to share their thoughts and showcase their talent.
 
 3. Evaluation Process
-Participants will be judged on creativity, originality, relevance to the theme, and how effectively they present their ideas. 
+Participants will be judged on creativity, originality, relevance to the theme, and how effectively they present their ideas.
 
 4. Value Edition
 The Value Edition is about going beyond celebration and looking at the values that make us who we are—freedom, unity, courage, responsibility, and respect. Because independence isn’t just something we remember; it’s something we carry forward.`,
@@ -85,10 +86,9 @@ The Value Edition is about going beyond celebration and looking at the values th
     }));
 
     setHighlights([
-      { title: 'Art Beyond Boundaries', description: 'Explore India through creativity, colour, and perspective.
-' },
-      { title: 'Stories That Move', description: 'Turn stories of freedom and India into powerful visual narratives.' },
-      { title: 'Words That Speak', description: 'Give your thoughts a voice through stories, reflections, and imagination.' }
+      { title: 'Art Beyond Boundaries', description: 'Photography • Digital Art\nExplore India through creativity, colour, and perspective.' },
+      { title: 'Stories That Move', description: 'Reel Making\nTurn stories of freedom and India into powerful visual narratives.' },
+      { title: 'Words That Speak', description: 'Creative Writing\nGive your thoughts a voice through stories, reflections, and imagination.' }
     ]);
   };
 
