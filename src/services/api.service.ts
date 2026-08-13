@@ -47,10 +47,10 @@ export async function checkBackendHealth(): Promise<BackendHealthResponse> {
   }
 }
 
-export async function fetchEvents(includeDone: boolean = false): Promise<EventItem[]> {
+export async function fetchEvents(includeDone: boolean = false, admin: boolean = false): Promise<EventItem[]> {
   try {
     const baseUrl = await getApiBaseUrl();
-    const url = includeDone ? `${baseUrl}/events?includeDone=true` : `${baseUrl}/events`;
+    const url = `${baseUrl}/events?includeDone=${includeDone}&admin=${admin}`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result: ApiResponse<EventItem[]> = await res.json();
@@ -129,6 +129,23 @@ export async function updateEventStatusApi(id: string, status: EventStatus): Pro
     return await res.json();
   } catch (err) {
     console.error('Error updating event status:', err);
+    throw err;
+  }
+}
+
+export async function toggleEventVisibilityApi(id: string, isHidden: boolean): Promise<ApiResponse<EventItem>> {
+  try {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/events/${id}/visibility`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isHidden }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error toggling event visibility:', err);
     throw err;
   }
 }

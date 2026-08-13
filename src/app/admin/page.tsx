@@ -7,6 +7,7 @@ import {
   adminLoginApi, 
   fetchEvents, 
   updateEventStatusApi,
+  toggleEventVisibilityApi,
   deleteEventApi,
   fetchObserversAdminApi,
   createObserverAdminApi,
@@ -30,6 +31,7 @@ import {
   Trash2,
   Pencil,
   Eye,
+  EyeOff,
   MousePointerClick,
   TrendingUp,
   BarChart3,
@@ -111,16 +113,35 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const [togglingVisibilityId, setTogglingVisibilityId] = useState<string | null>(null);
+
   const loadAdminEvents = async () => {
     setLoading(true);
     try {
-      // Pass includeDone=true so admins see ALL events (including DONE)
-      const eventsList = await fetchEvents(true);
+      // Pass includeDone=true & admin=true so admins see ALL events (including DONE & HIDDEN)
+      const eventsList = await fetchEvents(true, true);
       setEvents(eventsList);
     } catch (err) {
       console.error('Failed loading admin events:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleVisibility = async (eventId: string, isHidden: boolean) => {
+    setTogglingVisibilityId(eventId);
+    try {
+      await toggleEventVisibilityApi(eventId, isHidden);
+      setEvents(prev => prev.map(ev => {
+        if ((ev.id || ev._id) === eventId) {
+          return { ...ev, isHidden };
+        }
+        return ev;
+      }));
+    } catch (err: any) {
+      alert(err.message || 'Failed to toggle event visibility');
+    } finally {
+      setTogglingVisibilityId(null);
     }
   };
 
@@ -302,22 +323,22 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
       <Navbar />
 
       <main className="flex-1 max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-800">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Admin Console & <span className="gradient-text">Event Management</span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Admin Console & <span className="text-indigo-400">Event Management</span>
             </h1>
-            <p className="text-xs text-[#a69181] mt-1">Host new events, design custom registration forms, and manage event statuses.</p>
+            <p className="text-xs text-slate-400 mt-1">General Administrative Panel • Manage events, forms, observers, and attendee records.</p>
           </div>
 
           <div className="flex items-center gap-3">
             <Link 
               href="/admin/events/create"
-              className="btn-primary text-xs inline-flex items-center gap-1.5 shadow-lg shadow-[#800020]/40"
+              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>+ Create New Event</span>
@@ -687,6 +708,31 @@ export default function AdminDashboardPage() {
                           <option value="LIVE">LIVE NOW</option>
                           <option value="DONE">DONE (Hidden from Public)</option>
                         </select>
+
+                        {/* Website Visibility Toggle Button */}
+                        <button
+                          type="button"
+                          disabled={togglingVisibilityId === eventId}
+                          onClick={() => handleToggleVisibility(eventId, !ev.isHidden)}
+                          className={`px-3 py-1 rounded-full text-[10px] font-extrabold border inline-flex items-center gap-1.5 transition-all shadow-md ${
+                            ev.isHidden 
+                              ? 'bg-rose-500/15 text-rose-400 border-rose-500/40 hover:bg-rose-500/30' 
+                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                          }`}
+                          title={ev.isHidden ? 'Click to show this event on the main website' : 'Click to hide this event from the main website'}
+                        >
+                          {ev.isHidden ? (
+                            <>
+                              <EyeOff className="w-3 h-3 text-rose-400" />
+                              <span>🙈 Hidden from Website</span>
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-3 h-3 text-emerald-400" />
+                              <span>👁️ Shown on Website</span>
+                            </>
+                          )}
+                        </button>
                       </div>
 
                       <p className="text-xs text-[#a69181] line-clamp-2">{ev.description}</p>

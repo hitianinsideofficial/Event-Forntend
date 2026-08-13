@@ -37,6 +37,7 @@ export interface EventItem {
   coverUrl?: string;
   hasAttendance: boolean;
   requireFileUpload: boolean;
+  isHidden?: boolean;
   highlights?: EventHighlight[];
   customFields?: CustomFormField[];
   createdAt?: string;

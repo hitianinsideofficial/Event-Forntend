@@ -31,7 +31,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     bannerUrl: '',
     coverUrl: '',
     hasAttendance: false,
-    requireFileUpload: false
+    requireFileUpload: false,
+    isHidden: false
   });
 
   // Cropper Modal States
@@ -80,7 +81,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             bannerUrl: ev.bannerUrl || '',
             coverUrl: ev.coverUrl || '',
             hasAttendance: Boolean(ev.hasAttendance),
-            requireFileUpload: Boolean(ev.requireFileUpload)
+            requireFileUpload: Boolean(ev.requireFileUpload),
+            isHidden: Boolean(ev.isHidden)
           });
           setHighlights(ev.highlights || []);
         }
@@ -214,7 +216,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   };
 
   return (
-    <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
       <Navbar />
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10">
@@ -471,6 +473,17 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                     className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
                   />
                   <span className="font-semibold text-white">Enable QR Code Attendance System</span>
+                </label>
+
+                <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    name="isHidden"
+                    checked={formData.isHidden}
+                    onChange={handleChange}
+                    className="w-4 h-4 rounded border-white/20 text-rose-500 focus:ring-0"
+                  />
+                  <span className="font-bold text-rose-400">🙈 Keep Hidden from Main Website Catalog</span>
                 </label>
               </div>
 

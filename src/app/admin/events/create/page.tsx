@@ -27,7 +27,8 @@ export default function CreateEventPage() {
     bannerUrl: '',
     coverUrl: '',
     hasAttendance: true,
-    requireFileUpload: false
+    requireFileUpload: false,
+    isHidden: false
   });
 
   // Cropper Modal States
@@ -43,6 +44,7 @@ export default function CreateEventPage() {
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedPreset, setSelectedPreset] = useState<string>('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -55,9 +57,8 @@ export default function CreateEventPage() {
     }
   }, [router]);
 
-  if (!isAuthenticated) return null;
-
   const loadSwarajEHindTemplate = () => {
+    setSelectedPreset('swaraj');
     setFormData(prev => ({
       ...prev,
       title: 'SWARAJ-E-HIND 4.0',
@@ -76,19 +77,84 @@ Participants will be judged on creativity, originality, relevance to the theme, 
 The Value Edition is about going beyond celebration and looking at the values that make us who we are—freedom, unity, courage, responsibility, and respect. Because independence isn’t just something we remember; it’s something we carry forward.`,
       startDate: '2026-08-15',
       endDate: '2026-08-15',
-      location: 'Main Campus Auditorium & Open Air Stage',
+      location: 'Online Submission Portal (HITian Inside Website)',
       organizer: 'HITian Inside',
       status: 'UPCOMING',
-      mode: 'OFFLINE',
+      mode: 'ONLINE',
       theme: 'TRICOLOUR',
       isFlagship: true,
-      hasAttendance: true
+      hasAttendance: false,
+      requireFileUpload: true
     }));
 
     setHighlights([
       { title: 'Art Beyond Boundaries', description: 'Photography • Digital Art\nExplore India through creativity, colour, and perspective.' },
       { title: 'Stories That Move', description: 'Reel Making\nTurn stories of freedom and India into powerful visual narratives.' },
       { title: 'Words That Speak', description: 'Creative Writing\nGive your thoughts a voice through stories, reflections, and imagination.' }
+    ]);
+  };
+
+  const loadPratidhawniTemplate = () => {
+    setSelectedPreset('pratidhawni');
+    setFormData(prev => ({
+      ...prev,
+      title: 'PRATIDHWANI',
+      description: `PRATIDHWANI - ONE LINER ... ONE LINER..
+A unit of the Tabloid, Media and Literary Club (HITian Inside).
+
+1. What is Pratidhwani?
+Pratidhwani is the flagship offline celebration of Swaraj-e-Hind at HIT Haldia. It offers an interactive live stage for students to perform, express, paint, and speak on critical youth topics.
+
+2. Event Categories:
+- OPEN MIC: Poetry, Music, Stand-up Comedy, Storytelling
+- YOUTH PARLIAMENT: Parliamentary debate, policy & discussion
+- LIVE ART: Canvas painting, live sketching, and poster creation
+
+3. Registration Fee:
+RS. 50/- ONLY per participant. Includes official digital receipt pass with unique QR_UID ticket for event entrance scanning.
+
+4. Post-Registration WhatsApp Group:
+Upon payment confirmation, participants are instantly routed to the official WhatsApp Group for schedules and rules.`,
+      startDate: '2026-08-15',
+      endDate: '2026-08-15',
+      location: 'Main Campus Grounds & Student Activity Centre, HIT Haldia',
+      organizer: 'HITian Inside • Tabloid, Media & Literary Club',
+      status: 'UPCOMING',
+      mode: 'OFFLINE',
+      theme: 'TRICOLOUR',
+      isFlagship: true,
+      hasAttendance: true,
+      requireFileUpload: false
+    }));
+
+    setHighlights([
+      { title: 'OPEN MIC', description: 'Poetry • Music • Stand-up • Storytelling\nUnleash your voice live on stage.' },
+      { title: 'YOUTH PARLIAMENT', description: 'Debate • Policy • Parliamentary Discussion\nSpeak up and represent the leaders of tomorrow.' },
+      { title: 'LIVE ART', description: 'Painting • Sketching • Poster Art\nExpress freedom and creativity live on canvas.' }
+    ]);
+  };
+
+  const resetToBlankTemplate = () => {
+    setSelectedPreset('blank');
+    setFormData({
+      title: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+      location: '',
+      organizer: 'HITian Inside',
+      status: 'UPCOMING',
+      mode: 'OFFLINE',
+      theme: 'DEFAULT',
+      isFlagship: false,
+      bannerUrl: '',
+      coverUrl: '',
+      hasAttendance: true,
+      requireFileUpload: false,
+      isHidden: false
+    });
+    setHighlights([
+      { title: 'Schedule Highlight', description: 'Interactive workshops & live keynotes' }
     ]);
   };
 
@@ -206,8 +272,10 @@ The Value Edition is about going beyond celebration and looking at the values th
     }
   };
 
+  if (!isAuthenticated) return null;
+
   return (
-    <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
       <Navbar />
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10">
@@ -220,15 +288,25 @@ The Value Edition is about going beyond celebration and looking at the values th
             <span>Back to Admin Console</span>
           </Link>
 
-          {/* Quick Preset Button for Swaraj-E-Hind */}
-          <button
-            type="button"
-            onClick={loadSwarajEHindTemplate}
-            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#ff9933]/30 via-white/10 to-[#138808]/30 hover:from-[#ff9933]/50 hover:to-[#138808]/50 text-[#ff9933] border border-[#ff9933]/40 text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-md"
-          >
-            <Flag className="w-3.5 h-3.5 text-[#ff9933]" />
-            <span>🇮🇳 Load Swaraj-E-Hind Template</span>
-          </button>
+          {/* Event Presets Dropdown */}
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#ff9933] shrink-0" />
+            <select
+              value={selectedPreset}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'swaraj') loadSwarajEHindTemplate();
+                else if (val === 'pratidhawni') loadPratidhawniTemplate();
+                else if (val === 'blank') resetToBlankTemplate();
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-[#180509] border border-[#ff9933]/50 text-[#ff9933] text-xs font-bold font-mono focus:outline-none focus:ring-2 focus:ring-[#ff9933] shadow-md cursor-pointer hover:border-[#ff9933] transition-all"
+            >
+              <option value="" disabled>✨ Load Event Preset Template...</option>
+              <option value="swaraj">🇮🇳 SWARAJ-E-HIND 4.0 (Online Flagship)</option>
+              <option value="pratidhawni">🎭 Pratidhawni (Offline Flagship Paid)</option>
+              <option value="blank">🧹 Blank Template (Clear Form)</option>
+            </select>
+          </div>
         </div>
 
         <div className="glass-panel p-6 sm:p-8 border border-[#f7f1e5]/10">
@@ -456,6 +534,17 @@ The Value Edition is about going beyond celebration and looking at the values th
                   className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
                 />
                 <span className="font-semibold text-white">Enable QR Code Attendance System</span>
+              </label>
+
+              <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+                <input 
+                  type="checkbox"
+                  name="isHidden"
+                  checked={formData.isHidden}
+                  onChange={handleChange}
+                  className="w-4 h-4 rounded border-white/20 text-rose-500 focus:ring-0"
+                />
+                <span className="font-bold text-rose-400">🙈 Keep Hidden from Main Website Catalog</span>
               </label>
             </div>
 
