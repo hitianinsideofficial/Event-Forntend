@@ -18,7 +18,10 @@ import {
   Award,
   ArrowRight,
   Flag,
-  Phone
+  Phone,
+  Mic,
+  Palette,
+  Users
 } from 'lucide-react';
 
 export default function DedicatedEventDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -74,7 +77,15 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
     );
   }
 
-  const isTricolour = event.isFlagship || event.theme === 'TRICOLOUR' || event.title.toLowerCase().includes('swaraj');
+  const isPratidhwani = Boolean(
+    eventId === 'pratidhawni' || 
+    eventId === 'pratidhwani' || 
+    event.id === 'pratidhawni' || 
+    event.id === 'pratidhwani' || 
+    event.title?.toLowerCase()?.includes('pratid')
+  );
+
+  const isTricolour = (event.isFlagship || event.theme === 'TRICOLOUR' || event.title.toLowerCase().includes('swaraj')) && !isPratidhwani;
 
   const SWARAJ_HIGHLIGHTS = [
     { 
@@ -116,7 +127,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
           <span>Back to All Events</span>
         </Link>
 
-        {/* 16:9 Header Banner or Tricolour Header Box */}
+        {/* 16:9 Header Banner or Flagship Header Box */}
         {event.bannerUrl ? (
           <div className="relative w-full aspect-[16/9] max-h-80 rounded-2xl overflow-hidden border border-white/10 mb-8 shadow-2xl">
             <img 
@@ -125,6 +136,23 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#150408] via-transparent to-transparent opacity-90" />
+          </div>
+        ) : isPratidhwani ? (
+          <div className="relative w-full p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-[#800020]/40 via-[#2a0810] to-[#c41e3a]/40 border-2 border-[#ff9933] mb-8 text-center shadow-2xl overflow-hidden">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ff9933]/20 border border-[#ff9933]/50 text-[#ff9933] text-xs font-black uppercase tracking-wider mb-3">
+              <Sparkles className="w-4 h-4 text-[#ff9933]" />
+              <span>🇮🇳 HITian inside • A unit of the Tabloid, Media and Literary Club</span>
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-[#ff9933] drop-shadow-lg">
+              PRATIDHWANI
+            </h1>
+            <p className="text-xs sm:text-sm text-[#e6c594] font-extrabold tracking-widest uppercase mt-1 font-mono">
+              ONE LINER ... ONE LINER..
+            </p>
+            <div className="mt-4 inline-flex items-center gap-3 bg-[#ff9933]/15 px-4 py-1.5 rounded-full border border-[#ff9933]/30">
+              <span className="text-xs font-bold text-white">ENTRY FEE:</span>
+              <span className="text-sm font-black text-amber-300 font-mono">RS. 50/- ONLY</span>
+            </div>
           </div>
         ) : isTricolour ? (
           <div className="relative w-full p-8 rounded-2xl bg-gradient-to-r from-[#ff9933]/20 via-[#ffffff]/5 to-[#138808]/20 border-2 border-[#ff9933]/40 mb-8 text-center shadow-xl">
@@ -221,13 +249,100 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
           </div>
         </div>
 
-        {/* Detailed Description & Rules */}
+        {/* Pratidhwani Flagship 3 Event Categories Grid */}
+        {isPratidhwani && (
+          <section className="glass-panel p-6 sm:p-8 border-2 border-[#ff9933]/50 mb-8 space-y-6 bg-[#1b060c] shadow-2xl">
+            <div className="border-b border-white/10 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-xl font-black text-[#ff9933] uppercase tracking-wider font-mono">
+                  Pratidhwani Competition Categories
+                </h2>
+                <p className="text-xs text-[#a69181] mt-0.5">Select 1 event option during registration (Entry Fee: RS. 50/- ONLY)</p>
+              </div>
+              <span className="px-3.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-black shadow-md">
+                RS. 50/- ENTRY FEE
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Category 1: OPEN MIC */}
+              <div className="bg-[#180509] p-5 rounded-2xl border border-white/10 space-y-2 hover:border-[#ff9933]/60 transition-all shadow-lg">
+                <div className="w-10 h-10 rounded-xl bg-[#ff9933]/20 border border-[#ff9933]/40 text-[#ff9933] flex items-center justify-center mb-2">
+                  <Mic className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-black text-white">OPEN MIC</h3>
+                <p className="text-[11px] font-bold text-[#ff9933] font-mono">Poetry • Music • Stand-up • Stories</p>
+                <p className="text-xs text-[#a69181] leading-relaxed pt-1">
+                  Share your voice live on stage! Express your thoughts, perform original music, poetry, or stand-up comedy in front of a live campus audience.
+                </p>
+              </div>
+
+              {/* Category 2: YOUTH PARLIAMENT */}
+              <div className="bg-[#180509] p-5 rounded-2xl border border-white/10 space-y-2 hover:border-[#ff9933]/60 transition-all shadow-lg">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center mb-2">
+                  <Users className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-black text-white">YOUTH PARLIAMENT</h3>
+                <p className="text-[11px] font-bold text-purple-300 font-mono">Debate • Policy • Parliamentary Discussion</p>
+                <p className="text-xs text-[#a69181] leading-relaxed pt-1">
+                  Engage in constructive parliamentary debate! Discuss youth policies, speak on national topics, and represent young leaders of tomorrow.
+                </p>
+              </div>
+
+              {/* Category 3: LIVE ART */}
+              <div className="bg-[#180509] p-5 rounded-2xl border border-white/10 space-y-2 hover:border-[#ff9933]/60 transition-all shadow-lg">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 flex items-center justify-center mb-2">
+                  <Palette className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-black text-white">LIVE ART</h3>
+                <p className="text-[11px] font-bold text-cyan-300 font-mono">Painting • Sketching • Poster Art</p>
+                <p className="text-xs text-[#a69181] leading-relaxed pt-1">
+                  Unleash your visual creativity on canvas! Live sketching, poster making, and painting celebrating Indian heritage and freedom.
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Detailed Description & Guidelines */}
         <section className="glass-panel p-6 sm:p-8 border border-[#f7f1e5]/10 mb-8 space-y-4">
           <h2 className="text-lg font-bold text-[#e6c594] border-b border-white/10 pb-2">
-            Event Overview & Description
+            {isPratidhwani ? 'Pratidhwani Flagship Event Guidelines & Steps' : 'Event Overview & Description'}
           </h2>
           <div className="text-sm text-[#e6d7c3]/90 leading-relaxed whitespace-pre-line space-y-4">
             {event.description}
+
+            {isPratidhwani && (
+              <div className="mt-6 pt-4 border-t border-white/10 space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-[#ff9933]">1. What is Pratidhwani?</h3>
+                  <p className="text-xs text-[#e6d7c3]/90 mt-1">
+                    Pratidhwani is the flagship offline celebration of Swaraj-e-Hind at HIT Haldia, organized by the Tabloid, Media and Literary Club (HITian Inside). It provides a live stage for students to perform, express, debate, and paint.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold text-[#ff9933]">2. Entry Fee & Payment Steps (RS. 50/- ONLY)</h3>
+                  <p className="text-xs text-[#e6d7c3]/90 mt-1">
+                    Registration fee is <strong>RS. 50/- ONLY</strong>. Make payment using the UPI QR Code (`hitianinside@upi`), input your 12-digit Transaction UTR UID & UPI ID, and click Proceed to generate your official digital receipt pass.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold text-[#ff9933]">3. Official WhatsApp Group Access</h3>
+                  <p className="text-xs text-[#e6d7c3]/90 mt-1">
+                    Upon submitting your payment details, you will receive instant access to the official <strong>Pratidhwani WhatsApp Group</strong> for stage schedules, venue maps, and competition rules.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold text-[#ff9933]">4. QR_UID Attendance Verification</h3>
+                  <p className="text-xs text-[#e6d7c3]/90 mt-1">
+                    Your generated receipt includes a unique <strong>`QR_UID`</strong> code at the top-right corner. Present this receipt or digital code at the entrance of Main Campus Grounds & SAC for check-in.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {isTricolour && !event.description?.includes('1. What is Swaraj-e-Hind?') && (
               <div className="mt-6 pt-4 border-t border-white/10 space-y-4">
@@ -262,6 +377,22 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
             )}
           </div>
         </section>
+
+        {/* Pratidhwani Official Social Media Handles Banner */}
+        {isPratidhwani && (
+          <div className="p-4 rounded-2xl bg-[#180509] border border-white/10 mb-8 text-center text-xs text-[#a69181]">
+            <span className="font-bold text-white block mb-1">Official Social Media Handles:</span>
+            <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] text-[#e6c594] font-mono">
+              <span>📘 Facebook: @HITian.Inside</span>
+              <span>•</span>
+              <span>📷 Instagram: @hitianinside</span>
+              <span>•</span>
+              <span>💼 LinkedIn: hitian-inside</span>
+              <span>•</span>
+              <span>🔴 YouTube: HITian INSIDE</span>
+            </div>
+          </div>
+        )}
 
         {/* Custom Event Highlights */}
         {displayHighlights && displayHighlights.length > 0 && (
