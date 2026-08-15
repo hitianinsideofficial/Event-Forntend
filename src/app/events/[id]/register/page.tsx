@@ -171,7 +171,7 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
   }
 ];
 
-// Helper: Client-Side Image Compressor (Compresses images < 10MB down to < 4MB WebP)
+// Helper: Client-Side Image Compressor (Compresses images to strictly under 3.5MB WebP for Vercel serverless upload)
 async function compressImageFile(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) return file;
 
@@ -184,7 +184,7 @@ async function compressImageFile(file: File): Promise<File> {
         let width = img.width;
         let height = img.height;
 
-        const maxDim = 2500;
+        const maxDim = 1920; // Reduced from 2500 to guarantee < 3.5 MB webp
         if (width > maxDim || height > maxDim) {
           if (width > height) {
             height = Math.round((height * maxDim) / width);
@@ -206,14 +206,32 @@ async function compressImageFile(file: File): Promise<File> {
               type: 'image/webp',
               lastModified: Date.now()
             });
-            resolve(compressedFile);
+
+            // If still larger than 3.5 MB, do a second compression pass at lower quality (0.55)
+            if (compressedFile.size > 3.5 * 1024 * 1024) {
+              canvas.toBlob((blob2) => {
+                if (blob2) {
+                  const superCompressed = new File([blob2], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                    type: 'image/webp',
+                    lastModified: Date.now()
+                  });
+                  resolve(superCompressed);
+                } else {
+                  resolve(compressedFile);
+                }
+              }, 'image/webp', 0.55);
+            } else {
+              resolve(compressedFile);
+            }
           } else {
             resolve(file);
           }
-        }, 'image/webp', 0.80);
+        }, 'image/webp', 0.75);
       };
+      img.onerror = () => resolve(file);
       img.src = e.target?.result as string;
     };
+    reader.onerror = () => resolve(file);
     reader.readAsDataURL(file);
   });
 }
@@ -484,6 +502,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
     setError('');
     const rawMb = rawFile.size / (1024 * 1024);
+    const MAX_SERVER_PAYLOAD_MB = 4.0;
 
     if (rawMb > maxAllowedMb) {
       setError(`File size (${rawMb.toFixed(1)} MB) exceeds the maximum allowed limit of ${maxAllowedMb} MB.`);
@@ -496,13 +515,32 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       setCompressing(true);
       try {
         const compressed = await compressImageFile(rawFile);
-        setSubmissionFile(compressed);
+        const compressedMb = compressed.size / (1024 * 1024);
+        if (compressedMb > MAX_SERVER_PAYLOAD_MB) {
+          setError(`Image size after compression (${compressedMb.toFixed(1)} MB) exceeds server limit of 4 MB. Please crop or choose a smaller image.`);
+          setSubmissionFile(null);
+          e.target.value = '';
+        } else {
+          setSubmissionFile(compressed);
+        }
       } catch (err) {
-        setSubmissionFile(rawFile);
+        if (rawMb > MAX_SERVER_PAYLOAD_MB) {
+          setError(`File size (${rawMb.toFixed(1)} MB) exceeds maximum upload limit (4 MB). Please compress your file before uploading.`);
+          setSubmissionFile(null);
+          e.target.value = '';
+        } else {
+          setSubmissionFile(rawFile);
+        }
       } finally {
         setCompressing(false);
       }
     } else {
+      if (rawMb > MAX_SERVER_PAYLOAD_MB) {
+        setError(`File size (${rawMb.toFixed(1)} MB) exceeds cloud server upload limit of 4 MB. Please compress your PDF/document or provide a Google Drive link.`);
+        setSubmissionFile(null);
+        e.target.value = '';
+        return;
+      }
       setSubmissionFile(rawFile);
     }
   };
@@ -1493,13 +1531,24 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                       <div className="form-group mb-0 space-y-2">
                         <label className="form-label font-bold text-white text-xs flex items-center justify-between">
                           <span>Upload {selectedDomainObj.title} Submission File *</span>
-                          <span className="text-[10px] text-[#ff9933] font-mono">Limit: {selectedDomainObj.maxSize}</span>
+                          <span className="text-[10px] text-[#ff9933] font-mono">Max File Size: 4.0 MB</span>
                         </label>
+
+                        {/* Prominent 4 MB File Size Info Banner */}
+                        <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs flex items-start gap-2.5">
+                          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <div className="space-y-0.5">
+                            <span className="font-bold text-amber-300 block">⚠️ Maximum Upload Limit: 4.0 MB per file</span>
+                            <p className="text-[11px] text-amber-200/90 leading-snug">
+                              Photo images are automatically compressed below 4 MB. For heavy files (PDFs, raw artwork, or videos &gt; 4 MB), please compress your file first or upload it to Google Drive and paste the link in the caption box below.
+                            </p>
+                          </div>
+                        </div>
 
                         {compressing && (
                           <div className="p-3 rounded-xl bg-[#ff9933]/20 border border-[#ff9933]/40 text-[#ff9933] text-xs flex items-center gap-2 animate-pulse">
                             <Zap className="w-4 h-4" />
-                            <span>Auto-Compressing file to save cloud storage... Please wait.</span>
+                            <span>Auto-Compressing image file under 4 MB... Please wait.</span>
                           </div>
                         )}
 
@@ -1512,11 +1561,11 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                                 {submissionFile.name} ({(submissionFile.size / (1024 * 1024)).toFixed(2)} MB)
                               </span>
                             ) : (
-                              `Click to Upload ${selectedDomainObj.subtitle} File`
+                              `Click to Upload ${selectedDomainObj.subtitle} File (Max 4.0 MB)`
                             )}
                           </span>
                           <span className="text-[10px] text-[#a69181]">
-                            Accepted: {selectedDomainObj.accept} (Limit: {selectedDomainObj.maxSize})
+                            Accepted: {selectedDomainObj.accept} (Strictly Under 4.0 MB)
                           </span>
                           <input 
                             type="file" 

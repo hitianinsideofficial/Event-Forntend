@@ -13,6 +13,12 @@ export async function getApiBaseUrl(): Promise<string> {
     return cachedApiUrl;
   }
 
+  // If running in browser on HTTPS (production domain), don't ping http://localhost:5000 to avoid Mixed Content / CORS errors & delays
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    cachedApiUrl = process.env.NEXT_PUBLIC_API_URL || LIVE_API_URL;
+    return cachedApiUrl;
+  }
+
   // Quick 600ms health check to see if local backend (localhost:5000) is active
   try {
     const controller = new AbortController();
@@ -245,16 +251,22 @@ export async function submitRegistrationApi(
             const data = JSON.parse(xhr.responseText);
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve(data);
+            } else if (xhr.status === 413) {
+              reject(new Error('File size exceeds server upload limit (Max 4 MB). Please compress your file or use Google Drive link.'));
             } else {
-              reject(new Error(data.message || 'Failed to submit registration'));
+              reject(new Error(data.message || `Failed to submit registration (Server Status ${xhr.status})`));
             }
           } catch (e) {
-            reject(new Error('Invalid server response'));
+            if (xhr.status === 413) {
+              reject(new Error('File size exceeds server upload limit (Max 4 MB). Please compress your file or use Google Drive link.'));
+            } else {
+              reject(new Error('Invalid server response during file submission'));
+            }
           }
         };
 
         xhr.onerror = () => {
-          reject(new Error('Network error during file submission'));
+          reject(new Error('Network error during file submission. If your file is larger than 4 MB, please compress it or use a Google Drive link.'));
         };
 
         xhr.send(formData);
