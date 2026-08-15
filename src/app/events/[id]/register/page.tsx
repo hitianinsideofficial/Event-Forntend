@@ -1531,13 +1531,24 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                       <div className="form-group mb-0 space-y-2">
                         <label className="form-label font-bold text-white text-xs flex items-center justify-between">
                           <span>Upload {selectedDomainObj.title} Submission File *</span>
-                          <span className="text-[10px] text-[#ff9933] font-mono">Limit: {selectedDomainObj.maxSize}</span>
+                          <span className="text-[10px] text-[#ff9933] font-mono">Max File Size: 4.0 MB</span>
                         </label>
+
+                        {/* Prominent 4 MB File Size Info Banner */}
+                        <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs flex items-start gap-2.5">
+                          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <div className="space-y-0.5">
+                            <span className="font-bold text-amber-300 block">⚠️ Maximum Upload Limit: 4.0 MB per file</span>
+                            <p className="text-[11px] text-amber-200/90 leading-snug">
+                              Photo images are automatically compressed below 4 MB. For heavy files (PDFs, raw artwork, or videos &gt; 4 MB), please compress your file first or upload it to Google Drive and paste the link in the caption box below.
+                            </p>
+                          </div>
+                        </div>
 
                         {compressing && (
                           <div className="p-3 rounded-xl bg-[#ff9933]/20 border border-[#ff9933]/40 text-[#ff9933] text-xs flex items-center gap-2 animate-pulse">
                             <Zap className="w-4 h-4" />
-                            <span>Auto-Compressing file to save cloud storage... Please wait.</span>
+                            <span>Auto-Compressing image file under 4 MB... Please wait.</span>
                           </div>
                         )}
 
@@ -1550,11 +1561,11 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                                 {submissionFile.name} ({(submissionFile.size / (1024 * 1024)).toFixed(2)} MB)
                               </span>
                             ) : (
-                              `Click to Upload ${selectedDomainObj.subtitle} File`
+                              `Click to Upload ${selectedDomainObj.subtitle} File (Max 4.0 MB)`
                             )}
                           </span>
                           <span className="text-[10px] text-[#a69181]">
-                            Accepted: {selectedDomainObj.accept} (Limit: {selectedDomainObj.maxSize})
+                            Accepted: {selectedDomainObj.accept} (Strictly Under 4.0 MB)
                           </span>
                           <input 
                             type="file" 
