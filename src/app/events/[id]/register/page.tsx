@@ -171,7 +171,7 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
   }
 ];
 
-// Helper: Client-Side Image Compressor (Compresses images < 10MB down to < 4MB WebP)
+// Helper: Client-Side Image Compressor (Compresses images to strictly under 3.5MB WebP for Vercel serverless upload)
 async function compressImageFile(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) return file;
 
@@ -184,7 +184,7 @@ async function compressImageFile(file: File): Promise<File> {
         let width = img.width;
         let height = img.height;
 
-        const maxDim = 2500;
+        const maxDim = 1920; // Reduced from 2500 to guarantee < 3.5 MB webp
         if (width > maxDim || height > maxDim) {
           if (width > height) {
             height = Math.round((height * maxDim) / width);
@@ -206,14 +206,32 @@ async function compressImageFile(file: File): Promise<File> {
               type: 'image/webp',
               lastModified: Date.now()
             });
-            resolve(compressedFile);
+
+            // If still larger than 3.5 MB, do a second compression pass at lower quality (0.55)
+            if (compressedFile.size > 3.5 * 1024 * 1024) {
+              canvas.toBlob((blob2) => {
+                if (blob2) {
+                  const superCompressed = new File([blob2], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                    type: 'image/webp',
+                    lastModified: Date.now()
+                  });
+                  resolve(superCompressed);
+                } else {
+                  resolve(compressedFile);
+                }
+              }, 'image/webp', 0.55);
+            } else {
+              resolve(compressedFile);
+            }
           } else {
             resolve(file);
           }
-        }, 'image/webp', 0.80);
+        }, 'image/webp', 0.75);
       };
+      img.onerror = () => resolve(file);
       img.src = e.target?.result as string;
     };
+    reader.onerror = () => resolve(file);
     reader.readAsDataURL(file);
   });
 }
@@ -484,6 +502,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
     setError('');
     const rawMb = rawFile.size / (1024 * 1024);
+    const MAX_SERVER_PAYLOAD_MB = 4.0;
 
     if (rawMb > maxAllowedMb) {
       setError(`File size (${rawMb.toFixed(1)} MB) exceeds the maximum allowed limit of ${maxAllowedMb} MB.`);
@@ -496,13 +515,32 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       setCompressing(true);
       try {
         const compressed = await compressImageFile(rawFile);
-        setSubmissionFile(compressed);
+        const compressedMb = compressed.size / (1024 * 1024);
+        if (compressedMb > MAX_SERVER_PAYLOAD_MB) {
+          setError(`Image size after compression (${compressedMb.toFixed(1)} MB) exceeds server limit of 4 MB. Please crop or choose a smaller image.`);
+          setSubmissionFile(null);
+          e.target.value = '';
+        } else {
+          setSubmissionFile(compressed);
+        }
       } catch (err) {
-        setSubmissionFile(rawFile);
+        if (rawMb > MAX_SERVER_PAYLOAD_MB) {
+          setError(`File size (${rawMb.toFixed(1)} MB) exceeds maximum upload limit (4 MB). Please compress your file before uploading.`);
+          setSubmissionFile(null);
+          e.target.value = '';
+        } else {
+          setSubmissionFile(rawFile);
+        }
       } finally {
         setCompressing(false);
       }
     } else {
+      if (rawMb > MAX_SERVER_PAYLOAD_MB) {
+        setError(`File size (${rawMb.toFixed(1)} MB) exceeds cloud server upload limit of 4 MB. Please compress your PDF/document or provide a Google Drive link.`);
+        setSubmissionFile(null);
+        e.target.value = '';
+        return;
+      }
       setSubmissionFile(rawFile);
     }
   };
