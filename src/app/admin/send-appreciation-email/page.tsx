@@ -767,45 +767,27 @@ export default function SendAppreciationEmailPage() {
                 <div className="max-w-[580px] mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 text-slate-800 font-sans">
                   {/* EMAIL HEADER */}
                   {(() => {
-                    const isPratidhwani = (selectedEvent?.title || '').toLowerCase().includes('pratidhwani') || selectedEvent?.id === 'pratidhawni';
                     const hasBanner = Boolean(selectedEvent?.bannerUrl);
 
                     return (
                       <div 
-                        className={`relative text-white p-7 text-center overflow-hidden border-b ${
-                          isPratidhwani
-                            ? 'bg-gradient-to-r from-[#4a0013] via-[#1a0408] to-[#800020] border-[#ff9933]/60'
-                            : 'bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-slate-700'
-                        }`}
+                        className="relative text-white p-7 text-center overflow-hidden border-b border-[#800020] bg-gradient-to-r from-[#4a0013] via-[#1f0309] to-[#800020]"
                         style={hasBanner ? {
-                          backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%), url('${selectedEvent?.bannerUrl}')`,
+                          backgroundImage: `linear-gradient(180deg, rgba(42, 6, 14, 0.84) 0%, rgba(26, 4, 8, 0.95) 100%), url('${selectedEvent?.bannerUrl}')`,
                           backgroundSize: 'cover',
                           backgroundPosition: 'center'
                         } : undefined}
                       >
-                        {/* Pratidhwani Background Watermark / Aura if no banner image */}
-                        {isPratidhwani && !hasBanner && (
-                          <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-10">
-                            <span className="text-7xl font-black tracking-widest text-[#ff9933]">PRATIDHWANI</span>
-                          </div>
-                        )}
-
                         <div className="relative z-10">
-                          <div className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider mb-2.5 shadow-sm ${
-                            isPratidhwani
-                              ? 'bg-[#ff9933]/20 border border-[#ff9933]/50 text-[#ffb86c]'
-                              : 'bg-blue-500/20 border border-blue-400/30 text-blue-300'
-                          }`}>
+                          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider mb-2.5 shadow-sm bg-[#e6c594]/15 border border-[#e6c594]/40 text-[#e6c594]">
                             <Sparkles className="w-3 h-3" />
-                            <span>{isPratidhwani ? '🇮🇳 HITian Inside • Pratidhwani Flagship' : 'HITian Inside • Official'}</span>
+                            <span>HITian Inside • Official</span>
                           </div>
 
-                          <h1 className={`text-2xl sm:text-3xl font-black tracking-tight m-0 drop-shadow-md ${
-                            isPratidhwani ? 'text-[#ff9933]' : 'text-white'
-                          }`}>
+                          <h1 className="text-2xl sm:text-3xl font-black tracking-tight m-0 drop-shadow-md text-white">
                             {selectedEvent?.title || 'PRATIDHWANI'}
                           </h1>
-                          <p className="text-xs text-slate-300 mt-1 mb-0 font-medium">
+                          <p className="text-xs text-[#f2e2cf] mt-1 mb-0 font-medium">
                             Participation & Appreciation Notification
                           </p>
                         </div>
@@ -825,37 +807,37 @@ export default function SendAppreciationEmailPage() {
                     </div>
 
                     {/* COUPON DETAILS BOX */}
-                    <div className="bg-slate-50 border border-slate-200 border-l-4 border-l-blue-600 rounded-xl p-4 sm:p-5">
-                      <div className="text-xs sm:text-sm font-bold text-blue-950 flex items-center gap-2 mb-3">
+                    <div className="bg-[#fff8f8] border border-[#f2d6dc] border-l-4 border-l-[#800020] rounded-xl p-4 sm:p-5">
+                      <div className="text-xs sm:text-sm font-bold text-[#800020] flex items-center gap-2 mb-3">
                         <span>🎁 Participation Coupon Collection Details</span>
                       </div>
                       <div className="space-y-2 text-xs">
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-500 font-medium">📍 Venue / Counter:</span>
-                          <span className="font-bold text-slate-900">{location || 'Garden hut'}</span>
+                          <span className="text-slate-600 font-medium">📍 Venue / Counter:</span>
+                          <span className="font-bold text-[#1c0509]">{location || 'Garden hut'}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-500 font-medium">📅 Collection Date:</span>
-                          <span className="font-bold text-slate-900">{dateStr || '04. Oct 2026'}</span>
+                          <span className="text-slate-600 font-medium">📅 Collection Date:</span>
+                          <span className="font-bold text-[#1c0509]">{dateStr || '04. Oct 2026'}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-500 font-medium">⏰ Timing:</span>
-                          <span className="font-bold text-slate-900">{timeSlot || '3:00 PM to 5:00 PM'}</span>
+                          <span className="text-slate-600 font-medium">⏰ Timing:</span>
+                          <span className="font-bold text-[#1c0509]">{timeSlot || '3:00 PM to 5:00 PM'}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* CERTIFICATE NOTICE BOX */}
-                    <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-4 sm:p-5 text-center">
-                      <h4 className="text-sm font-bold text-emerald-900 mb-1">
+                    <div className="bg-gradient-to-r from-[#fdf8f4] to-[#faede8] border border-[#ebd1c8] rounded-xl p-4 sm:p-5 text-center">
+                      <h4 className="text-sm font-bold text-[#800020] mb-1">
                         📜 Certificate of Participation
                       </h4>
-                      <p className="text-xs text-emerald-700 mb-3">
+                      <p className="text-xs text-[#5c1827] mb-3">
                         Your official Certificate has been verified and attached directly to this email.
                       </p>
                       <button
                         type="button"
-                        className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-xs shadow-md shadow-emerald-600/20 inline-flex items-center gap-1.5 pointer-events-none"
+                        className="px-4 py-2 rounded-lg bg-[#800020] text-white font-bold text-xs shadow-md shadow-[#800020]/25 inline-flex items-center gap-1.5 pointer-events-none"
                       >
                         <Award className="w-3.5 h-3.5" />
                         <span>View & Download Certificate (Attached)</span>
@@ -864,12 +846,12 @@ export default function SendAppreciationEmailPage() {
                   </div>
 
                   {/* EMAIL FOOTER */}
-                  <div className="bg-slate-50 border-t border-slate-100 p-5 text-center text-xs text-slate-500">
+                  <div className="bg-[#fdfbf9] border-t border-[#f0e6e2] p-5 text-center text-xs text-[#786b67]">
                     <p className="font-semibold text-slate-700 m-0 mb-1">
                       HITian Inside • Haldia Institute of Technology
                     </p>
                     <p className="m-0 text-[11px]">
-                      Need assistance? Visit <a href="https://www.hitianinside.in/" target="_blank" className="text-blue-600 font-semibold underline">www.hitianinside.in</a>
+                      Need assistance? Visit <a href="https://www.hitianinside.in/" target="_blank" className="text-[#800020] font-semibold underline">www.hitianinside.in</a>
                     </p>
                   </div>
                 </div>
