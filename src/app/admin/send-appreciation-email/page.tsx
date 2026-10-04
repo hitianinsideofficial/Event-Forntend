@@ -247,12 +247,24 @@ export default function SendAppreciationEmailPage() {
 
   const filteredSubmissions = submissions.filter(sub => {
     const query = searchQuery.toLowerCase();
+    const subEventText = 
+      sub.answers?.['Selected Domain'] ||
+      sub.answers?.['Enrolled Event Options'] ||
+      sub.answers?.['Enrolled Event Option'] ||
+      sub.answers?.['Selected Category'] ||
+      sub.answers?.['Competition Category'] ||
+      sub.answers?.['Category'] ||
+      '';
+
+    const formattedSubEvent = Array.isArray(subEventText) ? subEventText.join(' ') : String(subEventText);
+
     const matchesSearch = 
       sub.fullName?.toLowerCase().includes(query) ||
       sub.email?.toLowerCase().includes(query) ||
       sub.ticketId?.toLowerCase().includes(query) ||
       sub.answers?.['College Roll Number']?.toLowerCase().includes(query) ||
-      sub.answers?.['Department']?.toLowerCase().includes(query);
+      sub.answers?.['Department']?.toLowerCase().includes(query) ||
+      formattedSubEvent.toLowerCase().includes(query);
 
     const matchesStatus = 
       statusFilter === 'ALL' ? true :
@@ -295,7 +307,7 @@ export default function SendAppreciationEmailPage() {
               <span>Participant Appreciation & <span className="text-blue-400">Certificate Dispatch</span></span>
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Select an event, upload custom certificates, configure venue details, and dispatch appreciation emails with coupon notices.
+              Select an event, view enrolled sub-events/categories, upload custom certificates, configure venue details, and dispatch appreciation emails.
             </p>
           </div>
 
@@ -498,11 +510,11 @@ export default function SendAppreciationEmailPage() {
               </div>
 
               {/* SEARCH BAR */}
-              <div className="relative w-full sm:w-60">
+              <div className="relative w-full sm:w-64">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search participant name, roll, email..."
+                  placeholder="Search name, roll, sub-event..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-500"
@@ -536,6 +548,7 @@ export default function SendAppreciationEmailPage() {
                   <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-white/[0.01]">
                     <th className="p-3.5">Ticket ID</th>
                     <th className="p-3.5">Participant Details</th>
+                    <th className="p-3.5">Sub-Event / Category</th>
                     <th className="p-3.5">Email Status</th>
                     <th className="p-3.5">Certificate File</th>
                     <th className="p-3.5">Coupon Collected</th>
@@ -547,6 +560,25 @@ export default function SendAppreciationEmailPage() {
                     const isSent = Boolean(sub.appreciationSent);
                     const isSending = sendingId === sub.id;
                     const selectedFile = certificateFiles[sub.id];
+
+                    // Extract sub-event / competition category / domain
+                    const subEventRaw = 
+                      sub.answers?.['Selected Domain'] ||
+                      sub.answers?.['Enrolled Event Options'] ||
+                      sub.answers?.['Enrolled Event Option'] ||
+                      sub.answers?.['Selected Category'] ||
+                      sub.answers?.['Competition Category'] ||
+                      sub.answers?.['Category'] ||
+                      sub.answers?.['Primary Selected Competition Domain'];
+
+                    const themeRaw = sub.answers?.['Selected Theme'] || sub.answers?.['Theme'];
+
+                    let subEventDisplay: string[] = [];
+                    if (Array.isArray(subEventRaw)) {
+                      subEventDisplay = subEventRaw;
+                    } else if (typeof subEventRaw === 'string' && subEventRaw.trim()) {
+                      subEventDisplay = [subEventRaw.trim()];
+                    }
 
                     return (
                       <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors">
@@ -566,6 +598,32 @@ export default function SendAppreciationEmailPage() {
                             <div className="text-[10px] text-amber-400 font-mono font-bold mt-0.5">
                               Roll: {sub.answers['College Roll Number']}
                             </div>
+                          )}
+                        </td>
+
+                        {/* SUB-EVENT / CATEGORY ENROLLED */}
+                        <td className="p-3.5 min-w-[180px]">
+                          {subEventDisplay.length > 0 ? (
+                            <div className="space-y-1">
+                              {subEventDisplay.map((cat, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#800020]/25 text-[#f2c4ce] border border-[#800020]/50 text-[11px] font-bold shadow-sm"
+                                >
+                                  <Sparkles className="w-2.5 h-2.5 text-[#e6c594]" />
+                                  <span>{cat}</span>
+                                </span>
+                              ))}
+                              {themeRaw && (
+                                <div className="text-[10px] text-slate-400 italic">
+                                  Theme: <span className="text-slate-200 font-medium">{themeRaw}</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 text-[11px] italic">
+                              General Participant
+                            </span>
                           )}
                         </td>
 
