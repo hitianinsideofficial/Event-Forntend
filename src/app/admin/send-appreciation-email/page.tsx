@@ -32,7 +32,10 @@ import {
   Square, 
   AlertCircle,
   Trash2,
-  X
+  X,
+  Eye,
+  ExternalLink,
+  Award
 } from 'lucide-react';
 
 export default function SendAppreciationEmailPage() {
@@ -48,12 +51,15 @@ export default function SendAppreciationEmailPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'SENT' | 'PENDING'>('ALL');
 
+  // Preview Modal State
+  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
+
   // Email Config State (Pre-filled as requested: Garden hut, 3pm to 5pm, 04. Oct 2026)
   const [location, setLocation] = useState<string>('Garden hut');
   const [timeSlot, setTimeSlot] = useState<string>('3:00 PM to 5:00 PM');
   const [dateStr, setDateStr] = useState<string>('04. Oct 2026');
   const [customMessage, setCustomMessage] = useState<string>(
-    'We truly appreciate your dynamic enthusiasm, hard work, and valuable participation in the event. We are pleased to issue you this Certificate of Participation! You can collect your participation coupon at the venue and timing indicated below.'
+    'We sincerely appreciate your active participation, enthusiasm, and dedication in the event. We are pleased to issue you this Certificate of Participation! You can collect your participation coupon at the venue and timing indicated below.'
   );
 
   // Per-participant Certificate Files: { [subId: string]: File }
@@ -335,14 +341,21 @@ export default function SendAppreciationEmailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* EMAIL DETAILS CONFIGURATION BOX */}
           <div className="lg:col-span-2 glass-panel p-6 border border-blue-500/20 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-blue-400" />
                 <span>Coupon Collection & Email Announcement Parameters</span>
               </h2>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">
-                Auto-Embedded in Emails
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewModal(true)}
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Preview Email Template</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -704,6 +717,142 @@ export default function SendAppreciationEmailPage() {
             </div>
           )}
         </section>
+
+        {/* EMAIL TEMPLATE PREVIEW MODAL */}
+        {showPreviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-[#111827] border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+              {/* MODAL HEADER */}
+              <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-[#131b2e]">
+                <div className="flex items-center gap-2">
+                  <span className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <Mail className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Live Email Template Preview</h3>
+                    <p className="text-[11px] text-slate-400">
+                      Exact rendering received by participants in their inbox
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* MODAL BODY (SIMULATED EMAIL INBOX CLIENT) */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-950/60">
+                {/* INBOX METADATA BAR */}
+                <div className="bg-[#1e293b] border border-slate-800 rounded-xl p-3 mb-4 text-xs space-y-1.5 text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 font-semibold w-16">Subject:</span>
+                    <span className="font-bold text-white">
+                      Certificate of Appreciation & Coupon Collection: {selectedEvent?.title || 'TechFest 2026'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 font-semibold w-16">From:</span>
+                    <span className="text-slate-300">HITian Inside &lt;hitianinside@gmail.com&gt;</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 font-semibold w-16">To:</span>
+                    <span className="text-slate-300">Rahul Sharma &lt;rahul.sharma@example.com&gt;</span>
+                  </div>
+                </div>
+
+                {/* THE ACTUAL EMAIL CARD */}
+                <div className="max-w-[580px] mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 text-slate-800 font-sans">
+                  {/* EMAIL HEADER */}
+                  <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-7 text-center">
+                    <div className="inline-block bg-blue-500/20 border border-blue-400/30 text-blue-300 text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full mb-2">
+                      HITian Inside • Official
+                    </div>
+                    <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight m-0">
+                      {selectedEvent?.title || 'Event Name'}
+                    </h1>
+                    <p className="text-xs text-slate-300 mt-1 mb-0">
+                      Participation & Appreciation Notification
+                    </p>
+                  </div>
+
+                  {/* EMAIL CONTENT */}
+                  <div className="p-6 sm:p-7 space-y-5">
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 mb-2">
+                        Dear Rahul Sharma,
+                      </h2>
+                      <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                        {customMessage || 'We sincerely appreciate your active participation, enthusiasm, and dedication in the event. We are pleased to issue you this Certificate of Participation! You can collect your participation coupon at the venue and timing indicated below.'}
+                      </p>
+                    </div>
+
+                    {/* COUPON DETAILS BOX */}
+                    <div className="bg-slate-50 border border-slate-200 border-l-4 border-l-blue-600 rounded-xl p-4 sm:p-5">
+                      <div className="text-xs sm:text-sm font-bold text-blue-950 flex items-center gap-2 mb-3">
+                        <span>🎁 Participation Coupon Collection Details</span>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">📍 Venue / Counter:</span>
+                          <span className="font-bold text-slate-900">{location || 'Garden hut'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">📅 Collection Date:</span>
+                          <span className="font-bold text-slate-900">{dateStr || '04. Oct 2026'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">⏰ Timing:</span>
+                          <span className="font-bold text-slate-900">{timeSlot || '3:00 PM to 5:00 PM'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CERTIFICATE NOTICE BOX */}
+                    <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-4 sm:p-5 text-center">
+                      <h4 className="text-sm font-bold text-emerald-900 mb-1">
+                        📜 Certificate of Participation
+                      </h4>
+                      <p className="text-xs text-emerald-700 mb-3">
+                        Your official Certificate has been verified and attached directly to this email.
+                      </p>
+                      <button
+                        type="button"
+                        className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-xs shadow-md shadow-emerald-600/20 inline-flex items-center gap-1.5 pointer-events-none"
+                      >
+                        <Award className="w-3.5 h-3.5" />
+                        <span>View & Download Certificate (Attached)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* EMAIL FOOTER */}
+                  <div className="bg-slate-50 border-t border-slate-100 p-5 text-center text-xs text-slate-500">
+                    <p className="font-semibold text-slate-700 m-0 mb-1">
+                      HITian Inside • Haldia Institute of Technology
+                    </p>
+                    <p className="m-0 text-[11px]">
+                      Need assistance? Visit <a href="https://www.hitianinside.in/" target="_blank" className="text-blue-600 font-semibold underline">www.hitianinside.in</a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* MODAL FOOTER */}
+              <div className="p-4 border-t border-slate-800 flex justify-end bg-[#131b2e]">
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all"
+                >
+                  Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
