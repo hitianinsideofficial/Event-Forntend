@@ -67,6 +67,8 @@ export default function SendAppreciationEmailPage() {
   
   // Sending & Deleting state
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [isSendingAll, setIsSendingAll] = useState<boolean>(false);
+  const [sendAllProgress, setSendAllProgress] = useState<{ current: number; total: number; currentName?: string } | null>(null);
   const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -228,6 +230,85 @@ export default function SendAppreciationEmailPage() {
     } finally {
       setSendingId(null);
     }
+  };
+
+  // Bulk send appreciation emails to only eligible unsent participants who have a certificate uploaded
+  const handleSendAllEligible = async () => {
+    const eligibleSubmissions = submissions.filter(s => {
+      const isAlreadySent = Boolean(s.appreciationSent);
+      const hasCert = Boolean(certificateFiles[s.id] || s.certificateFileUrl);
+      return !isAlreadySent && hasCert;
+    });
+
+    if (eligibleSubmissions.length === 0) {
+      setFeedbackMsg({
+        type: 'error',
+        text: 'No eligible participants found to send emails. Make sure there are pending participants with uploaded certificates.'
+      });
+      return;
+    }
+
+    const confirmMsg = `Are you sure you want to send appreciation emails to ${eligibleSubmissions.length} participant(s)?\n\n• Already sent participants: Skipped\n• Participants without uploaded certificates: Skipped`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    setIsSendingAll(true);
+    setFeedbackMsg(null);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < eligibleSubmissions.length; i++) {
+      const sub = eligibleSubmissions[i];
+      setSendAllProgress({
+        current: i + 1,
+        total: eligibleSubmissions.length,
+        currentName: sub.fullName
+      });
+
+      try {
+        const attachedFile = certificateFiles[sub.id];
+        const formData = new FormData();
+        formData.append('location', location);
+        formData.append('timeSlot', timeSlot);
+        formData.append('dateStr', dateStr);
+        formData.append('customMessage', customMessage);
+
+        if (attachedFile) {
+          formData.append('certificate', attachedFile);
+        }
+
+        const res = await sendAppreciationEmailApi(sub.id, formData);
+        if (res.success) {
+          successCount++;
+          setSubmissions(prev => prev.map(s => {
+            if (s.id === sub.id) {
+              return {
+                ...s,
+                appreciationSent: true,
+                appreciationSentAt: new Date().toISOString(),
+                certificateFileUrl: res.data?.certificateFileUrl || s.certificateFileUrl
+              };
+            }
+            return s;
+          }));
+          removeLocalFile(sub.id);
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        console.error(`Error sending email to ${sub.fullName}:`, err);
+        failCount++;
+      }
+    }
+
+    setIsSendingAll(false);
+    setSendAllProgress(null);
+
+    setFeedbackMsg({
+      type: failCount === 0 ? 'success' : 'error',
+      text: `Bulk dispatch completed: ${successCount} email(s) sent successfully${failCount > 0 ? `, ${failCount} failed.` : '.'}`
+    });
   };
 
   const handleToggleCoupon = async (sub: SubmissionItem) => {
@@ -481,6 +562,36 @@ export default function SendAppreciationEmailPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              {/* SEND ALL ELIGIBLE BUTTON */}
+              {(() => {
+                const eligibleCount = submissions.filter(s => !s.appreciationSent && Boolean(certificateFiles[s.id] || s.certificateFileUrl)).length;
+
+                return (
+                  <button
+                    type="button"
+                    onClick={handleSendAllEligible}
+                    disabled={isSendingAll || eligibleCount === 0}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-lg transition-all ${
+                      eligibleCount > 0 && !isSendingAll
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-600/30'
+                        : 'bg-slate-800/80 text-slate-500 border border-slate-700 cursor-not-allowed'
+                    }`}
+                    title={
+                      eligibleCount > 0
+                        ? `Send appreciation emails to ${eligibleCount} pending participant(s) with uploaded certificates`
+                        : 'No pending participants with uploaded certificates found'
+                    }
+                  >
+                    <Send className={`w-3.5 h-3.5 ${isSendingAll ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isSendingAll
+                        ? 'Dispatching Emails...'
+                        : `Send All Emails (${eligibleCount} Ready)`}
+                    </span>
+                  </button>
+                );
+              })()}
+
               {/* STATUS FILTER PILLS */}
               <div className="flex items-center p-1 rounded-xl bg-[#0b0f19] border border-slate-800">
                 <button
@@ -522,6 +633,27 @@ export default function SendAppreciationEmailPage() {
               </div>
             </div>
           </div>
+
+          {/* BULK SENDING PROGRESS BANNER */}
+          {isSendingAll && sendAllProgress && (
+            <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                <div>
+                  <span className="font-bold text-white">Bulk Email Dispatch In Progress: </span>
+                  <span>
+                    Sending email {sendAllProgress.current} of {sendAllProgress.total} {sendAllProgress.currentName ? `to ${sendAllProgress.currentName}` : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="w-full sm:w-48 bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-blue-500 h-full transition-all duration-300"
+                  style={{ width: `${(sendAllProgress.current / sendAllProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* PARTICIPANTS TABLE */}
           {loadingSubmissions ? (
