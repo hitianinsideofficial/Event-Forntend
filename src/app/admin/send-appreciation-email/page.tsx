@@ -766,17 +766,52 @@ export default function SendAppreciationEmailPage() {
                 {/* THE ACTUAL EMAIL CARD */}
                 <div className="max-w-[580px] mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 text-slate-800 font-sans">
                   {/* EMAIL HEADER */}
-                  <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-7 text-center">
-                    <div className="inline-block bg-blue-500/20 border border-blue-400/30 text-blue-300 text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full mb-2">
-                      HITian Inside • Official
-                    </div>
-                    <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight m-0">
-                      {selectedEvent?.title || 'Event Name'}
-                    </h1>
-                    <p className="text-xs text-slate-300 mt-1 mb-0">
-                      Participation & Appreciation Notification
-                    </p>
-                  </div>
+                  {(() => {
+                    const isPratidhwani = (selectedEvent?.title || '').toLowerCase().includes('pratidhwani') || selectedEvent?.id === 'pratidhawni';
+                    const hasBanner = Boolean(selectedEvent?.bannerUrl);
+
+                    return (
+                      <div 
+                        className={`relative text-white p-7 text-center overflow-hidden border-b ${
+                          isPratidhwani
+                            ? 'bg-gradient-to-r from-[#4a0013] via-[#1a0408] to-[#800020] border-[#ff9933]/60'
+                            : 'bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-slate-700'
+                        }`}
+                        style={hasBanner ? {
+                          backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%), url('${selectedEvent?.bannerUrl}')`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center'
+                        } : undefined}
+                      >
+                        {/* Pratidhwani Background Watermark / Aura if no banner image */}
+                        {isPratidhwani && !hasBanner && (
+                          <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-10">
+                            <span className="text-7xl font-black tracking-widest text-[#ff9933]">PRATIDHWANI</span>
+                          </div>
+                        )}
+
+                        <div className="relative z-10">
+                          <div className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider mb-2.5 shadow-sm ${
+                            isPratidhwani
+                              ? 'bg-[#ff9933]/20 border border-[#ff9933]/50 text-[#ffb86c]'
+                              : 'bg-blue-500/20 border border-blue-400/30 text-blue-300'
+                          }`}>
+                            <Sparkles className="w-3 h-3" />
+                            <span>{isPratidhwani ? '🇮🇳 HITian Inside • Pratidhwani Flagship' : 'HITian Inside • Official'}</span>
+                          </div>
+
+                          <h1 className={`text-2xl sm:text-3xl font-black tracking-tight m-0 drop-shadow-md ${
+                            isPratidhwani ? 'text-[#ff9933]' : 'text-white'
+                          }`}>
+                            {selectedEvent?.title || 'PRATIDHWANI'}
+                          </h1>
+                          <p className="text-xs text-slate-300 mt-1 mb-0 font-medium">
+                            Participation & Appreciation Notification
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* EMAIL CONTENT */}
                   <div className="p-6 sm:p-7 space-y-5">
