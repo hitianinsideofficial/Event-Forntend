@@ -471,3 +471,65 @@ export async function fetchLogsAndAnalyticsApi(): Promise<any> {
   if (!res.ok) throw new Error(data.message || 'Failed to fetch audit logs and analytics');
   return data.data;
 }
+
+export async function sendAppreciationEmailApi(
+  submissionId: string,
+  formData: FormData
+): Promise<ApiResponse<SubmissionItem>> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}/appreciation-email`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token || ''}`
+    },
+    body: formData
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to send appreciation email');
+  return data;
+}
+
+export async function toggleCouponCollectedApi(
+  submissionId: string,
+  couponCollected: boolean
+): Promise<ApiResponse<SubmissionItem>> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}/coupon-status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || ''}`
+    },
+    body: JSON.stringify({ couponCollected })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update coupon status');
+  return data;
+}
+
+export async function deleteCertificateApi(
+  submissionId: string
+): Promise<ApiResponse<SubmissionItem>> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}/certificate`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token || ''}`
+    }
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to remove certificate');
+  return data;
+}
+
+
+

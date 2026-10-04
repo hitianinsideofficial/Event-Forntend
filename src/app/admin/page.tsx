@@ -24,6 +24,7 @@ import {
   Lock, 
   LogOut, 
   Plus, 
+  Mail,
   Calendar, 
   FileText, 
   Users, 
@@ -335,7 +336,14 @@ export default function AdminDashboardPage() {
             <p className="text-xs text-slate-400 mt-1">General Administrative Panel • Manage events, forms, observers, and attendee records.</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link 
+              href="/admin/send-appreciation-email"
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-lg shadow-blue-600/30 transition-all"
+            >
+              <Mail className="w-4 h-4" />
+              <span>✉️ Send Appreciation Emails</span>
+            </Link>
             <Link 
               href="/admin/events/create"
               className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all"
