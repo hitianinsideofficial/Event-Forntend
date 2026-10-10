@@ -2,9 +2,9 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import Navbar from '../../components/Navbar';
-import { fetchEventById } from '../../services/api.service';
-import { EventItem } from '../../types/event.types';
+import Navbar from '../../../../components/Navbar';
+import { fetchEventById } from '../../../../services/api.service';
+import { EventItem } from '../../../../types/event.types';
 import { 
   ArrowLeft, 
   CreditCard, 
