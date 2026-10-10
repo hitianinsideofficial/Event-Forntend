@@ -1040,7 +1040,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   </div>
                 </div>
 
-                {/* Grid: Details + QR Code */}
+                {/* Grid: Details + Verification QR Code for Participant */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
                   <div className="sm:col-span-2 space-y-2.5 text-xs">
                     <div className="flex justify-between pb-1.5 border-b border-white/5">
@@ -1112,6 +1112,17 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                       </div>
                     )}
                   </div>
+
+                  {/* Individual Verification QR Code for Participant */}
+                  <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 border-[#ff9933] shadow-2xl shrink-0 self-center">
+                    <QRCodeSVG value={ticket.ticketId || `HIT-EVT-${ticket.fullName}`} size={115} />
+                    <span className="font-mono text-[10px] font-black text-black mt-2 uppercase tracking-wider text-center">
+                      PARTICIPANT PASS QR
+                    </span>
+                    <span className="font-mono text-[9px] font-bold text-gray-700 tracking-tight text-center">
+                      ID: {ticket.ticketId}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Ticket Footer */}
@@ -1126,7 +1137,11 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                 {isDomainBasedEvent && submittedDomains.length < activeDomains.length && (
                   <button 
                     onClick={handleStartAnotherDomainSubmission} 
-                    className="btn-tricolour text-xs py-2.5 px-6 font-extrabold inline-flex items-center gap-1.5 shadow-xl animate-pulse"
+                    className={`${
+                      isNavroopam
+                        ? 'navroopam-pill-btn text-xs py-3 px-6 font-black inline-flex items-center gap-2 shadow-2xl cursor-pointer hover:scale-105 transition-transform'
+                        : 'btn-tricolour text-xs py-2.5 px-6 font-extrabold inline-flex items-center gap-1.5 shadow-xl animate-pulse'
+                    }`}
                   >
                     <PlusCircle className="w-4 h-4" />
                     <span>Submit Entry for Another Domain 🎨</span>
