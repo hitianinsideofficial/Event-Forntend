@@ -367,6 +367,9 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const [caption, setCaption] = useState<string>('');
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   
+  // Track active QR account option ('SRIJITA' | 'AYUSH')
+  const [qrAccount, setQrAccount] = useState<'SRIJITA' | 'AYUSH'>('SRIJITA');
+
   // Track payment screenshot file
   const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
   
@@ -1912,22 +1915,56 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                         </span>
                       </div>
 
-                      {/* Registration Fees Text without container boundaries */}
-                      <div className="space-y-0.5 pt-1">
-                        <h6 className="text-xs font-black text-[#ff9933] uppercase tracking-wider font-mono">
-                          REGISTRATION FEES
-                        </h6>
-                        <p className="text-xs text-[#e6d7c3] leading-relaxed">
-                          The registration fee is <strong className="text-[#ff9933] font-bold">Rs. 9/- per submission</strong>. A minimal fee of Rs. 9/- has been set to celebrate the nine special days of Durga Puja.
-                        </p>
+                      {/* Registration Fees Text & QR Toggler Bar */}
+                      <div className="space-y-2 pt-1">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                          <div>
+                            <h6 className="text-xs font-black text-[#ff9933] uppercase tracking-wider font-mono">
+                              REGISTRATION FEES
+                            </h6>
+                            <p className="text-xs text-[#e6d7c3] leading-relaxed">
+                              The registration fee is <strong className="text-[#ff9933] font-bold">Rs. 9/- per submission</strong>. Minimal fee to celebrate the nine special days of Durga Puja.
+                            </p>
+                          </div>
+
+                          {/* QR CODE ACCOUNT TOGGLER BUTTONS */}
+                          <div className="p-1 rounded-xl bg-black/60 border border-[#ff9933]/30 flex items-center gap-1 shrink-0 self-stretch sm:self-auto">
+                            <button
+                              type="button"
+                              onClick={() => setQrAccount('SRIJITA')}
+                              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 ${
+                                qrAccount === 'SRIJITA'
+                                  ? 'bg-gradient-to-r from-[#ff9933] to-amber-500 text-black shadow-md font-black'
+                                  : 'text-[#a69181] hover:text-white hover:bg-white/5'
+                              }`}
+                            >
+                              <span>✨ Current QR (Srijita)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setQrAccount('AYUSH')}
+                              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 ${
+                                qrAccount === 'AYUSH'
+                                  ? 'bg-gradient-to-r from-[#ff9933] to-amber-500 text-black shadow-md font-black'
+                                  : 'text-[#a69181] hover:text-white hover:bg-white/5'
+                              }`}
+                            >
+                              <span>🏛️ Previous QR (Ayush)</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                         <div className="md:col-span-6 flex flex-col items-center justify-center p-4 bg-black/60 rounded-2xl border border-[#ff9933]/20 shadow-inner space-y-3">
                           <div className="relative p-3 bg-white rounded-2xl shadow-2xl border-4 border-[#ff9933]">
                             <img 
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent('upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee')}`} 
-                              alt="Auto ₹9 UPI QR Code - Scan to Pay ₹9" 
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                                qrAccount === 'SRIJITA'
+                                  ? 'upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee'
+                                  : 'upi://pay?pa=ayushraj@ybl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee'
+                              )}`} 
+                              alt={`Auto ₹9 UPI QR Code (${qrAccount === 'SRIJITA' ? 'Srijita' : 'Ayush'})`} 
                               className="w-full max-w-[280px] sm:max-w-[320px] h-auto rounded-lg object-contain"
                             />
                             <div className="absolute inset-0 border-2 border-emerald-500/30 rounded-2xl pointer-events-none animate-pulse"></div>
@@ -1935,7 +1972,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                           
                           <div className="text-center space-y-1">
                             <span className="text-xs sm:text-sm text-[#e6c594] font-bold block font-mono tracking-wide">
-                              Payee: Srijita Bandyopadhyay (srijitab.2005@oksbi)
+                              Payee: {qrAccount === 'SRIJITA' ? 'Srijita Bandyopadhyay (srijitab.2005@oksbi)' : 'Ayush Raj (ayushraj@ybl)'}
                             </span>
                             <span className="inline-block px-3 py-1 rounded-full bg-[#ff9933]/20 text-[#ff9933] text-xs font-black border border-[#ff9933]/40 font-mono">
                               Auto-Prefilled Amount: ₹9.00 INR
@@ -1947,15 +1984,21 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                           <div className="p-3.5 rounded-xl bg-[#ff9933]/10 border border-[#ff9933]/30 space-y-2">
                             <div className="flex items-center gap-2">
                               <Zap className="w-4 h-4 text-[#ff9933]" />
-                              <span className="text-xs font-bold text-[#ff9933]">Instant ₹9 Auto-Pay QR</span>
+                              <span className="text-xs font-bold text-[#ff9933]">
+                                Instant ₹9 Auto-Pay ({qrAccount === 'SRIJITA' ? 'Srijita Bandyopadhyay' : 'Ayush Raj'})
+                              </span>
                             </div>
                             <p className="text-[11px] text-[#e6d7c3] leading-relaxed">
-                              When you scan this QR code with PhonePe, Google Pay, Paytm, or any UPI App, <strong className="text-[#ff9933] font-bold">₹9.00</strong> will be automatically entered as the exact payment amount!
+                              When you scan this QR code with PhonePe, Google Pay, Paytm, or any UPI App, <strong className="text-[#ff9933] font-bold">₹9.00</strong> will be automatically entered for {qrAccount === 'SRIJITA' ? 'Srijita Bandyopadhyay' : 'Ayush Raj'}!
                             </p>
                           </div>
 
                           <a 
-                            href={`upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee`}
+                            href={
+                              qrAccount === 'SRIJITA'
+                                ? `upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee`
+                                : `upi://pay?pa=ayushraj@ybl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee`
+                            }
                             className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#ff9933] via-amber-600 to-[#d97706] text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:brightness-110 transition-all font-mono uppercase tracking-wider border border-amber-400/50"
                           >
                             <CreditCard className="w-4 h-4 text-black" />
