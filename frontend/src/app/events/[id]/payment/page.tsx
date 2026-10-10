@@ -27,8 +27,8 @@ export default function DedicatedPaymentPage({ params }: { params: Promise<{ id:
   const [copied, setCopied] = useState(false);
   const [transactionUid, setTransactionUid] = useState('');
 
-  const upiId = 'ayushraj@ybl';
-  const payeeName = 'Ayush Raj';
+  const upiId = 'srijitab.2005@oksbi';
+  const payeeName = 'Srijita Bandyopadhyay';
   const amount = '9.00';
 
   useEffect(() => {

@@ -707,7 +707,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         'College Roll Number': fullRollNumber
       };
 
-      if (isSwarajEHind && activeDomainObj) {
+      if (isDomainBasedEvent && activeDomainObj) {
         combinedAnswers['Selected Domain'] = `${activeDomainObj.title} (${activeDomainObj.subtitle})`;
         combinedAnswers['Selected Theme'] = selectedTheme;
         if (activeDomainObj.isDriveLinkRequired) {
@@ -1917,7 +1917,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                         <div className="md:col-span-6 flex flex-col items-center justify-center p-4 bg-black/60 rounded-2xl border border-[#ff9933]/20 shadow-inner space-y-3">
                           <div className="relative p-3 bg-white rounded-2xl shadow-2xl border-4 border-[#ff9933]">
                             <img 
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent('upi://pay?pa=ayushraj@ybl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee')}`} 
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent('upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee')}`} 
                               alt="Auto ₹9 UPI QR Code - Scan to Pay ₹9" 
                               className="w-full max-w-[280px] sm:max-w-[320px] h-auto rounded-lg object-contain"
                             />
@@ -1926,7 +1926,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                           
                           <div className="text-center space-y-1">
                             <span className="text-xs sm:text-sm text-[#e6c594] font-bold block font-mono tracking-wide">
-                              Payee: Ayush Raj
+                              Payee: Srijita Bandyopadhyay (srijitab.2005@oksbi)
                             </span>
                             <span className="inline-block px-3 py-1 rounded-full bg-[#ff9933]/20 text-[#ff9933] text-xs font-black border border-[#ff9933]/40 font-mono">
                               Auto-Prefilled Amount: ₹9.00 INR
@@ -1946,7 +1946,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                           </div>
 
                           <a 
-                            href={`upi://pay?pa=ayushraj@ybl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee`}
+                            href={`upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee`}
                             className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#ff9933] via-amber-600 to-[#d97706] text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:brightness-110 transition-all font-mono uppercase tracking-wider border border-amber-400/50"
                           >
                             <CreditCard className="w-4 h-4 text-black" />
