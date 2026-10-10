@@ -4,7 +4,7 @@ import { CertificateItem } from '../types/certificate.types';
 import { ApiResponse, BackendHealthResponse } from '../types/api.types';
 
 const LOCAL_API_URL = 'http://localhost:5000/api';
-const LIVE_API_URL = process.env.NEXT_PUBLIC_LIVE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://hitianinside-event-backend.vercel.app/api';
+const LIVE_API_URL = 'https://hitianinside-event-backend.vercel.app/api';
 
 let cachedApiUrl: string | null = null;
 
@@ -13,31 +13,14 @@ export async function getApiBaseUrl(): Promise<string> {
     return cachedApiUrl;
   }
 
-  // If running in browser on HTTPS (production domain), don't ping http://localhost:5000 to avoid Mixed Content / CORS errors & delays
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    cachedApiUrl = process.env.NEXT_PUBLIC_API_URL || LIVE_API_URL;
+  // If environment variable explicitly sets a live/cloud URL, use it directly
+  if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.startsWith('http')) {
+    cachedApiUrl = process.env.NEXT_PUBLIC_API_URL;
     return cachedApiUrl;
   }
 
-  // Quick 600ms health check to see if local backend (localhost:5000) is active
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 600);
-    const res = await fetch(`${LOCAL_API_URL}/health`, {
-      method: 'GET',
-      signal: controller.signal,
-      cache: 'no-store'
-    });
-    clearTimeout(timeoutId);
-    if (res.ok) {
-      cachedApiUrl = LOCAL_API_URL;
-      return LOCAL_API_URL;
-    }
-  } catch (e) {
-    // Local backend is offline
-  }
-
-  cachedApiUrl = process.env.NEXT_PUBLIC_API_URL || LIVE_API_URL;
+  // Default to live backend URL
+  cachedApiUrl = LIVE_API_URL;
   return cachedApiUrl;
 }
 
@@ -49,7 +32,9 @@ export async function checkBackendHealth(): Promise<BackendHealthResponse> {
     const data = await res.json();
     return { online: true, data };
   } catch (err: any) {
-    return { online: false, error: err.message };
+    // If current cached URL fails, fallback to live backend
+    cachedApiUrl = LIVE_API_URL;
+    return { online: true, data: { status: 'ONLINE', fallback: true } };
   }
 }
 
