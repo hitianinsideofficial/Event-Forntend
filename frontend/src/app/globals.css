@@ -1,0 +1,425 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #150408;
+  --bg-secondary: #22080f;
+  --bg-card: rgba(42, 12, 20, 0.85);
+  --border-color: rgba(247, 241, 230, 0.14);
+  --border-glow: rgba(230, 197, 148, 0.5);
+  
+  --accent-primary: #800020;
+  --accent-maroon: #600018;
+  --accent-cream: #f7f1e5;
+  --accent-gold: #e6c594;
+
+  --saffron: #ff9933;
+  --green: #138808;
+  --ashoka-blue: #000080;
+  
+  --text-primary: #fdfbf7;
+  --text-secondary: #e6d7c3;
+  --text-muted: #a69181;
+  
+  --glass-bg: rgba(26, 6, 11, 0.88);
+  --glass-border: rgba(247, 241, 230, 0.15);
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-outfit), system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  touch-action: manipulation;
+}
+
+/* Background Glowing Ambient Orbs */
+body::before {
+  content: '';
+  position: fixed;
+  top: -15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(128, 0, 32, 0.4) 0%, rgba(0,0,0,0) 70%);
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(80px);
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -10%;
+  right: 10%;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(230, 197, 148, 0.15) 0%, rgba(0,0,0,0) 70%);
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(100px);
+}
+
+/* Container Utilities */
+.container-custom {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .container-custom {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Glassmorphic Container Utility */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px 0 rgba(15, 2, 5, 0.6);
+}
+
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-glow);
+  box-shadow: 0 14px 35px -10px rgba(230, 197, 148, 0.3);
+}
+
+/* Cream & Gold Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #f7f1e5 40%, #e6c594 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Indian Tricolour Styling for Swaraj-E-Hind */
+.tricolour-gradient-text {
+  background: linear-gradient(135deg, #ff9933 0%, #ffffff 50%, #138808 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.btn-tricolour {
+  background: linear-gradient(135deg, #ff9933 0%, #e65100 50%, #138808 100%);
+  color: #ffffff;
+  font-weight: 800;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px 0 rgba(255, 153, 51, 0.4);
+  font-size: 0.9rem;
+}
+
+.btn-tricolour:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 26px 0 rgba(19, 136, 8, 0.6);
+  background: linear-gradient(135deg, #ffaa44 0%, #ff9933 50%, #17a00a 100%);
+}
+
+.badge-tricolour {
+  background: linear-gradient(135deg, rgba(255,153,51,0.2) 0%, rgba(255,255,255,0.1) 50%, rgba(19,136,8,0.2) 100%);
+  border: 1px solid rgba(255,153,51,0.5);
+  color: #ff9933;
+}
+
+/* Primary Button */
+.btn-primary {
+  background: linear-gradient(135deg, #e6c594 0%, #c49a60 100%);
+  color: #1a0409;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px 0 rgba(230, 197, 148, 0.35);
+  font-size: 0.9rem;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #f7f1e5 0%, #e6c594 100%);
+  box-shadow: 0 6px 22px 0 rgba(230, 197, 148, 0.5);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background: rgba(247, 241, 229, 0.08);
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.25s ease;
+  font-size: 0.9rem;
+}
+
+.btn-secondary:hover {
+  background: rgba(247, 241, 229, 0.15);
+  border-color: var(--accent-gold);
+}
+
+.events-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .events-grid-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Modal Styling */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 4, 8, 0.88);
+  backdrop-filter: blur(10px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: #20070d;
+  border: 1px solid rgba(247, 241, 230, 0.18);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
+  animation: slideUp 0.3s ease-out;
+}
+
+@media (max-width: 640px) {
+  .modal-content {
+    padding: 1.25rem;
+    max-height: 95vh;
+  }
+}
+
+/* Form Controls */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.form-input, .form-textarea, .form-select {
+  background: rgba(247, 241, 229, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+
+.form-input[class*="pl-10"],
+.form-input[class*="pl-9"] {
+  padding-left: 2.5rem !important;
+}
+
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 2px rgba(230, 197, 148, 0.25);
+}
+
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ff9933'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.1rem 1.1rem;
+  padding-right: 2.5rem !important;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .form-input, .form-textarea, .form-select {
+    font-size: 16px !important; /* Prevents iOS auto-zoom on input focus */
+    padding: 0.65rem 0.85rem;
+  }
+}
+
+/* Custom Select Dropdown Options Styling */
+select option {
+  background-color: #1a050a !important;
+  color: #fdfbf7 !important;
+  padding: 12px 16px;
+  font-size: 13px;
+}
+
+select option:hover,
+select option:focus,
+select option:active,
+select option:checked {
+  background-color: #800020 !important;
+  color: #ff9933 !important;
+}
+
+/* Animations & Smooth Step Transitions */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pulse-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.pulse-dot.offline {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+/* Print Ticket Layout Styling */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  nav, footer, .no-print {
+    display: none !important;
+  }
+
+  .print-ticket-container {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 2px solid #ff9933 !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+    box-shadow: none !important;
+    max-width: 600px !important;
+    margin: 0 auto !important;
+  }
+
+  .print-ticket-container * {
+    color: #111111 !important;
+  }
+}
+
+/* Navroopam v7.0 Theme Styling */
+.navroopam-theme-bg {
+  background: radial-gradient(circle at 50% 20%, #700619 0%, #3d000a 50%, #1a0004 100%);
+  background-attachment: fixed;
+  color: #fff8eb;
+}
+
+.navroopam-header-glow {
+  background: linear-gradient(180deg, #ffe082 0%, #ffb300 45%, #ff6f00 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 15px rgba(255, 179, 0, 0.4));
+  font-family: var(--font-outfit), Georgia, serif;
+}
+
+.navroopam-gold-border {
+  border: 2px solid rgba(255, 179, 0, 0.45);
+  box-shadow: 0 0 25px rgba(128, 0, 32, 0.6), inset 0 0 15px rgba(255, 179, 0, 0.15);
+}
+
+.navroopam-pill-btn {
+  background: linear-gradient(90deg, #ffd54f 0%, #ffb300 60%, #ffa000 100%);
+  color: #3a0009;
+  font-weight: 800;
+  border-radius: 9999px;
+  border: 1px solid #ffe082;
+  box-shadow: 0 4px 15px rgba(255, 179, 0, 0.35);
+  transition: all 0.25s ease;
+}
+
+.navroopam-pill-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  background: linear-gradient(90deg, #ffe082 0%, #ffc107 60%, #ffb300 100%);
+  box-shadow: 0 6px 22px rgba(255, 179, 0, 0.55);
+}
+
+.navroopam-card {
+  background: rgba(46, 3, 10, 0.85);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 179, 0, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 179, 0, 0.05);
+}
+
