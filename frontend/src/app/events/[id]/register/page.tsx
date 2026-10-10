@@ -683,13 +683,22 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       }
 
       const activeDomainObj = activeDomains.find(d => d.id === selectedDomainId);
-      if (activeDomainObj?.isDriveLinkRequired && !driveReelUrl.trim()) {
-        setError('Google Drive Video Link is mandatory for video/vlog submissions. Please upload your video to Google Drive and paste the shareable link.');
-        return;
+      if (activeDomainObj?.isDriveLinkRequired) {
+        if (!driveReelUrl.trim()) {
+          setError('Google Drive Video Link is mandatory for video/vlog submissions. Please upload your video to Google Drive and paste the shareable link.');
+          return;
+        }
+
+        const normUrl = driveReelUrl.toLowerCase().trim();
+        const isValidDriveFormat = normUrl.includes('drive.google.com') || normUrl.includes('docs.google.com') || normUrl.includes('google.com');
+        if (!isValidDriveFormat) {
+          setError('⚠️ Invalid Google Drive Link format! Please provide a valid shareable Google Drive URL (e.g. https://drive.google.com/file/d/...).');
+          return;
+        }
       }
 
       if (!activeDomainObj?.isDriveLinkRequired && !submissionFile && !file) {
-        setError(`Please upload your submission file for ${activeDomainObj?.title}.`);
+        setError(`Please upload your submission file for ${activeDomainObj?.title} (Max 4.0 MB).`);
         return;
       }
     }
@@ -2046,6 +2055,16 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                         ? 'Please keep this page open while your submission is being transmitted...' 
                         : 'Finalizing server verification & ticket issuance...'}
                     </p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="p-4 rounded-2xl bg-rose-500/15 border-2 border-rose-500/40 text-rose-300 text-xs flex items-start gap-2.5 shadow-xl animate-shake">
+                    <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-rose-200 block">⚠️ Submission Error</span>
+                      <p className="text-xs text-rose-300 leading-snug">{error}</p>
+                    </div>
                   </div>
                 )}
 
