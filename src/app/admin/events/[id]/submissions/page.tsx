@@ -675,16 +675,49 @@ export default function EventSubmissionsPage() {
                                   <span>Preview Media</span>
                                 </button>
 
-                                <a
-                                  href={mediaFile.localUrl || mediaFile.driveLink}
-                                  download={mediaFile.originalName}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors"
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const fileUrl = mediaFile.localUrl || mediaFile.driveLink || '';
+                                    if (fileUrl.startsWith('data:')) {
+                                      try {
+                                        const arr = fileUrl.split(',');
+                                        const mimeMatch = arr[0].match(/:(.*?);/);
+                                        const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+                                        const bstr = atob(arr[1]);
+                                        let n = bstr.length;
+                                        const u8arr = new Uint8Array(n);
+                                        while (n--) {
+                                          u8arr[n] = bstr.charCodeAt(n);
+                                        }
+                                        const blob = new Blob([u8arr], { type: mime });
+                                        const blobUrl = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = blobUrl;
+                                        a.download = mediaFile.originalName || 'submission_file';
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                                      } catch (err) {
+                                        window.open(fileUrl, '_blank');
+                                      }
+                                    } else {
+                                      const a = document.createElement('a');
+                                      a.href = fileUrl;
+                                      a.target = '_blank';
+                                      a.rel = 'noreferrer';
+                                      a.download = mediaFile.originalName || 'submission_file';
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      document.body.removeChild(a);
+                                    }
+                                  }}
+                                  className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
                                   title="Download File"
                                 >
                                   <Download className="w-3.5 h-3.5" />
-                                </a>
+                                </button>
                               </div>
                               <a
                                 href={mediaFile.localUrl || mediaFile.driveLink}
@@ -880,43 +913,114 @@ export default function EventSubmissionsPage() {
         {/* MEDIA PREVIEW MODAL */}
         {previewMediaUrl && (
           <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="bg-white border border-slate-200 max-w-5xl w-full max-h-[92vh] overflow-hidden flex flex-col shadow-2xl">
               <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                <h3 className="text-sm font-bold text-slate-900 truncate">{previewTitle}</h3>
+                <div className="flex items-center gap-2 truncate">
+                  <span className="font-mono text-xs font-bold bg-slate-200 px-2 py-0.5 text-slate-800">
+                    {previewMediaUrl.toLowerCase().includes('.pdf') || previewMediaUrl.startsWith('data:application/pdf') ? 'PDF DOCUMENT' : 'MEDIA PREVIEW'}
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-900 truncate">{previewTitle}</h3>
+                </div>
                 <button 
                   onClick={() => setPreviewMediaUrl(null)}
-                  className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold uppercase"
+                  className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold uppercase transition-colors hover:bg-slate-800"
                 >
                   ✕ Close
                 </button>
               </div>
-              <div className="p-4 overflow-auto flex-1 flex items-center justify-center bg-slate-100 max-h-[70vh]">
-                <img 
-                  src={previewMediaUrl} 
-                  alt="Submission Preview" 
-                  className="max-w-full max-h-[65vh] object-contain border border-slate-300 shadow-sm bg-white"
-                />
+
+              {/* MODAL CONTENT: PDF EMBED OR IMAGE */}
+              <div className="p-2 sm:p-4 overflow-auto flex-1 flex items-center justify-center bg-slate-100 min-h-[450px] max-h-[72vh]">
+                {previewMediaUrl.toLowerCase().includes('.pdf') || previewMediaUrl.startsWith('data:application/pdf') ? (
+                  <iframe 
+                    src={previewMediaUrl} 
+                    title="PDF Document Preview"
+                    className="w-full h-[68vh] border border-slate-300 bg-white"
+                  />
+                ) : (
+                  <img 
+                    src={previewMediaUrl} 
+                    alt="Submission Preview" 
+                    className="max-w-full max-h-[68vh] object-contain border border-slate-300 shadow-sm bg-white"
+                  />
+                )}
               </div>
-              <div className="p-3 border-t border-slate-200 flex items-center justify-end gap-2 bg-white">
-                <a 
-                  href={previewMediaUrl} 
-                  download
-                  target="_blank" 
-                  rel="noreferrer" 
+
+              {/* MODAL FOOTER BUTTONS */}
+              <div className="p-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2 bg-white">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    // Safe browser download that works for both remote HTTPS and data URIs
+                    try {
+                      if (previewMediaUrl.startsWith('data:')) {
+                        const arr = previewMediaUrl.split(',');
+                        const mimeMatch = arr[0].match(/:(.*?);/);
+                        const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+                        const bstr = atob(arr[1]);
+                        let n = bstr.length;
+                        const u8arr = new Uint8Array(n);
+                        while (n--) {
+                          u8arr[n] = bstr.charCodeAt(n);
+                        }
+                        const blob = new Blob([u8arr], { type: mime });
+                        const blobUrl = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                      } else {
+                        const a = document.createElement('a');
+                        a.href = previewMediaUrl;
+                        a.target = '_blank';
+                        a.rel = 'noreferrer';
+                        a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                      }
+                    } catch (err) {
+                      window.open(previewMediaUrl, '_blank');
+                    }
+                  }}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download File</span>
-                </a>
-                <a 
-                  href={previewMediaUrl} 
-                  target="_blank" 
-                  rel="noreferrer" 
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    // For data URIs, convert to object URL so Chrome doesn't block with about:blank#blocked
+                    if (previewMediaUrl.startsWith('data:')) {
+                      try {
+                        const arr = previewMediaUrl.split(',');
+                        const mimeMatch = arr[0].match(/:(.*?);/);
+                        const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+                        const bstr = atob(arr[1]);
+                        let n = bstr.length;
+                        const u8arr = new Uint8Array(n);
+                        while (n--) {
+                          u8arr[n] = bstr.charCodeAt(n);
+                        }
+                        const blob = new Blob([u8arr], { type: mime });
+                        const blobUrl = URL.createObjectURL(blob);
+                        window.open(blobUrl, '_blank');
+                      } catch (e) {
+                        window.open(previewMediaUrl, '_blank');
+                      }
+                    } else {
+                      window.open(previewMediaUrl, '_blank');
+                    }
+                  }}
                   className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Open Full Resolution in New Tab</span>
-                </a>
+                  <span>Open in New Tab</span>
+                </button>
               </div>
             </div>
           </div>
