@@ -367,7 +367,8 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const [pratidhawniCategories, setPratidhawniCategories] = useState<string[]>(['OPEN MIC']);
   const [transactionUid, setTransactionUid] = useState<string>('');
   const [upiId, setUpiId] = useState<string>('');
-  const PRATIDHAWNI_WHATSAPP_LINK = 'https://chat.whatsapp.com/HITianInsidePratidhawni2026';
+  const PRATIDHAWNI_WHATSAPP_LINK = 'https://chat.whatsapp.com/Fa3xmAgX4nQETzqkNTSklq';
+  const WHATSAPP_GROUP_LINK = 'https://chat.whatsapp.com/Fa3xmAgX4nQETzqkNTSklq';
 
   const togglePratidhwaniCategory = (catId: string) => {
     setPratidhawniCategories(prev => {
@@ -979,10 +980,12 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   href={PRATIDHAWNI_WHATSAPP_LINK}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition-all shadow-xl shadow-emerald-600/30 inline-flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-[#e6c594] via-[#f7e7c4] to-[#c89852] text-[#2b040a] hover:from-white hover:via-[#f7e7c4] hover:to-[#e6c594] font-extrabold text-xs transition-all shadow-xl shadow-[#e6c594]/30 hover:shadow-[#e6c594]/60 hover:-translate-y-0.5 inline-flex items-center justify-center gap-2.5 border border-[#ffffff]/60 group"
                 >
-                  <MessageSquare className="w-4 h-4 fill-white" />
-                  <span>Join Official Pratidhawni WhatsApp Group 💬</span>
+                  <div className="w-5 h-5 rounded-full bg-[#25D366] flex items-center justify-center text-white shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                    <MessageSquare className="w-3 h-3 fill-white text-white" />
+                  </div>
+                  <span className="tracking-wide">Join WhatsApp Group 💬</span>
                 </a>
 
                 <button 
@@ -1158,6 +1161,23 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     <span>Submit Entry for Another Domain 🎨</span>
                   </button>
                 )}
+
+                {/* THEMED JOIN WHATSAPP GROUP BUTTON */}
+                <a 
+                  href={WHATSAPP_GROUP_LINK}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={
+                    isNavroopam
+                      ? "navroopam-pill-btn text-xs py-2.5 px-6 font-extrabold inline-flex items-center gap-2 shadow-xl hover:-translate-y-0.5 group"
+                      : "w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#e6c594] via-[#f7e7c4] to-[#c89852] text-[#2b040a] hover:from-white hover:via-[#f7e7c4] hover:to-[#e6c594] font-extrabold text-xs transition-all shadow-xl shadow-[#e6c594]/30 hover:shadow-[#e6c594]/60 hover:-translate-y-0.5 inline-flex items-center justify-center gap-2 border border-[#ffffff]/60 group"
+                  }
+                >
+                  <div className="w-4 h-4 rounded-full bg-[#25D366] flex items-center justify-center text-white shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                    <MessageSquare className="w-2.5 h-2.5 fill-white text-white" />
+                  </div>
+                  <span className="tracking-wide">Join WhatsApp Group 💬</span>
+                </a>
 
                 <button onClick={() => window.print()} className="btn-secondary text-xs py-2.5 px-5 inline-flex items-center gap-1.5">
                   <Printer className="w-4 h-4" />
