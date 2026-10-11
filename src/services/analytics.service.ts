@@ -59,12 +59,22 @@ export async function trackClickApi(elementId: string, label: string, category =
   }
 }
 
-export async function fetchAnalyticsDashboardApi(): Promise<AnalyticsSummaryData> {
+let analyticsCache: { data: AnalyticsSummaryData; timestamp: number } | null = null;
+const ANALYTICS_CACHE_TTL = 60 * 1000; // 60 seconds
+
+export async function fetchAnalyticsDashboardApi(forceRefresh: boolean = false): Promise<AnalyticsSummaryData> {
+  if (!forceRefresh && analyticsCache && (Date.now() - analyticsCache.timestamp < ANALYTICS_CACHE_TTL)) {
+    return analyticsCache.data;
+  }
+
   const baseUrl = await getApiBaseUrl();
   const res = await fetch(`${baseUrl}/analytics/dashboard`, { cache: 'no-store' });
   const data = await res.json();
   if (!data.success) {
+    if (analyticsCache) return analyticsCache.data;
     throw new Error(data.message || 'Failed to fetch analytics summary');
   }
+
+  analyticsCache = { data: data.data, timestamp: Date.now() };
   return data.data;
 }

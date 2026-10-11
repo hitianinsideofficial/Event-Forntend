@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #150408;
-  --bg-secondary: #22080f;
-  --bg-card: rgba(42, 12, 20, 0.85);
-  --border-color: rgba(247, 241, 230, 0.14);
-  --border-glow: rgba(230, 197, 148, 0.5);
+  --bg-primary: #0a0204;
+  --bg-secondary: #130408;
+  --bg-card: rgba(26, 7, 13, 0.95);
+  --border-color: rgba(247, 241, 230, 0.2);
+  --border-glow: rgba(230, 197, 148, 0.6);
   
-  --accent-primary: #800020;
-  --accent-maroon: #600018;
-  --accent-cream: #f7f1e5;
-  --accent-gold: #e6c594;
+  --accent-primary: #94132e;
+  --accent-maroon: #720b20;
+  --accent-cream: #fffaf0;
+  --accent-gold: #f3cca0;
 
   --saffron: #ff9933;
   --green: #138808;
   --ashoka-blue: #000080;
   
-  --text-primary: #fdfbf7;
-  --text-secondary: #e6d7c3;
-  --text-muted: #a69181;
+  --text-primary: #ffffff;
+  --text-secondary: #f0e4d6;
+  --text-muted: #cbbab0;
   
-  --glass-bg: rgba(26, 6, 11, 0.88);
-  --glass-border: rgba(247, 241, 230, 0.15);
+  --glass-bg: rgba(18, 4, 8, 0.94);
+  --glass-border: rgba(247, 241, 230, 0.18);
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 8px;
@@ -39,7 +39,7 @@ html, body {
   touch-action: manipulation;
 }
 
-/* Background Glowing Ambient Orbs */
+/* Background Glowing Ambient Orbs - Subtle Festive Depth without muddiness */
 body::before {
   content: '';
   position: fixed;
@@ -48,10 +48,10 @@ body::before {
   transform: translateX(-50%);
   width: 800px;
   height: 600px;
-  background: radial-gradient(circle, rgba(128, 0, 32, 0.4) 0%, rgba(0,0,0,0) 70%);
+  background: radial-gradient(circle, rgba(148, 19, 46, 0.28) 0%, rgba(0,0,0,0) 70%);
   z-index: -1;
   pointer-events: none;
-  filter: blur(80px);
+  filter: blur(90px);
 }
 
 body::after {
@@ -61,7 +61,7 @@ body::after {
   right: 10%;
   width: 700px;
   height: 700px;
-  background: radial-gradient(circle, rgba(230, 197, 148, 0.15) 0%, rgba(0,0,0,0) 70%);
+  background: radial-gradient(circle, rgba(230, 197, 148, 0.12) 0%, rgba(0,0,0,0) 70%);
   z-index: -1;
   pointer-events: none;
   filter: blur(100px);
@@ -176,55 +176,55 @@ body::after {
 
 /* Navroopam Maroon & Gold Festive Theme Utilities */
 .navroopam-theme-bg {
-  background: linear-gradient(135deg, #1f040a 0%, #2f0812 50%, #170307 100%);
+  background: linear-gradient(135deg, #140206 0%, #20040a 50%, #0c0104 100%);
 }
 
 .navroopam-header-glow {
-  box-shadow: 0 10px 35px -5px rgba(230, 197, 148, 0.25), 0 0 25px rgba(128, 0, 32, 0.4);
+  box-shadow: 0 10px 40px -5px rgba(243, 204, 160, 0.25), 0 0 35px rgba(148, 19, 46, 0.35);
 }
 
 .navroopam-gold-border {
-  border: 2px solid #e6c594;
+  border: 1.5px solid #f3cca0;
 }
 
 .btn-navroopam {
-  background: linear-gradient(135deg, #e6c594 0%, #f7e7c4 50%, #c89852 100%);
-  color: #2b040a;
+  background: linear-gradient(135deg, #f3cca0 0%, #fff1d4 50%, #d49d52 100%);
+  color: #1a0206;
   font-weight: 800;
   padding: 0.75rem 1.75rem;
   border-radius: var(--radius-md);
-  border: 1px solid #f7f1e5;
+  border: 1px solid #ffffff;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 20px 0 rgba(230, 197, 148, 0.45);
+  box-shadow: 0 4px 20px 0 rgba(243, 204, 160, 0.45);
   font-size: 0.9rem;
   letter-spacing: 0.02em;
 }
 
 .btn-navroopam:hover {
   transform: translateY(-2px);
-  background: linear-gradient(135deg, #ffffff 0%, #f7e7c4 50%, #e6c594 100%);
-  color: #170206;
-  box-shadow: 0 6px 28px 0 rgba(230, 197, 148, 0.65);
+  background: linear-gradient(135deg, #ffffff 0%, #fff1d4 50%, #f3cca0 100%);
+  color: #0c0103;
+  box-shadow: 0 6px 28px 0 rgba(243, 204, 160, 0.65);
 }
 
 .navroopam-pill-btn {
-  background: linear-gradient(135deg, #e6c594 0%, #f7e7c4 50%, #c89852 100%);
+  background: linear-gradient(135deg, #f3cca0 0%, #fff1d4 50%, #d49d52 100%);
   border: 1px solid #ffffff;
-  color: #2b040a;
+  color: #1a0206;
   font-weight: 900;
   border-radius: 9999px;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 20px rgba(230, 197, 148, 0.45);
+  box-shadow: 0 4px 20px rgba(243, 204, 160, 0.45);
 }
 
 .navroopam-pill-btn:hover {
-  background: linear-gradient(135deg, #ffffff 0%, #f7e7c4 50%, #e6c594 100%);
-  color: #150408;
-  box-shadow: 0 6px 28px rgba(230, 197, 148, 0.65);
+  background: linear-gradient(135deg, #ffffff 0%, #fff1d4 50%, #f3cca0 100%);
+  color: #0a0204;
+  box-shadow: 0 6px 28px rgba(243, 204, 160, 0.65);
   transform: translateY(-2px);
 }
 
@@ -306,20 +306,24 @@ body::after {
 
 .form-label {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
 .form-input, .form-textarea, .form-select {
-  background: rgba(247, 241, 229, 0.06);
-  border: 1px solid var(--border-color);
+  background: rgba(14, 3, 6, 0.85);
+  border: 1px solid rgba(247, 241, 230, 0.22);
   border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
-  color: var(--text-primary);
+  color: #ffffff;
   font-size: 0.95rem;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
   width: 100%;
+}
+
+.form-input::placeholder, .form-textarea::placeholder {
+  color: #a49185;
 }
 
 .form-input[class*="pl-10"],
@@ -328,15 +332,16 @@ body::after {
 }
 
 .form-input:focus, .form-textarea:focus, .form-select:focus {
-  border-color: var(--accent-gold);
-  box-shadow: 0 0 0 2px rgba(230, 197, 148, 0.25);
+  border-color: #f3cca0;
+  background: rgba(18, 4, 8, 0.95);
+  box-shadow: 0 0 0 2px rgba(243, 204, 160, 0.3);
 }
 
 .form-select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ff9933'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23f3cca0'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   background-size: 1.1rem 1.1rem;
@@ -346,8 +351,8 @@ body::after {
 
 /* Custom Select Dropdown Options Styling */
 select option {
-  background-color: #1a050a !important;
-  color: #fdfbf7 !important;
+  background-color: #100205 !important;
+  color: #ffffff !important;
   padding: 12px 16px;
   font-size: 13px;
 }
@@ -356,8 +361,8 @@ select option:hover,
 select option:focus,
 select option:active,
 select option:checked {
-  background-color: #800020 !important;
-  color: #ff9933 !important;
+  background-color: #94132e !important;
+  color: #f3cca0 !important;
 }
 
 /* Animations */

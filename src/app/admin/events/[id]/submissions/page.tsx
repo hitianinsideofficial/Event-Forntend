@@ -15,6 +15,7 @@ import {
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
 import { ApiResponse } from '../../../../../types/api.types';
+import EmailPreviewModal from '../../../../../components/EmailPreviewModal';
 import { 
   ArrowLeft, 
   QrCode, 
@@ -80,6 +81,9 @@ export default function EventSubmissionsPage() {
   const [previewMediaUrl, setPreviewMediaUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('');
 
+  // Email Templates Preview Modal
+  const [isEmailPreviewOpen, setIsEmailPreviewOpen] = useState<boolean>(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = sessionStorage.getItem('adminToken');
@@ -91,12 +95,14 @@ export default function EventSubmissionsPage() {
     }
   }, [router]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (forceRefresh: boolean = false) => {
+    if (!event || submissions.length === 0) {
+      setLoading(true);
+    }
     try {
       const [evData, subsData] = await Promise.all([
-        fetchEventById(eventId),
-        fetchSubmissionsApi(eventId)
+        fetchEventById(eventId, forceRefresh),
+        fetchSubmissionsApi(eventId, forceRefresh)
       ]);
       setEvent(evData);
       setSubmissions(subsData);
@@ -109,7 +115,7 @@ export default function EventSubmissionsPage() {
 
   useEffect(() => {
     if (isAuthenticated && eventId) {
-      loadData();
+      loadData(false);
     }
   }, [isAuthenticated, eventId]);
 
@@ -262,9 +268,18 @@ export default function EventSubmissionsPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={loadData}
+              onClick={() => setIsEmailPreviewOpen(true)}
+              className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              title="Preview participant email templates (Submission under verification & Instagram post confirmation)"
+            >
+              <Mail className="w-3.5 h-3.5 text-amber-700" />
+              <span>Email Previews</span>
+            </button>
+
+            <button
+              onClick={() => loadData(true)}
               disabled={loading}
-              className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+              className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -1025,6 +1040,13 @@ export default function EventSubmissionsPage() {
             </div>
           </div>
         )}
+
+        {/* EMAIL TEMPLATES PREVIEW MODAL */}
+        <EmailPreviewModal
+          isOpen={isEmailPreviewOpen}
+          onClose={() => setIsEmailPreviewOpen(false)}
+          event={event}
+        />
 
       </main>
     </div>
