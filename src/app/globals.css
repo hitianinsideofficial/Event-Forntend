@@ -174,6 +174,60 @@ body::after {
   box-shadow: 0 6px 22px 0 rgba(230, 197, 148, 0.5);
 }
 
+/* Navroopam Maroon & Gold Festive Theme Utilities */
+.navroopam-theme-bg {
+  background: linear-gradient(135deg, #1f040a 0%, #2f0812 50%, #170307 100%);
+}
+
+.navroopam-header-glow {
+  box-shadow: 0 10px 35px -5px rgba(230, 197, 148, 0.25), 0 0 25px rgba(128, 0, 32, 0.4);
+}
+
+.navroopam-gold-border {
+  border: 2px solid #e6c594;
+}
+
+.btn-navroopam {
+  background: linear-gradient(135deg, #e6c594 0%, #f7e7c4 50%, #c89852 100%);
+  color: #2b040a;
+  font-weight: 800;
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid #f7f1e5;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px 0 rgba(230, 197, 148, 0.45);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+.btn-navroopam:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #ffffff 0%, #f7e7c4 50%, #e6c594 100%);
+  color: #170206;
+  box-shadow: 0 6px 28px 0 rgba(230, 197, 148, 0.65);
+}
+
+.navroopam-pill-btn {
+  background: linear-gradient(135deg, #e6c594 0%, #f7e7c4 50%, #c89852 100%);
+  border: 1px solid #ffffff;
+  color: #2b040a;
+  font-weight: 900;
+  border-radius: 9999px;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px rgba(230, 197, 148, 0.45);
+}
+
+.navroopam-pill-btn:hover {
+  background: linear-gradient(135deg, #ffffff 0%, #f7e7c4 50%, #e6c594 100%);
+  color: #150408;
+  box-shadow: 0 6px 28px rgba(230, 197, 148, 0.65);
+  transform: translateY(-2px);
+}
+
 /* Secondary Button */
 .btn-secondary {
   background: rgba(247, 241, 229, 0.08);

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Navbar from '../../../components/Navbar';
+import AdminNavbar from '../../../components/AdminNavbar';
 import { 
   fetchEvents, 
   fetchSubmissionsApi, 
@@ -32,7 +32,10 @@ import {
   Square, 
   AlertCircle,
   Trash2,
-  X
+  X,
+  Eye,
+  ExternalLink,
+  Award
 } from 'lucide-react';
 
 export default function SendAppreciationEmailPage() {
@@ -48,12 +51,15 @@ export default function SendAppreciationEmailPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'SENT' | 'PENDING'>('ALL');
 
+  // Preview Modal State
+  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
+
   // Email Config State (Pre-filled as requested: Garden hut, 3pm to 5pm, 04. Oct 2026)
   const [location, setLocation] = useState<string>('Garden hut');
   const [timeSlot, setTimeSlot] = useState<string>('3:00 PM to 5:00 PM');
   const [dateStr, setDateStr] = useState<string>('04. Oct 2026');
   const [customMessage, setCustomMessage] = useState<string>(
-    'We truly appreciate your dynamic enthusiasm, hard work, and valuable participation in the event. We are pleased to issue you this Certificate of Participation! You can collect your participation coupon at the venue and timing indicated below.'
+    'We sincerely appreciate your active participation, enthusiasm, and dedication in the event. We are pleased to issue you this Certificate of Participation! You can collect your participation coupon at the venue and timing indicated below.'
   );
 
   // Per-participant Certificate Files: { [subId: string]: File }
@@ -61,6 +67,8 @@ export default function SendAppreciationEmailPage() {
   
   // Sending & Deleting state
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [isSendingAll, setIsSendingAll] = useState<boolean>(false);
+  const [sendAllProgress, setSendAllProgress] = useState<{ current: number; total: number; currentName?: string } | null>(null);
   const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -224,6 +232,85 @@ export default function SendAppreciationEmailPage() {
     }
   };
 
+  // Bulk send appreciation emails to only eligible unsent participants who have a certificate uploaded
+  const handleSendAllEligible = async () => {
+    const eligibleSubmissions = submissions.filter(s => {
+      const isAlreadySent = Boolean(s.appreciationSent);
+      const hasCert = Boolean(certificateFiles[s.id] || s.certificateFileUrl);
+      return !isAlreadySent && hasCert;
+    });
+
+    if (eligibleSubmissions.length === 0) {
+      setFeedbackMsg({
+        type: 'error',
+        text: 'No eligible participants found to send emails. Make sure there are pending participants with uploaded certificates.'
+      });
+      return;
+    }
+
+    const confirmMsg = `Are you sure you want to send appreciation emails to ${eligibleSubmissions.length} participant(s)?\n\n• Already sent participants: Skipped\n• Participants without uploaded certificates: Skipped`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    setIsSendingAll(true);
+    setFeedbackMsg(null);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < eligibleSubmissions.length; i++) {
+      const sub = eligibleSubmissions[i];
+      setSendAllProgress({
+        current: i + 1,
+        total: eligibleSubmissions.length,
+        currentName: sub.fullName
+      });
+
+      try {
+        const attachedFile = certificateFiles[sub.id];
+        const formData = new FormData();
+        formData.append('location', location);
+        formData.append('timeSlot', timeSlot);
+        formData.append('dateStr', dateStr);
+        formData.append('customMessage', customMessage);
+
+        if (attachedFile) {
+          formData.append('certificate', attachedFile);
+        }
+
+        const res = await sendAppreciationEmailApi(sub.id, formData);
+        if (res.success) {
+          successCount++;
+          setSubmissions(prev => prev.map(s => {
+            if (s.id === sub.id) {
+              return {
+                ...s,
+                appreciationSent: true,
+                appreciationSentAt: new Date().toISOString(),
+                certificateFileUrl: res.data?.certificateFileUrl || s.certificateFileUrl
+              };
+            }
+            return s;
+          }));
+          removeLocalFile(sub.id);
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        console.error(`Error sending email to ${sub.fullName}:`, err);
+        failCount++;
+      }
+    }
+
+    setIsSendingAll(false);
+    setSendAllProgress(null);
+
+    setFeedbackMsg({
+      type: failCount === 0 ? 'success' : 'error',
+      text: `Bulk dispatch completed: ${successCount} email(s) sent successfully${failCount > 0 ? `, ${failCount} failed.` : '.'}`
+    });
+  };
+
   const handleToggleCoupon = async (sub: SubmissionItem) => {
     const nextState = !sub.couponCollected;
     try {
@@ -241,12 +328,24 @@ export default function SendAppreciationEmailPage() {
 
   const filteredSubmissions = submissions.filter(sub => {
     const query = searchQuery.toLowerCase();
+    const subEventText = 
+      sub.answers?.['Selected Domain'] ||
+      sub.answers?.['Enrolled Event Options'] ||
+      sub.answers?.['Enrolled Event Option'] ||
+      sub.answers?.['Selected Category'] ||
+      sub.answers?.['Competition Category'] ||
+      sub.answers?.['Category'] ||
+      '';
+
+    const formattedSubEvent = Array.isArray(subEventText) ? subEventText.join(' ') : String(subEventText);
+
     const matchesSearch = 
       sub.fullName?.toLowerCase().includes(query) ||
       sub.email?.toLowerCase().includes(query) ||
       sub.ticketId?.toLowerCase().includes(query) ||
       sub.answers?.['College Roll Number']?.toLowerCase().includes(query) ||
-      sub.answers?.['Department']?.toLowerCase().includes(query);
+      sub.answers?.['Department']?.toLowerCase().includes(query) ||
+      formattedSubEvent.toLowerCase().includes(query);
 
     const matchesStatus = 
       statusFilter === 'ALL' ? true :
@@ -262,45 +361,45 @@ export default function SendAppreciationEmailPage() {
   const couponCollectedCount = submissions.filter(s => s.couponCollected).length;
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
-      <Navbar />
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans">
+      <AdminNavbar />
 
-      <main className="flex-1 max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* TOP NAVIGATION BAR */}
         <div className="flex items-center justify-between gap-4 mb-6">
           <Link 
             href="/admin" 
-            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors font-medium"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors font-bold uppercase tracking-wider"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Admin Console</span>
+            <span>Back to Dashboard</span>
           </Link>
 
-          <span className="text-xs px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold font-mono">
-            ✉️ PARTICIPATION EMAIL DISPATCH HUB
+          <span className="text-xs px-3 py-1 bg-white text-slate-800 border border-slate-300 font-bold font-mono shadow-sm">
+            ✉️ CERTIFICATE & APPRECIATION DISPATCH
           </span>
         </div>
 
         {/* PAGE HEADER */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-800">
+        <div className="bg-white border border-slate-200 p-6 mb-6 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-              <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
-              <span>Participant Appreciation & <span className="text-blue-400">Certificate Dispatch</span></span>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+              <span className="w-2.5 h-2.5 bg-blue-600" />
+              <span>Participant Appreciation & Certificate Dispatch</span>
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Select an event, upload custom certificates, configure venue details, and dispatch appreciation emails with coupon notices.
+            <p className="text-xs text-slate-500 mt-1">
+              Select an event, view enrolled domains/categories, upload custom certificates, configure collection counter details, and dispatch automated emails.
             </p>
           </div>
 
           {/* EVENT SELECTOR DROPDOWN */}
           <div className="flex items-center gap-2 w-full lg:w-auto">
-            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">Target Event:</span>
+            <span className="text-xs text-slate-600 font-bold whitespace-nowrap uppercase tracking-wider">Target Event:</span>
             <select
               value={selectedEventId}
               onChange={e => setSelectedEventId(e.target.value)}
               disabled={loadingEvents}
-              className="form-select bg-[#131b2e] border-slate-700 text-xs text-white py-2 px-3 rounded-xl font-bold min-w-[240px]"
+              className="bg-white border border-slate-300 text-xs text-slate-900 py-2 px-3 font-bold min-w-[260px] outline-none focus:border-slate-900"
             >
               {events.map(ev => {
                 const id = ev.id || (ev as any)._id;
@@ -316,39 +415,46 @@ export default function SendAppreciationEmailPage() {
 
         {/* FEEDBACK NOTIFICATION BANNER */}
         {feedbackMsg && (
-          <div className={`mb-6 p-4 rounded-xl border flex items-center justify-between text-xs font-semibold ${
+          <div className={`mb-6 p-4 border flex items-center justify-between text-xs font-semibold ${
             feedbackMsg.type === 'success' 
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
-              : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-800' 
+              : 'bg-rose-50 border-rose-300 text-rose-800'
           }`}>
             <div className="flex items-center gap-2">
-              {feedbackMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />}
+              {feedbackMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
               <span>{feedbackMsg.text}</span>
             </div>
-            <button onClick={() => setFeedbackMsg(null)} className="text-slate-400 hover:text-white">
+            <button onClick={() => setFeedbackMsg(null)} className="text-slate-500 hover:text-slate-900">
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
         {/* CONFIGURATION & EMAIL TEMPLATE CONTROL */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* EMAIL DETAILS CONFIGURATION BOX */}
-          <div className="lg:col-span-2 glass-panel p-6 border border-blue-500/20 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-blue-400" />
+          <div className="lg:col-span-2 bg-white border border-slate-200 p-6 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+              <h2 className="text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wide">
+                <Sparkles className="w-4 h-4 text-blue-600" />
                 <span>Coupon Collection & Email Announcement Parameters</span>
               </h2>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">
-                Auto-Embedded in Emails
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewModal(true)}
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Preview Email Template</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1 mb-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1 mb-1.5 uppercase tracking-wider">
+                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
                   <span>Coupon Location:</span>
                 </label>
                 <input
@@ -356,13 +462,13 @@ export default function SendAppreciationEmailPage() {
                   value={location}
                   onChange={e => setLocation(e.target.value)}
                   placeholder="e.g. Garden hut"
-                  className="form-input text-xs bg-[#0b0f19]"
+                  className="w-full bg-slate-50 border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1 mb-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1 mb-1.5 uppercase tracking-wider">
+                  <Calendar className="w-3.5 h-3.5 text-amber-600" />
                   <span>Date:</span>
                 </label>
                 <input
@@ -370,13 +476,13 @@ export default function SendAppreciationEmailPage() {
                   value={dateStr}
                   onChange={e => setDateStr(e.target.value)}
                   placeholder="e.g. 04. Oct 2026"
-                  className="form-input text-xs bg-[#0b0f19]"
+                  className="w-full bg-slate-50 border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1 mb-1.5">
-                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1 mb-1.5 uppercase tracking-wider">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Time Slot:</span>
                 </label>
                 <input
@@ -384,14 +490,14 @@ export default function SendAppreciationEmailPage() {
                   value={timeSlot}
                   onChange={e => setTimeSlot(e.target.value)}
                   placeholder="e.g. 3pm to 5pm"
-                  className="form-input text-xs bg-[#0b0f19]"
+                  className="w-full bg-slate-50 border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1 mb-1.5">
-                <Mail className="w-3.5 h-3.5 text-indigo-400" />
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1 mb-1.5 uppercase tracking-wider">
+                <Mail className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Appreciation Body Text:</span>
               </label>
               <textarea
@@ -399,40 +505,40 @@ export default function SendAppreciationEmailPage() {
                 onChange={e => setCustomMessage(e.target.value)}
                 rows={2}
                 placeholder="Enter custom appreciation paragraph..."
-                className="form-textarea text-xs bg-[#0b0f19]"
+                className="w-full bg-slate-50 border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white"
               />
             </div>
           </div>
 
           {/* STATS SUMMARY CARD */}
-          <div className="glass-panel p-6 flex flex-col justify-between border border-slate-800">
+          <div className="bg-white border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-1.5">
-                <Ticket className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-black text-slate-900 mb-1 flex items-center gap-1.5 uppercase tracking-wide">
+                <Ticket className="w-4 h-4 text-blue-600" />
                 <span>Event Dispatch Status</span>
               </h3>
-              <p className="text-[11px] text-slate-400 mb-4 truncate">{selectedEvent?.title || 'Selected Event'}</p>
+              <p className="text-[11px] text-slate-500 mb-4 truncate font-medium">{selectedEvent?.title || 'Selected Event'}</p>
 
               <div className="space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                  <span className="text-xs text-slate-400">Total Participants</span>
-                  <span className="text-base font-bold text-white font-mono">{totalCount}</span>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="text-xs text-slate-500 font-bold uppercase">Total Participants</span>
+                  <span className="text-base font-black text-slate-900 font-mono">{totalCount}</span>
                 </div>
-                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                  <span className="text-xs text-slate-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Email Received
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="text-xs text-slate-500 font-bold uppercase flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Email Received
                   </span>
-                  <span className="text-base font-bold text-emerald-400 font-mono">{sentCount}</span>
+                  <span className="text-base font-black text-emerald-700 font-mono">{sentCount}</span>
                 </div>
-                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                  <span className="text-xs text-slate-400">Pending Email</span>
-                  <span className="text-base font-bold text-amber-400 font-mono">{pendingCount}</span>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="text-xs text-slate-500 font-bold uppercase">Pending Email</span>
+                  <span className="text-base font-black text-amber-700 font-mono">{pendingCount}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-400 flex items-center gap-1">
-                    <Ticket className="w-3.5 h-3.5 text-blue-400" /> Coupons Collected
+                  <span className="text-xs text-slate-500 font-bold uppercase flex items-center gap-1">
+                    <Ticket className="w-3.5 h-3.5 text-blue-600" /> Coupons Collected
                   </span>
-                  <span className="text-base font-bold text-blue-400 font-mono">{couponCollectedCount} / {totalCount}</span>
+                  <span className="text-base font-black text-blue-700 font-mono">{couponCollectedCount} / {totalCount}</span>
                 </div>
               </div>
             </div>
@@ -440,44 +546,74 @@ export default function SendAppreciationEmailPage() {
         </div>
 
         {/* PARTICIPANTS TABLE & ACTIONS */}
-        <section className="glass-panel p-6 border border-slate-800">
+        <section className="bg-white border border-slate-200 shadow-sm p-6">
           {/* SEARCH & STATUS FILTER BAR */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2 uppercase tracking-wide">
                 <span>Event Participants</span>
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-mono">
+                <span className="px-2.5 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 text-xs font-mono font-bold">
                   {filteredSubmissions.length} Attendees
                 </span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Attach participant certificates, click "Send Appreciation Email", and manage coupon status.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              {/* SEND ALL ELIGIBLE BUTTON */}
+              {(() => {
+                const eligibleCount = submissions.filter(s => !s.appreciationSent && Boolean(certificateFiles[s.id] || s.certificateFileUrl)).length;
+
+                return (
+                  <button
+                    type="button"
+                    onClick={handleSendAllEligible}
+                    disabled={isSendingAll || eligibleCount === 0}
+                    className={`px-3.5 py-1.5 text-xs font-bold inline-flex items-center gap-2 border transition-all ${
+                      eligibleCount > 0 && !isSendingAll
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shadow-sm'
+                        : 'bg-slate-100 text-slate-400 border-slate-300 cursor-not-allowed'
+                    }`}
+                    title={
+                      eligibleCount > 0
+                        ? `Send appreciation emails to ${eligibleCount} pending participant(s) with uploaded certificates`
+                        : 'No pending participants with uploaded certificates found'
+                    }
+                  >
+                    <Send className={`w-3.5 h-3.5 ${isSendingAll ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isSendingAll
+                        ? 'Dispatching Emails...'
+                        : `Send All Emails (${eligibleCount} Ready)`}
+                    </span>
+                  </button>
+                );
+              })()}
+
               {/* STATUS FILTER PILLS */}
-              <div className="flex items-center p-1 rounded-xl bg-[#0b0f19] border border-slate-800">
+              <div className="flex items-center border border-slate-300 bg-slate-50 p-0.5">
                 <button
                   onClick={() => setStatusFilter('ALL')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    statusFilter === 'ALL' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                  className={`px-3 py-1 text-xs font-bold transition-all ${
+                    statusFilter === 'ALL' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   All ({totalCount})
                 </button>
                 <button
                   onClick={() => setStatusFilter('PENDING')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    statusFilter === 'PENDING' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
+                  className={`px-3 py-1 text-xs font-bold transition-all ${
+                    statusFilter === 'PENDING' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Pending ({pendingCount})
                 </button>
                 <button
                   onClick={() => setStatusFilter('SENT')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    statusFilter === 'SENT' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                  className={`px-3 py-1 text-xs font-bold transition-all ${
+                    statusFilter === 'SENT' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Received ({sentCount})
@@ -485,32 +621,53 @@ export default function SendAppreciationEmailPage() {
               </div>
 
               {/* SEARCH BAR */}
-              <div className="relative w-full sm:w-60">
+              <div className="relative w-full sm:w-64">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search participant name, roll, email..."
+                  placeholder="Search name, roll, sub-event..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-500"
+                  className="w-full bg-white border border-slate-300 pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-900"
                 />
               </div>
             </div>
           </div>
 
+          {/* BULK SENDING PROGRESS BANNER */}
+          {isSendingAll && sendAllProgress && (
+            <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                <div>
+                  <span className="font-bold text-white">Bulk Email Dispatch In Progress: </span>
+                  <span>
+                    Sending email {sendAllProgress.current} of {sendAllProgress.total} {sendAllProgress.currentName ? `to ${sendAllProgress.currentName}` : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="w-full sm:w-48 bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-blue-500 h-full transition-all duration-300"
+                  style={{ width: `${(sendAllProgress.current / sendAllProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* PARTICIPANTS TABLE */}
           {loadingSubmissions ? (
-            <div className="py-16 text-center text-slate-400">
-              <div className="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-xs">Loading registered participants...</p>
+            <div className="py-16 text-center text-slate-500">
+              <div className="inline-block w-6 h-6 border-2 border-slate-900 border-t-transparent animate-spin mb-2" />
+              <p className="text-xs font-bold uppercase tracking-wider">Loading registered participants...</p>
             </div>
           ) : filteredSubmissions.length === 0 ? (
-            <div className="py-12 text-center text-slate-400">
-              <div className="w-12 h-12 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-3 text-slate-400">
+            <div className="py-12 text-center text-slate-500">
+              <div className="w-12 h-12 bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400 border border-slate-200">
                 <User className="w-6 h-6" />
               </div>
-              <p className="text-sm font-bold text-white mb-1">No Participants Found</p>
-              <p className="text-xs text-slate-400">
+              <p className="text-sm font-black text-slate-900 mb-1">No Participants Found</p>
+              <p className="text-xs text-slate-500">
                 {searchQuery || statusFilter !== 'ALL' 
                   ? 'No attendees match the current search or filter.' 
                   : 'No participants registered for this event yet.'}
@@ -520,51 +677,97 @@ export default function SendAppreciationEmailPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-white/[0.01]">
+                  <tr className="border-b-2 border-slate-300 text-slate-600 font-black uppercase text-[11px] bg-slate-50">
                     <th className="p-3.5">Ticket ID</th>
                     <th className="p-3.5">Participant Details</th>
+                    <th className="p-3.5">Sub-Event / Category</th>
                     <th className="p-3.5">Email Status</th>
                     <th className="p-3.5">Certificate File</th>
                     <th className="p-3.5">Coupon Collected</th>
                     <th className="p-3.5 text-right">Email Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-200">
                   {filteredSubmissions.map(sub => {
                     const isSent = Boolean(sub.appreciationSent);
                     const isSending = sendingId === sub.id;
                     const selectedFile = certificateFiles[sub.id];
 
+                    // Extract sub-event / competition category / domain
+                    const subEventRaw = 
+                      sub.answers?.['Selected Domain'] ||
+                      sub.answers?.['Enrolled Event Options'] ||
+                      sub.answers?.['Enrolled Event Option'] ||
+                      sub.answers?.['Selected Category'] ||
+                      sub.answers?.['Competition Category'] ||
+                      sub.answers?.['Category'] ||
+                      sub.answers?.['Primary Selected Competition Domain'];
+
+                    const themeRaw = sub.answers?.['Selected Theme'] || sub.answers?.['Theme'];
+
+                    let subEventDisplay: string[] = [];
+                    if (Array.isArray(subEventRaw)) {
+                      subEventDisplay = subEventRaw;
+                    } else if (typeof subEventRaw === 'string' && subEventRaw.trim()) {
+                      subEventDisplay = [subEventRaw.trim()];
+                    }
+
                     return (
-                      <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors">
+                      <tr key={sub.id} className="hover:bg-slate-50 transition-colors">
                         {/* TICKET ID */}
-                        <td className="p-3.5 font-mono font-bold text-blue-400 whitespace-nowrap">
+                        <td className="p-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
                           {sub.ticketId}
                         </td>
 
                         {/* PARTICIPANT DETAILS */}
                         <td className="p-3.5">
-                          <div className="font-bold text-white flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 text-slate-400" />
+                          <div className="font-black text-slate-900 flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-slate-500" />
                             <span>{sub.fullName}</span>
                           </div>
-                          <div className="text-[11px] text-slate-400">{sub.email}</div>
+                          <div className="text-[11px] text-slate-500">{sub.email}</div>
                           {sub.answers?.['College Roll Number'] && (
-                            <div className="text-[10px] text-amber-400 font-mono font-bold mt-0.5">
+                            <div className="text-[10px] text-slate-700 font-mono font-bold mt-0.5">
                               Roll: {sub.answers['College Roll Number']}
                             </div>
+                          )}
+                        </td>
+
+                        {/* SUB-EVENT / CATEGORY ENROLLED */}
+                        <td className="p-3.5 min-w-[180px]">
+                          {subEventDisplay.length > 0 ? (
+                            <div className="space-y-1">
+                              {subEventDisplay.map((cat, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 text-[11px] font-bold"
+                                >
+                                  <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                                  <span>{cat}</span>
+                                </span>
+                              ))}
+                              {themeRaw && (
+                                <div className="text-[10px] text-slate-500 italic">
+                                  Theme: <span className="text-slate-800 font-bold">{themeRaw}</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-[11px] italic">
+                              General Participant
+                            </span>
                           )}
                         </td>
 
                         {/* EMAIL STATUS BADGE */}
                         <td className="p-3.5 whitespace-nowrap">
                           {isSent ? (
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold inline-flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black uppercase inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
                               <span>Email Sent</span>
                             </span>
                           ) : (
-                            <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-medium inline-flex items-center gap-1">
+                            <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 text-[10px] font-bold uppercase inline-flex items-center gap-1">
                               <span>Pending Delivery</span>
                             </span>
                           )}
@@ -579,14 +782,14 @@ export default function SendAppreciationEmailPage() {
                         <td className="p-3.5">
                           {selectedFile ? (
                             <div className="flex items-center gap-2">
-                              <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[11px] font-medium truncate max-w-[150px] inline-flex items-center gap-1.5 shadow-sm">
-                                <FileCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span className="px-2 py-1 bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-bold truncate max-w-[150px] inline-flex items-center gap-1.5">
+                                <FileCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                                 <span className="truncate">{selectedFile.name}</span>
                               </span>
                               <button
                                 type="button"
                                 onClick={() => removeLocalFile(sub.id)}
-                                className="p-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all inline-flex items-center gap-1"
+                                className="p-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
                                 title="Delete / Remove this uploaded certificate"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -599,16 +802,16 @@ export default function SendAppreciationEmailPage() {
                                 href={sub.certificateFileUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium inline-flex items-center gap-1.5 transition-all"
+                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-bold inline-flex items-center gap-1.5 transition-all"
                               >
-                                <FileCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                <FileCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                 <span>View Certificate ↗</span>
                               </a>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteStoredCertificate(sub)}
                                 disabled={deletingCertId === sub.id}
-                                className="p-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all inline-flex items-center gap-1 disabled:opacity-50"
+                                className="p-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all inline-flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                                 title="Delete this uploaded certificate"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -616,9 +819,9 @@ export default function SendAppreciationEmailPage() {
                               </button>
                             </div>
                           ) : (
-                            <label className="cursor-pointer px-2.5 py-1 rounded-lg bg-[#131b2e] hover:bg-[#1e293b] text-slate-300 border border-slate-700 text-[11px] font-medium inline-flex items-center gap-1.5 transition-colors">
-                              <Upload className="w-3.5 h-3.5 text-blue-400" />
-                              <span>Upload Certificate</span>
+                            <label className="cursor-pointer px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-[11px] font-bold inline-flex items-center gap-1.5 transition-colors">
+                              <Upload className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Upload Cert</span>
                               <input
                                 type="file"
                                 accept=".pdf,image/*"
@@ -634,20 +837,20 @@ export default function SendAppreciationEmailPage() {
                           <button
                             type="button"
                             onClick={() => handleToggleCoupon(sub)}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all inline-flex items-center gap-1.5 border ${
+                            className={`px-2 py-1 text-[11px] font-bold transition-all inline-flex items-center gap-1.5 border cursor-pointer ${
                               sub.couponCollected
-                                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                                : 'bg-slate-800/40 text-slate-400 border-slate-700 hover:text-white'
+                                ? 'bg-blue-50 text-blue-800 border-blue-300'
+                                : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-white'
                             }`}
                           >
                             {sub.couponCollected ? (
                               <>
-                                <CheckSquare className="w-3.5 h-3.5 text-blue-400" />
+                                <CheckSquare className="w-3.5 h-3.5 text-blue-600" />
                                 <span>Collected</span>
                               </>
                             ) : (
                               <>
-                                <Square className="w-3.5 h-3.5 text-slate-500" />
+                                <Square className="w-3.5 h-3.5 text-slate-400" />
                                 <span>Not Collected</span>
                               </>
                             )}
@@ -665,10 +868,10 @@ export default function SendAppreciationEmailPage() {
                                   type="button"
                                   onClick={() => handleSendAppreciationEmail(sub)}
                                   disabled={isSending || !hasCert}
-                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 ${
+                                  className={`px-3 py-1.5 text-xs font-bold transition-all inline-flex items-center gap-1.5 border cursor-pointer ${
                                     !hasCert 
-                                      ? 'bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed'
-                                      : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 disabled:opacity-50'
+                                      ? 'bg-slate-100 text-slate-400 border-slate-300 cursor-not-allowed'
+                                      : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 disabled:opacity-50'
                                   }`}
                                   title={!hasCert ? 'Upload a certificate before resending email' : 'Resend Appreciation Email'}
                                 >
@@ -683,10 +886,10 @@ export default function SendAppreciationEmailPage() {
                                 type="button"
                                 onClick={() => handleSendAppreciationEmail(sub)}
                                 disabled={isSending || !hasCert}
-                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 ${
+                                className={`px-3 py-1.5 text-xs font-bold transition-all inline-flex items-center gap-1.5 border cursor-pointer ${
                                   !hasCert
-                                    ? 'bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
-                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/30 disabled:opacity-50'
+                                    ? 'bg-slate-100 text-slate-400 border-slate-300 cursor-not-allowed opacity-60'
+                                    : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900 disabled:opacity-50'
                                 }`}
                                 title={!hasCert ? 'Upload a certificate first before sending email' : 'Send Appreciation Email'}
                               >
@@ -704,6 +907,159 @@ export default function SendAppreciationEmailPage() {
             </div>
           )}
         </section>
+
+        {/* EMAIL TEMPLATE PREVIEW MODAL */}
+        {showPreviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white border border-slate-300 max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+              {/* MODAL HEADER */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-2">
+                  <span className="p-2 bg-white text-slate-900 border border-slate-300">
+                    <Mail className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase">Live Email Template Preview</h3>
+                    <p className="text-[11px] text-slate-500">
+                      Exact rendering received by participants in their inbox
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* MODAL BODY (SIMULATED EMAIL INBOX CLIENT) */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100">
+                {/* INBOX METADATA BAR */}
+                <div className="bg-white border border-slate-300 p-3 mb-4 text-xs space-y-1.5 text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 font-bold w-16">Subject:</span>
+                    <span className="font-bold text-slate-900">
+                      Certificate of Appreciation & Coupon Collection: {selectedEvent?.title || 'TechFest 2026'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 font-bold w-16">From:</span>
+                    <span className="text-slate-700 font-mono">HITian Inside &lt;hitianinside@gmail.com&gt;</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 font-bold w-16">To:</span>
+                    <span className="text-slate-700 font-mono">Rahul Sharma &lt;rahul.sharma@example.com&gt;</span>
+                  </div>
+                </div>
+
+                {/* THE ACTUAL EMAIL CARD */}
+                <div className="max-w-[580px] mx-auto bg-white shadow-md overflow-hidden border border-slate-300 text-slate-800 font-sans">
+                  {/* EMAIL HEADER */}
+                  {(() => {
+                    const hasBanner = Boolean(selectedEvent?.bannerUrl);
+
+                    return (
+                      <div 
+                        className="relative text-white p-7 text-center overflow-hidden border-b border-[#800020] bg-gradient-to-r from-[#4a0013] via-[#1f0309] to-[#800020]"
+                        style={hasBanner ? {
+                          backgroundImage: `linear-gradient(180deg, rgba(42, 6, 14, 0.84) 0%, rgba(26, 4, 8, 0.95) 100%), url('${selectedEvent?.bannerUrl}')`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center'
+                        } : undefined}
+                      >
+                        <div className="relative z-10">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider mb-2.5 bg-[#e6c594]/15 border border-[#e6c594]/40 text-[#e6c594]">
+                            <Sparkles className="w-3 h-3" />
+                            <span>HITian Inside • Official</span>
+                          </div>
+
+                          <h1 className="text-2xl sm:text-3xl font-black tracking-tight m-0 drop-shadow-md text-white">
+                            {selectedEvent?.title || 'PRATIDHWANI'}
+                          </h1>
+                          <p className="text-xs text-[#f2e2cf] mt-1 mb-0 font-medium">
+                            Participation & Appreciation Notification
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* EMAIL CONTENT */}
+                  <div className="p-6 sm:p-7 space-y-5">
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 mb-2">
+                        Dear Rahul Sharma,
+                      </h2>
+                      <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                        {customMessage || 'We sincerely appreciate your active participation, enthusiasm, and dedication in the event. We are pleased to issue you this Certificate of Participation! You can collect your participation coupon at the venue and timing indicated below.'}
+                      </p>
+                    </div>
+
+                    {/* COUPON DETAILS BOX */}
+                    <div className="bg-[#fff8f8] border border-[#f2d6dc] border-l-4 border-l-[#800020] p-4 sm:p-5">
+                      <div className="text-xs sm:text-sm font-bold text-[#800020] flex items-center gap-2 mb-3">
+                        <span>🎁 Participation Coupon Collection Details</span>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-600 font-medium">📍 Venue / Counter:</span>
+                          <span className="font-bold text-[#1c0509]">{location || 'Garden hut'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-600 font-medium">📅 Collection Date:</span>
+                          <span className="font-bold text-[#1c0509]">{dateStr || '04. Oct 2026'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-600 font-medium">⏰ Timing:</span>
+                          <span className="font-bold text-[#1c0509]">{timeSlot || '3:00 PM to 5:00 PM'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CERTIFICATE NOTICE BOX */}
+                    <div className="bg-slate-50 border border-slate-300 p-4 sm:p-5 text-center">
+                      <h4 className="text-sm font-bold text-slate-900 mb-1">
+                        📜 Certificate of Participation
+                      </h4>
+                      <p className="text-xs text-slate-600 mb-3">
+                        Your official Certificate has been verified and attached directly to this email.
+                      </p>
+                      <button
+                        type="button"
+                        className="px-4 py-2 bg-slate-900 text-white font-bold text-xs inline-flex items-center gap-1.5 pointer-events-none"
+                      >
+                        <Award className="w-3.5 h-3.5" />
+                        <span>View & Download Certificate (Attached)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* EMAIL FOOTER */}
+                  <div className="bg-slate-50 border-t border-slate-200 p-5 text-center text-xs text-slate-500">
+                    <p className="font-bold text-slate-700 m-0 mb-1">
+                      HITian Inside • Haldia Institute of Technology
+                    </p>
+                    <p className="m-0 text-[11px]">
+                      Need assistance? Visit <a href="https://www.hitianinside.in/" target="_blank" className="text-blue-600 font-bold underline">www.hitianinside.in</a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* MODAL FOOTER */}
+              <div className="p-4 border-t border-slate-200 flex justify-end bg-slate-50">
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewModal(false)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer"
+                >
+                  Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

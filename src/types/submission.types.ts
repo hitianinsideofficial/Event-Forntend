@@ -4,6 +4,8 @@ export interface SubmissionFile {
   driveLink?: string;
   localUrl: string;
   size?: number;
+  provider?: string;
+  fileId?: string;
 }
 
 export interface SubmissionItem {
@@ -25,5 +27,7 @@ export interface SubmissionItem {
   appreciationSentAt?: string | null;
   certificateFileUrl?: string | null;
   couponCollected?: boolean;
+  paymentStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'PAID';
+  paymentVerifiedAt?: string | null;
   createdAt: string;
 }

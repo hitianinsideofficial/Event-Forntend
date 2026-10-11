@@ -492,6 +492,27 @@ export async function sendAppreciationEmailApi(
   return data;
 }
 
+export async function updatePaymentStatusApi(
+  submissionId: string,
+  paymentStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'PAID'
+): Promise<ApiResponse<SubmissionItem>> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}/payment-status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || ''}`
+    },
+    body: JSON.stringify({ paymentStatus })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update payment verification status');
+  return data;
+}
+
 export async function toggleCouponCollectedApi(
   submissionId: string,
   couponCollected: boolean
