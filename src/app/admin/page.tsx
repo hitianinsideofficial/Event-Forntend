@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import Navbar from '../../components/Navbar';
+import AdminNavbar from '../../components/AdminNavbar';
 import { 
   adminLoginApi, 
   fetchEvents, 
@@ -13,18 +13,20 @@ import {
   createObserverAdminApi,
   toggleObserverStatusAdminApi,
   deleteObserverAdminApi,
-  fetchLogsAndAnalyticsApi
+  fetchLogsAndAnalyticsApi,
+  fetchSubmissionsApi
 } from '../../services/api.service';
 import { 
   fetchAnalyticsDashboardApi, 
   AnalyticsSummaryData 
 } from '../../services/analytics.service';
 import { EventItem, EventStatus } from '../../types/event.types';
+import { SubmissionItem } from '../../types/submission.types';
 import { 
   Lock, 
   LogOut, 
   Plus, 
-  Mail,
+  Mail, 
   Calendar, 
   FileText, 
   Users, 
@@ -47,7 +49,17 @@ import {
   Clock,
   ShieldCheck,
   ShieldX,
-  Server
+  Server,
+  Filter,
+  CheckCircle2,
+  CreditCard,
+  ExternalLink,
+  Layers,
+  ArrowRight,
+  Search,
+  Sparkles,
+  Building2,
+  GraduationCap
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -60,10 +72,12 @@ import {
   Area,
   XAxis,
   YAxis,
-  CartesianGrid
+  CartesianGrid,
+  BarChart,
+  Bar
 } from 'recharts';
 
-const PIE_COLORS = ['#ff9933', '#e6c594', '#00c49f', '#ff8042', '#8884d8', '#ffc658', '#82ca9d', '#a4de6c', '#d0ed57', '#83a6ed'];
+const CHART_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#4f46e5', '#ea580c', '#65a30d', '#db2777'];
 
 export default function AdminDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -73,11 +87,16 @@ export default function AdminDashboardPage() {
   const [authLoading, setAuthLoading] = useState<boolean>(false);
 
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [allSubmissions, setAllSubmissions] = useState<SubmissionItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingVisibilityId, setTogglingVisibilityId] = useState<string | null>(null);
 
-  // Analytics State
+  // Event-Wise Analytics Filter
+  const [selectedAnalyticsEventId, setSelectedAnalyticsEventId] = useState<string>('ALL');
+
+  // General Website Traffic Analytics State
   const [analyticsData, setAnalyticsData] = useState<AnalyticsSummaryData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState<boolean>(false);
 
@@ -90,9 +109,13 @@ export default function AdminDashboardPage() {
   const [obsError, setObsError] = useState<string>('');
   const [obsSuccess, setObsSuccess] = useState<string>('');
 
-  // Logs & Visual Analytics State
+  // Logs & Audit State
   const [logsAnalyticsData, setLogsAnalyticsData] = useState<any>(null);
   const [logsLoading, setLogsLoading] = useState<boolean>(false);
+
+  // Search filter for events list
+  const [eventSearchQuery, setEventSearchQuery] = useState<string>('');
+  const [eventStatusFilter, setEventStatusFilter] = useState<string>('ALL');
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,16 +137,17 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const [togglingVisibilityId, setTogglingVisibilityId] = useState<string | null>(null);
-
-  const loadAdminEvents = async () => {
+  const loadAdminEventsAndSubmissions = async () => {
     setLoading(true);
     try {
-      // Pass includeDone=true & admin=true so admins see ALL events (including DONE & HIDDEN)
-      const eventsList = await fetchEvents(true, true);
+      const [eventsList, subsList] = await Promise.all([
+        fetchEvents(true, true),
+        fetchSubmissionsApi()
+      ]);
       setEvents(eventsList);
+      setAllSubmissions(subsList);
     } catch (err) {
-      console.error('Failed loading admin events:', err);
+      console.error('Failed loading admin events & submissions:', err);
     } finally {
       setLoading(false);
     }
@@ -134,7 +158,7 @@ export default function AdminDashboardPage() {
     try {
       await toggleEventVisibilityApi(eventId, isHidden);
       setEvents(prev => prev.map(ev => {
-        if ((ev.id || ev._id) === eventId) {
+        if ((ev.id || (ev as any)._id) === eventId) {
           return { ...ev, isHidden };
         }
         return ev;
@@ -175,7 +199,7 @@ export default function AdminDashboardPage() {
 
     try {
       await createObserverAdminApi(newObsName, newObsEmail, newObsPassword);
-      setObsSuccess(`Observer "${newObsName}" created successfully. Credentials generated.`);
+      setObsSuccess(`Observer "${newObsName}" created successfully.`);
       setNewObsName('');
       setNewObsEmail('');
       setNewObsPassword('');
@@ -197,7 +221,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleDeleteObserver = async (id: string, email: string) => {
-    if (!window.confirm(`Are you sure you want to PERMANENTLY REMOVE observer "${email}"? Their portal access will be instantly revoked.`)) {
+    if (!window.confirm(`Are you sure you want to PERMANENTLY REMOVE observer "${email}"? Access will be revoked immediately.`)) {
       return;
     }
 
@@ -230,7 +254,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      loadAdminEvents();
+      loadAdminEventsAndSubmissions();
       loadAnalytics();
       loadObserversList();
       loadLogsAndAnalytics();
@@ -241,7 +265,7 @@ export default function AdminDashboardPage() {
     setUpdatingStatusId(eventId);
     try {
       await updateEventStatusApi(eventId, newStatus);
-      await loadAdminEvents();
+      await loadAdminEventsAndSubmissions();
     } catch (err: any) {
       alert(err.message || 'Failed to update status');
     } finally {
@@ -257,7 +281,7 @@ export default function AdminDashboardPage() {
     setDeletingId(eventId);
     try {
       await deleteEventApi(eventId);
-      await loadAdminEvents();
+      await loadAdminEventsAndSubmissions();
     } catch (err: any) {
       alert(err.message || 'Failed to delete event');
     } finally {
@@ -265,45 +289,160 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // ==========================================
+  // EVENT-WISE COMPUTED ANALYTICS
+  // ==========================================
+  const eventWiseFilteredSubmissions = useMemo(() => {
+    if (selectedAnalyticsEventId === 'ALL') {
+      return allSubmissions;
+    }
+    return allSubmissions.filter(sub => {
+      const matchesId = sub.eventId === selectedAnalyticsEventId;
+      const isNavroopamAlias = (selectedAnalyticsEventId.includes('nav') || selectedAnalyticsEventId === '6aca70825588e8009b8e8e83') && (sub.eventId === '6aca70825588e8009b8e8e83' || sub.eventId?.includes('nav') || sub.eventTitle?.toLowerCase().includes('nav'));
+      const isPratidhwaniAlias = (selectedAnalyticsEventId.includes('pratid')) && (sub.eventId?.includes('pratid') || sub.eventTitle?.toLowerCase().includes('pratid'));
+      return matchesId || isNavroopamAlias || isPratidhwaniAlias;
+    });
+  }, [allSubmissions, selectedAnalyticsEventId]);
+
+  // Dept Wise computation for selected event
+  const deptWiseData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    eventWiseFilteredSubmissions.forEach(sub => {
+      const dept = sub.answers?.['Department'] || 'Other / Unknown';
+      const cleanDept = dept.split('(')[0].trim() || 'General';
+      counts[cleanDept] = (counts[cleanDept] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [eventWiseFilteredSubmissions]);
+
+  // Academic Year Wise computation for selected event
+  const yearWiseData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    eventWiseFilteredSubmissions.forEach(sub => {
+      const year = sub.answers?.['Academic Year'] || 'Unspecified';
+      counts[year] = (counts[year] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [eventWiseFilteredSubmissions]);
+
+  // Domain Wise computation for selected event
+  const domainWiseData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    eventWiseFilteredSubmissions.forEach(sub => {
+      const dom = sub.answers?.['Selected Domain'] || sub.answers?.['Enrolled Event Options'] || 'General Entry';
+      counts[dom] = (counts[dom] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [eventWiseFilteredSubmissions]);
+
+  // Payment Status Breakdown for selected event
+  const paymentMetrics = useMemo(() => {
+    let paidCount = 0;
+    let verifiedCount = 0;
+    let pendingCount = 0;
+    let rejectedCount = 0;
+    let totalRevenue = 0;
+
+    eventWiseFilteredSubmissions.forEach(sub => {
+      const status = sub.paymentStatus || (sub.answers?.['Payment Status']?.includes('PAID') ? 'PAID' : 'PENDING');
+      if (status === 'VERIFIED') verifiedCount++;
+      else if (status === 'PAID') paidCount++;
+      else if (status === 'REJECTED') rejectedCount++;
+      else pendingCount++;
+
+      // Revenue parsing
+      const rawAmt = sub.answers?.['Registration Fee'] || sub.answers?.['Payment Amount'];
+      if (rawAmt) {
+        const numMatch = String(rawAmt).match(/(\d+(\.\d+)?)/);
+        if (numMatch) {
+          totalRevenue += parseFloat(numMatch[0]);
+        }
+      }
+    });
+
+    return {
+      paidCount,
+      verifiedCount,
+      pendingCount,
+      rejectedCount,
+      totalRevenue: totalRevenue.toFixed(2),
+      totalSubmissions: eventWiseFilteredSubmissions.length
+    };
+  }, [eventWiseFilteredSubmissions]);
+
+  // Filtered Events in Directory
+  const filteredEventsDirectory = useMemo(() => {
+    return events.filter(ev => {
+      const matchesSearch = ev.title.toLowerCase().includes(eventSearchQuery.toLowerCase()) || 
+        ev.location.toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
+        ev.organizer.toLowerCase().includes(eventSearchQuery.toLowerCase());
+      const matchesStatus = eventStatusFilter === 'ALL' || ev.status === eventStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [events, eventSearchQuery, eventStatusFilter]);
+
+  // Unauthenticated Login Screen with clean zero rounded corners
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
-        <Navbar />
+      <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans">
+        <header className="w-full bg-white border-b border-slate-200 py-4 px-6">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-slate-900 flex items-center justify-center p-1">
+                <span className="text-white font-black text-xs">HI</span>
+              </div>
+              <span className="font-extrabold text-slate-900 text-base">HITian Inside • Admin Portal</span>
+            </div>
+            <Link href="/" className="text-xs font-semibold text-slate-600 hover:text-slate-900">
+              ← Return to Main Website
+            </Link>
+          </div>
+        </header>
+
         <div className="flex-1 flex items-center justify-center p-4">
-          <div className="glass-panel p-8 max-w-md w-full border border-[#f7f1e5]/10 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-[#800020]/30 border border-[#e6c594]/30 text-[#e6c594] flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white p-8 max-w-md w-full border border-slate-300 shadow-md">
+            <div className="w-12 h-12 bg-slate-900 text-white flex items-center justify-center mb-4">
               <Lock className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-bold mb-1">Admin Portal Access</h1>
-            <p className="text-xs text-[#a69181] mb-6">Enter admin email & password to manage events, QR check-ins, and submissions.</p>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-1">
+              Admin Authentication
+            </h1>
+            <p className="text-xs text-slate-600 mb-6 leading-relaxed">
+              Enter your authorized administrative credentials to manage registrations, verify payments, and access system analytics.
+            </p>
 
             {authError && (
-              <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
-                {authError}
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-300 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
               </div>
             )}
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div className="form-group text-left">
-                <label className="form-label">Admin Email</label>
+              <div className="space-y-1 text-left">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Admin Email</label>
                 <input 
                   type="email"
                   value={emailInput}
                   onChange={e => setEmailInput(e.target.value)}
                   placeholder="admin@hitianinside.in"
-                  className="form-input text-sm"
+                  className="w-full px-3 py-2.5 text-sm bg-white border border-slate-300 text-slate-900 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 font-sans"
                   required
                 />
               </div>
 
-              <div className="form-group text-left">
-                <label className="form-label">Admin Password</label>
+              <div className="space-y-1 text-left">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Admin Password</label>
                 <input 
                   type="password"
                   value={passwordInput}
                   onChange={e => setPasswordInput(e.target.value)}
                   placeholder="••••••••"
-                  className="form-input text-sm font-mono"
+                  className="w-full px-3 py-2.5 text-sm bg-white border border-slate-300 text-slate-900 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 font-mono"
                   required
                 />
               </div>
@@ -311,10 +450,10 @@ export default function AdminDashboardPage() {
               <button 
                 type="submit" 
                 disabled={authLoading}
-                className="btn-primary w-full py-2.5 justify-center text-sm font-semibold mt-2 inline-flex items-center gap-2"
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider mt-2 inline-flex items-center justify-center gap-2 cursor-pointer transition-colors"
               >
                 <Lock className="w-4 h-4" />
-                <span>{authLoading ? 'Verifying...' : 'Unlock Admin Panel'}</span>
+                <span>{authLoading ? 'Verifying...' : 'Sign In to Admin Console'}</span>
               </button>
             </form>
           </div>
@@ -324,471 +463,411 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
-      <Navbar />
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
+      <AdminNavbar />
 
-      <main className="flex-1 max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-800">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        {/* TOP COMMAND BAR */}
+        <div className="bg-white border border-slate-200 p-5 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Admin Console & <span className="text-indigo-400">Event Management</span>
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">General Administrative Panel • Manage events, forms, observers, and attendee records.</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                Operations & Event Control Center
+              </h1>
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold uppercase tracking-wider">
+                System Active
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5">
+              Live submission management, payment reconciliation, event-wise visual intelligence, and auditor access.
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Link 
-              href="/admin/send-appreciation-email"
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-lg shadow-blue-600/30 transition-all"
-            >
-              <Mail className="w-4 h-4" />
-              <span>✉️ Send Appreciation Emails</span>
-            </Link>
+          <div className="flex flex-wrap items-center gap-2">
             <Link 
               href="/admin/events/create"
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors shadow-sm"
             >
-              <Plus className="w-4 h-4" />
-              <span>+ Create New Event</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Event</span>
             </Link>
-            <button 
-              onClick={() => {
-                setIsAuthenticated(false);
-                if (typeof window !== 'undefined') sessionStorage.removeItem('adminToken');
-              }}
-              className="btn-secondary text-xs inline-flex items-center gap-1.5"
+
+            <Link 
+              href="/admin/send-appreciation-email"
+              className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors shadow-sm"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Logout</span>
-            </button>
+              <Mail className="w-3.5 h-3.5" />
+              <span>Issue Certificates & Appreciation</span>
+            </Link>
           </div>
         </div>
 
-        {/* Real-time Website Analytics & Visitor Metrics */}
-        <section className="glass-panel p-6 border border-[#f7f1e5]/10 mb-8">
-          <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-[#e6c594]" />
-              <h2 className="text-lg font-bold text-white">Live Website Analytics & User Activity</h2>
-            </div>
-            <button 
-              onClick={loadAnalytics} 
-              disabled={analyticsLoading}
-              className="text-xs text-[#a69181] hover:text-[#e6c594] flex items-center gap-1 transition-colors"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${analyticsLoading ? 'animate-spin' : ''}`} />
-              <span>Refresh Stats</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-[#180509] p-4 rounded-xl border border-white/5">
-              <div className="flex items-center justify-between text-[#a69181] mb-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Total Page Views</span>
-                <Eye className="w-4 h-4 text-cyan-400" />
-              </div>
-              <p className="text-2xl font-black text-white">{analyticsData?.totalPageViews || 0}</p>
-            </div>
-
-            <div className="bg-[#180509] p-4 rounded-xl border border-white/5">
-              <div className="flex items-center justify-between text-[#a69181] mb-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Unique Visitors</span>
-                <Users className="w-4 h-4 text-emerald-400" />
-              </div>
-              <p className="text-2xl font-black text-white">{analyticsData?.uniqueVisitorsCount || 0}</p>
-            </div>
-
-            <div className="bg-[#180509] p-4 rounded-xl border border-white/5">
-              <div className="flex items-center justify-between text-[#a69181] mb-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Total Button Clicks</span>
-                <MousePointerClick className="w-4 h-4 text-amber-400" />
-              </div>
-              <p className="text-2xl font-black text-white">{analyticsData?.totalClicks || 0}</p>
-            </div>
-
-            <div className="bg-[#180509] p-4 rounded-xl border border-white/5">
-              <div className="flex items-center justify-between text-[#a69181] mb-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Today's Visits</span>
-                <TrendingUp className="w-4 h-4 text-rose-400" />
-              </div>
-              <p className="text-2xl font-black text-white">{analyticsData?.todayPageViews || 0}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Popular Button Clicks */}
-            <div className="bg-[#180509]/80 p-4 rounded-xl border border-white/5">
-              <h3 className="text-xs font-bold text-[#e6c594] uppercase tracking-wider mb-3">Top Clicked Buttons & Actions</h3>
-              {analyticsData?.topClickedElements && analyticsData.topClickedElements.length > 0 ? (
-                <div className="space-y-2">
-                  {analyticsData.topClickedElements.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
-                      <span className="text-white font-medium truncate max-w-[200px]">{item.label}</span>
-                      <span className="px-2 py-0.5 rounded-full bg-white/10 text-amber-300 font-mono font-bold text-[10px]">
-                        {item.count} clicks
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-[#a69181] italic">No click data logged yet.</p>
-              )}
-            </div>
-
-            {/* Most Visited Pages */}
-            <div className="bg-[#180509]/80 p-4 rounded-xl border border-white/5">
-              <h3 className="text-xs font-bold text-[#e6c594] uppercase tracking-wider mb-3">Most Visited Pages</h3>
-              {analyticsData?.topPages && analyticsData.topPages.length > 0 ? (
-                <div className="space-y-2">
-                  {analyticsData.topPages.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
-                      <span className="text-white font-mono truncate max-w-[200px]">{item._id}</span>
-                      <span className="px-2 py-0.5 rounded-full bg-white/10 text-cyan-300 font-mono font-bold text-[10px]">
-                        {item.count} views
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-[#a69181] italic">No pageview data logged yet.</p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* System Visual Analytics & Audit Logs Hub */}
-        <section className="glass-panel p-6 border border-[#f7f1e5]/10 mb-8 space-y-6">
-          <div className="flex items-center justify-between border-b border-white/10 pb-4">
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-[#ff9933]" />
-              <div>
-                <h2 className="text-lg font-bold text-white">System Audit Logs & Submission Analytics</h2>
-                <p className="text-xs text-[#a69181] mt-0.5">Real-time department breakdown, academic year analysis, timeline graph, and login activity.</p>
-              </div>
-            </div>
-            <button 
-              onClick={loadLogsAndAnalytics} 
-              disabled={logsLoading}
-              className="text-xs text-[#a69181] hover:text-[#e6c594] flex items-center gap-1 transition-colors"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${logsLoading ? 'animate-spin' : ''}`} />
-              <span>Refresh Charts</span>
-            </button>
-          </div>
-
-          {/* 3 Visual Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 1. Department Analysis Pie Chart */}
-            <div className="bg-[#180509] p-4 rounded-xl border border-white/10 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold text-[#e6c594] uppercase tracking-wider flex items-center gap-1.5">
-                  <PieChartIcon className="w-3.5 h-3.5 text-[#ff9933]" />
-                  <span>1. Department Analysis</span>
-                </h3>
-                <span className="text-[10px] text-[#a69181] font-mono">Pie Chart</span>
-              </div>
-              
-              {logsAnalyticsData?.deptPieData && logsAnalyticsData.deptPieData.length > 0 ? (
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={logsAnalyticsData.deptPieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={45}
-                        outerRadius={75}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        {logsAnalyticsData.deptPieData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip 
-                        contentStyle={{ backgroundColor: '#150408', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px', color: '#fff' }}
-                      />
-                      <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-64 flex items-center justify-center text-xs text-[#a69181] italic">
-                  No department data logged yet.
-                </div>
-              )}
-            </div>
-
-            {/* 2. Academic Year Wise Submission Pie Chart */}
-            <div className="bg-[#180509] p-4 rounded-xl border border-white/10 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold text-[#e6c594] uppercase tracking-wider flex items-center gap-1.5">
-                  <PieChartIcon className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>2. Year-Wise Submissions</span>
-                </h3>
-                <span className="text-[10px] text-[#a69181] font-mono">Pie Chart</span>
-              </div>
-
-              {logsAnalyticsData?.yearPieData && logsAnalyticsData.yearPieData.length > 0 ? (
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={logsAnalyticsData.yearPieData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={75}
-                        dataKey="value"
-                        label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        labelLine={false}
-                      >
-                        {logsAnalyticsData.yearPieData.map((entry: any, index: number) => (
-                          <Cell key={`cell-yr-${index}`} fill={PIE_COLORS[(index + 3) % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip 
-                        contentStyle={{ backgroundColor: '#150408', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px', color: '#fff' }}
-                      />
-                      <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-64 flex items-center justify-center text-xs text-[#a69181] italic">
-                  No academic year data logged yet.
-                </div>
-              )}
-            </div>
-
-            {/* 3. Time Graph of Submissions */}
-            <div className="bg-[#180509] p-4 rounded-xl border border-white/10 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold text-[#e6c594] uppercase tracking-wider flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>3. Submission Timeline Graph</span>
-                </h3>
-                <span className="text-[10px] text-[#a69181] font-mono">Time Series</span>
-              </div>
-
-              {logsAnalyticsData?.timeGraphData && logsAnalyticsData.timeGraphData.length > 0 ? (
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={logsAnalyticsData.timeGraphData}>
-                      <defs>
-                        <linearGradient id="colorSub" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ff9933" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#ff9933" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                      <XAxis dataKey="date" stroke="#a69181" fontSize={10} />
-                      <YAxis stroke="#a69181" fontSize={10} allowDecimals={false} />
-                      <RechartsTooltip 
-                        contentStyle={{ backgroundColor: '#150408', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px', color: '#fff' }}
-                      />
-                      <Area type="monotone" dataKey="submissions" stroke="#ff9933" fillOpacity={1} fill="url(#colorSub)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-64 flex items-center justify-center text-xs text-[#a69181] italic">
-                  No timeline submission data logged yet.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* System Login Audit Logs Table */}
-          <div className="bg-[#180509] p-4 rounded-xl border border-white/10 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-[#e6c594] uppercase tracking-wider flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-[#ff9933]" />
-                <span>System Authentication & Login Audit Logs</span>
-              </h3>
-              <span className="text-[10px] text-[#a69181] font-mono">
-                Total Attempts: {logsAnalyticsData?.loginLogs?.length || 0}
-              </span>
-            </div>
-
-            {logsAnalyticsData?.loginLogs && logsAnalyticsData.loginLogs.length > 0 ? (
-              <div className="overflow-x-auto max-h-60 overflow-y-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-[#150408] border-b border-white/10 text-[#a69181] uppercase font-bold text-[10px]">
-                    <tr>
-                      <th className="py-2 px-3">Timestamp</th>
-                      <th className="py-2 px-3">Email</th>
-                      <th className="py-2 px-3">Role</th>
-                      <th className="py-2 px-3">Status</th>
-                      <th className="py-2 px-3">IP / Browser</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-[#e6d7c3]/90">
-                    {logsAnalyticsData.loginLogs.map((log: any, i: number) => (
-                      <tr key={i} className="hover:bg-white/[0.02]">
-                        <td className="py-2 px-3 font-mono text-[10px] text-[#a69181]">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </td>
-                        <td className="py-2 px-3 font-medium text-white">{log.email}</td>
-                        <td className="py-2 px-3">
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                            log.role === 'admin' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
-                          }`}>
-                            {log.role}
-                          </span>
-                        </td>
-                        <td className="py-2 px-3">
-                          {log.status === 'SUCCESS' ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-400 font-bold text-[10px]">
-                              <ShieldCheck className="w-3 h-3" /> SUCCESS
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-rose-400 font-bold text-[10px]">
-                              <ShieldX className="w-3 h-3" /> FAILED
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3 text-[10px] text-[#a69181] font-mono truncate max-w-[200px]">
-                          {log.ip} • {log.userAgent}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-xs text-[#a69181] italic">No authentication logs recorded yet.</p>
-            )}
-          </div>
-        </section>
-
-        {/* Hosted Events Directory */}
-        <section className="glass-panel p-6 border border-[#f7f1e5]/10">
-          <div className="flex items-center justify-between mb-6">
+        {/* ========================================================= */}
+        {/* 1. EVENT-WISE ANALYTICS & INTELLIGENCE CONSOLE */}
+        {/* ========================================================= */}
+        <section className="bg-white border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
             <div>
-              <h2 className="text-xl font-bold text-white">Hosted Events Directory</h2>
-              <p className="text-xs text-[#a69181] mt-0.5">Control status visibility (`UPCOMING`, `LIVE`, `DONE`) and open form builders.</p>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-indigo-600" />
+                <h2 className="text-lg font-black text-slate-900 tracking-tight uppercase">
+                  Event-Wise Analytics & Registration Metrics
+                </h2>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Select an event from the dropdown to immediately switch analytics, department distribution, domain breakdown, and payment health.
+              </p>
             </div>
-            <span className="text-xs font-mono text-[#e6c594]">Total: {events.length}</span>
+
+            {/* EVENT SWITCHER DROPDOWN */}
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5 text-slate-500" />
+                <span>Filter Event:</span>
+              </label>
+              <select
+                value={selectedAnalyticsEventId}
+                onChange={e => setSelectedAnalyticsEventId(e.target.value)}
+                className="px-3 py-2 text-xs font-bold bg-slate-50 border border-slate-300 text-slate-900 outline-none focus:border-slate-900 cursor-pointer min-w-[240px]"
+              >
+                <option value="ALL">🌟 ALL EVENTS COMBINED ({allSubmissions.length} Total Entries)</option>
+                {events.map(ev => {
+                  const evId = ev.id || (ev as any)._id;
+                  const count = allSubmissions.filter(s => s.eventId === evId || (evId.includes('nav') && s.eventId?.includes('nav'))).length;
+                  return (
+                    <option key={evId} value={evId}>
+                      {ev.title} ({count} Submissions)
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </div>
+
+          {/* 4 KEY METRIC CARDS FOR SELECTED EVENT */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-slate-50 border border-slate-200 p-4 border-l-4 border-l-blue-600">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Filtered Registrations</span>
+                <Users className="w-4 h-4 text-blue-600" />
+              </div>
+              <p className="text-2xl font-black text-slate-900">{paymentMetrics.totalSubmissions}</p>
+              <span className="text-[10px] text-slate-500 mt-1 block">Active participant records</span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-4 border-l-4 border-l-emerald-600">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Verified Payments</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              </div>
+              <p className="text-2xl font-black text-emerald-700">{paymentMetrics.verifiedCount + paymentMetrics.paidCount}</p>
+              <span className="text-[10px] text-emerald-700 mt-1 block font-medium">Reconciled with bank UTR</span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-4 border-l-4 border-l-amber-500">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Pending Verification</span>
+                <Clock className="w-4 h-4 text-amber-600" />
+              </div>
+              <p className="text-2xl font-black text-amber-700">{paymentMetrics.pendingCount}</p>
+              <span className="text-[10px] text-amber-700 mt-1 block font-medium">Awaiting manual admin check</span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-4 border-l-4 border-l-purple-600">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Estimated Revenue</span>
+                <CreditCard className="w-4 h-4 text-purple-600" />
+              </div>
+              <p className="text-2xl font-black text-purple-900 font-mono">₹{paymentMetrics.totalRevenue}</p>
+              <span className="text-[10px] text-slate-500 mt-1 block">From ₹9.00 / ₹50 fees</span>
+            </div>
+          </div>
+
+          {/* 3 VISUAL CHARTS (DEPT, YEAR, DOMAIN) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+            {/* 1. Department Distribution */}
+            <div className="bg-white border border-slate-200 p-4 flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-indigo-600" />
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Department Distribution</h3>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700">
+                  {deptWiseData.length} Depts
+                </span>
+              </div>
+
+              {deptWiseData.length > 0 ? (
+                <div className="h-60 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={deptWiseData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={70}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {deptWiseData.map((entry, index) => (
+                          <Cell key={`dept-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '0px', fontSize: '11px', color: '#0f172a' }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-60 flex items-center justify-center text-xs text-slate-400 italic">
+                  No submissions recorded for this selection.
+                </div>
+              )}
+            </div>
+
+            {/* 2. Academic Year Breakdown */}
+            <div className="bg-white border border-slate-200 p-4 flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
+                <div className="flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4 text-emerald-600" />
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Academic Year Breakdown</h3>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700">
+                  {yearWiseData.length} Batches
+                </span>
+              </div>
+
+              {yearWiseData.length > 0 ? (
+                <div className="h-60 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={yearWiseData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
+                      <YAxis stroke="#64748b" fontSize={10} allowDecimals={false} />
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '0px', fontSize: '11px', color: '#0f172a' }}
+                      />
+                      <Bar dataKey="value" fill="#059669" name="Registrations" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-60 flex items-center justify-center text-xs text-slate-400 italic">
+                  No academic batch data available.
+                </div>
+              )}
+            </div>
+
+            {/* 3. Competition Domain Distribution */}
+            <div className="bg-white border border-slate-200 p-4 flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-purple-600" />
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Domains & Categories</h3>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700">
+                  {domainWiseData.length} Tracks
+                </span>
+              </div>
+
+              {domainWiseData.length > 0 ? (
+                <div className="h-60 w-full overflow-y-auto space-y-2 pr-1">
+                  {domainWiseData.map((d, i) => {
+                    const pct = paymentMetrics.totalSubmissions > 0 
+                      ? Math.round((d.value / paymentMetrics.totalSubmissions) * 100) 
+                      : 0;
+                    return (
+                      <div key={i} className="p-2.5 bg-slate-50 border border-slate-200 text-xs">
+                        <div className="flex items-center justify-between font-bold text-slate-800 mb-1">
+                          <span className="truncate max-w-[180px]">{d.name}</span>
+                          <span className="font-mono text-indigo-600">{d.value} ({pct}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-1.5">
+                          <div 
+                            className="bg-indigo-600 h-1.5 transition-all duration-300"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="h-60 flex items-center justify-center text-xs text-slate-400 italic">
+                  No domain breakdown available.
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* 2. EVENT DIRECTORY & SUBMISSION PORTAL ACCESS */}
+        {/* ========================================================= */}
+        <section className="bg-white border border-slate-200 shadow-sm p-6 space-y-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+            <div>
+              <h2 className="text-lg font-black text-slate-900 tracking-tight uppercase">
+                Hosted Events & Registration Portals
+              </h2>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Manage live status, review attendee submissions, check payment verification, and edit registration form schemas.
+              </p>
+            </div>
+
+            {/* DIRECTORY SEARCH & STATUS FILTER */}
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <div className="relative flex-1 sm:w-60">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                <input 
+                  type="text"
+                  placeholder="Search events..."
+                  value={eventSearchQuery}
+                  onChange={e => setEventSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 text-slate-900 outline-none focus:border-slate-900"
+                />
+              </div>
+
+              <select
+                value={eventStatusFilter}
+                onChange={e => setEventStatusFilter(e.target.value)}
+                className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 text-slate-900 outline-none cursor-pointer"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="UPCOMING">UPCOMING</option>
+                <option value="LIVE">LIVE</option>
+                <option value="DONE">DONE</option>
+              </select>
+            </div>
           </div>
 
           {loading ? (
-            <div className="py-16 text-center text-[#a69181]">
-              <div className="inline-block w-6 h-6 border-2 border-[#e6c594] border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-xs">Loading events...</p>
+            <div className="py-16 text-center text-slate-400">
+              <div className="inline-block w-6 h-6 border-2 border-slate-900 border-t-transparent animate-spin mb-2" />
+              <p className="text-xs font-semibold">Loading event catalog...</p>
             </div>
-          ) : events.length === 0 ? (
-            <div className="py-12 text-center text-[#a69181] border border-dashed border-white/10 rounded-2xl">
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-[#a69181]">
-                <CalendarX className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-semibold text-white mb-1">No Events Created Yet</p>
-              <p className="text-xs text-[#a69181] mb-6">Click "+ Create New Event" to publish your first official event!</p>
-              <Link 
-                href="/admin/events/create" 
-                className="btn-primary text-xs inline-flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Create First Event</span>
-              </Link>
+          ) : filteredEventsDirectory.length === 0 ? (
+            <div className="py-12 text-center text-slate-500 border border-dashed border-slate-300">
+              <CalendarX className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+              <p className="text-sm font-bold text-slate-800">No events matched your search query</p>
+              <p className="text-xs text-slate-500 mt-1">Try resetting the filter or create a new event.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {events.map(ev => {
-                const eventId = ev.id || ev._id || '';
+            <div className="divide-y divide-slate-200 border border-slate-200">
+              {filteredEventsDirectory.map(ev => {
+                const eventId = ev.id || (ev as any)._id || '';
+                const isNavroopam = eventId === '6aca70825588e8009b8e8e83' || eventId.includes('nav') || ev.title.toLowerCase().includes('nav');
+                const subsCount = allSubmissions.filter(s => s.eventId === eventId || (isNavroopam && s.eventId?.includes('nav'))).length;
+
                 return (
-                  <div key={eventId} className="bg-[#180509] p-5 rounded-2xl border border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-[#e6c594]/30 transition-all">
-                    <div className="space-y-1.5 max-w-xl">
+                  <div key={eventId} className="p-4 sm:p-5 bg-white hover:bg-slate-50/70 transition-colors flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+                    <div className="space-y-1.5 max-w-2xl">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-bold text-white">{ev.title}</h3>
-                        
-                        {/* Status Switcher Badge */}
+                        <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-1.5">
+                          {isNavroopam && <span className="text-rose-600 font-bold">🔱</span>}
+                          <span>{ev.title}</span>
+                        </h3>
+
+                        {/* Status Dropdown */}
                         <select 
                           value={ev.status || 'UPCOMING'}
                           disabled={updatingStatusId === eventId}
                           onChange={(e) => handleStatusChange(eventId, e.target.value as EventStatus)}
-                          className={`text-[10px] font-bold rounded-full px-3 py-1 border outline-none cursor-pointer ${
-                            ev.status === 'LIVE' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
-                            ev.status === 'DONE' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
-                            'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          className={`text-[10px] font-black uppercase px-2.5 py-0.5 border cursor-pointer outline-none ${
+                            ev.status === 'LIVE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                            ev.status === 'DONE' ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                            'bg-amber-50 text-amber-800 border-amber-300'
                           }`}
                         >
-                          <option value="UPCOMING">UPCOMING (Registration Open)</option>
+                          <option value="UPCOMING">UPCOMING</option>
                           <option value="LIVE">LIVE NOW</option>
-                          <option value="DONE">DONE (Hidden from Public)</option>
+                          <option value="DONE">DONE</option>
                         </select>
 
-                        {/* Website Visibility Toggle Button */}
+                        {/* Website Visibility Button */}
                         <button
                           type="button"
                           disabled={togglingVisibilityId === eventId}
                           onClick={() => handleToggleVisibility(eventId, !ev.isHidden)}
-                          className={`px-3 py-1 rounded-full text-[10px] font-extrabold border inline-flex items-center gap-1.5 transition-all shadow-md ${
+                          className={`px-2.5 py-0.5 text-[10px] font-bold border inline-flex items-center gap-1 transition-colors ${
                             ev.isHidden 
-                              ? 'bg-rose-500/15 text-rose-400 border-rose-500/40 hover:bg-rose-500/30' 
-                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' 
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                           }`}
-                          title={ev.isHidden ? 'Click to show this event on the main website' : 'Click to hide this event from the main website'}
+                          title={ev.isHidden ? 'Click to publish on website' : 'Click to hide from website'}
                         >
                           {ev.isHidden ? (
                             <>
-                              <EyeOff className="w-3 h-3 text-rose-400" />
-                              <span>🙈 Hidden from Website</span>
+                              <EyeOff className="w-3 h-3 text-rose-600" />
+                              <span>Hidden</span>
                             </>
                           ) : (
                             <>
-                              <Eye className="w-3 h-3 text-emerald-400" />
-                              <span>👁️ Shown on Website</span>
+                              <Eye className="w-3 h-3 text-emerald-600" />
+                              <span>Public</span>
                             </>
                           )}
                         </button>
                       </div>
 
-                      <p className="text-xs text-[#a69181] line-clamp-2">{ev.description}</p>
-                      
-                      <div className="flex items-center gap-4 text-[11px] text-[#a69181]">
-                        <span className="inline-flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-[#e6c594]" />
+                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                        {ev.description}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 pt-1 font-medium">
+                        <span className="flex items-center gap-1 text-slate-700 font-bold">
+                          <Calendar className="w-3 h-3 text-slate-500" />
                           {ev.date}
                         </span>
                         <span>📍 {ev.location}</span>
                         <span>🏢 {ev.organizer}</span>
+                        <span className="font-bold text-indigo-700">
+                          👥 {subsCount} Submissions
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {/* ACTION BUTTONS WITH 0 ROUNDED CORNERS */}
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100">
+                      <Link 
+                        href={`/admin/events/${eventId}/submissions`}
+                        className={`px-3.5 py-2 text-xs font-bold inline-flex items-center gap-1.5 transition-colors ${
+                          isNavroopam 
+                            ? 'bg-rose-700 hover:bg-rose-800 text-white shadow-sm' 
+                            : 'bg-slate-900 hover:bg-slate-800 text-white'
+                        }`}
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        <span>View Submissions ({subsCount})</span>
+                      </Link>
+
                       <Link 
                         href={`/admin/events/${eventId}/edit`}
-                        className="px-3 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-all"
-                        title="Edit Details & Upload Banners"
+                        className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
-                        <span>Edit Banners & Details</span>
+                        <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Edit</span>
                       </Link>
 
                       <Link 
                         href={`/admin/events/${eventId}/form-builder`}
-                        className="px-3 py-2 rounded-xl bg-[#800020]/30 hover:bg-[#800020] text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-all"
+                        className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
                       >
-                        <FileText className="w-3.5 h-3.5" />
+                        <FileText className="w-3.5 h-3.5 text-slate-500" />
                         <span>Form Builder</span>
                       </Link>
 
-                      <Link 
-                        href={`/admin/events/${eventId}/submissions`}
-                        className="btn-secondary text-xs py-2 inline-flex items-center gap-1.5"
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                        <span>Registrations</span>
-                      </Link>
-
-                      {/* Delete Event Button */}
                       <button
                         onClick={() => handleDeleteEvent(eventId, ev.title)}
                         disabled={deletingId === eventId}
-                        className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all text-xs font-semibold"
+                        className="p-2 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 transition-colors"
                         title="Delete Event"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -798,33 +877,36 @@ export default function AdminDashboardPage() {
           )}
         </section>
 
-        {/* Observer Credentials & Access Management */}
-        <section className="glass-panel p-6 border border-[#f7f1e5]/10 mt-8 space-y-6">
-          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        {/* ========================================================= */}
+        {/* 3. OBSERVER CREDENTIALS & ACCESS GOVERNANCE */}
+        {/* ========================================================= */}
+        <section className="bg-white border border-slate-200 shadow-sm p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-4 border-b border-slate-200">
             <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-[#ff9933]" />
-                <span>Observer & Judge Credentials Management</span>
-              </h2>
-              <p className="text-xs text-[#a69181] mt-0.5">
-                Issue observer login credentials for viewing submissions. Deactivating or deleting an observer instantly revokes their access.
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-indigo-600" />
+                <h2 className="text-base font-black text-slate-900 tracking-tight uppercase">
+                  Judge & Observer Credential Management
+                </h2>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Issue read-only judge accounts for reviewing submissions and evaluating artworks.
               </p>
             </div>
-            <span className="text-xs font-mono text-[#e6c594]">Total Observers: {observers.length}</span>
+            <span className="text-xs font-bold text-slate-700 font-mono">Total Observers: {observers.length}</span>
           </div>
 
-          {/* Form to Create New Observer */}
-          <form onSubmit={handleCreateObserver} className="bg-[#180509] p-4 rounded-xl border border-white/10 space-y-4">
-            <h3 className="text-xs font-bold text-[#e6c594] uppercase tracking-wider">Issue New Observer Login Credentials</h3>
+          <form onSubmit={handleCreateObserver} className="bg-slate-50 p-4 border border-slate-200 space-y-3">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Issue New Observer Login Credentials</h3>
             
             {obsError && (
-              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+              <div className="p-2.5 bg-rose-50 border border-rose-300 text-rose-700 text-xs font-semibold">
                 {obsError}
               </div>
             )}
 
             {obsSuccess && (
-              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs">
+              <div className="p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-semibold">
                 {obsSuccess}
               </div>
             )}
@@ -835,23 +917,23 @@ export default function AdminDashboardPage() {
                 placeholder="Observer Name (e.g. Judge Srijita)"
                 value={newObsName}
                 onChange={e => setNewObsName(e.target.value)}
-                className="form-input text-xs py-2 bg-white/5"
+                className="px-3 py-2 text-xs bg-white border border-slate-300 text-slate-900 outline-none focus:border-slate-900 font-sans"
                 required
               />
               <input 
                 type="email" 
-                placeholder="Observer Email"
+                placeholder="Observer Email (e.g. judge@hitian.in)"
                 value={newObsEmail}
                 onChange={e => setNewObsEmail(e.target.value)}
-                className="form-input text-xs py-2 bg-white/5"
+                className="px-3 py-2 text-xs bg-white border border-slate-300 text-slate-900 outline-none focus:border-slate-900 font-sans"
                 required
               />
               <input 
                 type="text" 
-                placeholder="Observer Password"
+                placeholder="Password"
                 value={newObsPassword}
                 onChange={e => setNewObsPassword(e.target.value)}
-                className="form-input text-xs py-2 bg-white/5 font-mono"
+                className="px-3 py-2 text-xs bg-white border border-slate-300 text-slate-900 outline-none focus:border-slate-900 font-mono"
                 required
               />
             </div>
@@ -859,58 +941,55 @@ export default function AdminDashboardPage() {
             <button
               type="submit"
               disabled={obsLoading}
-              className="btn-tricolour text-xs py-2 px-5 font-semibold inline-flex items-center gap-1.5"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer transition-colors"
             >
-              <UserPlus className="w-4 h-4" />
+              <UserPlus className="w-3.5 h-3.5" />
               <span>{obsLoading ? 'Issuing...' : '+ Issue Observer Credentials'}</span>
             </button>
           </form>
 
-          {/* List of Active & Revoked Observers */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-[#a69181] uppercase tracking-wider">Issued Observer Credentials</h3>
-            
+          <div className="space-y-2 pt-2">
             {observers.length === 0 ? (
-              <p className="text-xs text-[#a69181] italic">No observer credentials issued yet.</p>
+              <p className="text-xs text-slate-500 italic p-3 bg-slate-50 border border-slate-200 text-center">No observer accounts issued yet.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="divide-y divide-slate-200 border border-slate-200">
                 {observers.map((obs) => {
                   const obsId = obs.id || obs._id;
                   return (
-                    <div key={obsId} className="bg-[#180509] p-3.5 rounded-xl border border-white/5 flex items-center justify-between gap-4">
+                    <div key={obsId} className="p-3 bg-white flex items-center justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-white">{obs.name}</span>
+                          <span className="text-xs font-bold text-slate-900">{obs.name}</span>
                           {obs.isActive ? (
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                              ACTIVE ACCESS
+                            <span className="text-[9px] px-1.5 py-0.2 bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold uppercase">
+                              Active
                             </span>
                           ) : (
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold">
-                              ACCESS REVOKED
+                            <span className="text-[9px] px-1.5 py-0.2 bg-rose-100 text-rose-800 border border-rose-300 font-bold uppercase">
+                              Revoked
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] text-[#a69181] font-mono">{obs.email}</span>
+                        <span className="text-[11px] text-slate-500 font-mono">{obs.email}</span>
                       </div>
 
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleToggleObserverStatus(obsId, obs.isActive)}
-                          className={`text-xs py-1 px-3 rounded-lg border font-semibold inline-flex items-center gap-1 transition-colors ${
+                          className={`text-xs py-1 px-2.5 border font-semibold inline-flex items-center gap-1 transition-colors ${
                             obs.isActive 
-                              ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
-                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                              ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'
+                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
                           }`}
                         >
-                          {obs.isActive ? <UserX className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-                          <span>{obs.isActive ? 'Disable Access' : 'Enable Access'}</span>
+                          {obs.isActive ? <UserX className="w-3 h-3" /> : <Check className="w-3 h-3" />}
+                          <span>{obs.isActive ? 'Disable' : 'Enable'}</span>
                         </button>
 
                         <button
                           onClick={() => handleDeleteObserver(obsId, obs.email)}
-                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-colors"
-                          title="Revoke & Delete Credentials"
+                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors"
+                          title="Revoke & Delete"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -922,6 +1001,7 @@ export default function AdminDashboardPage() {
             )}
           </div>
         </section>
+
       </main>
     </div>
   );

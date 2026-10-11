@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Navbar from '../../../../components/Navbar';
+import AdminNavbar from '../../../../components/AdminNavbar';
 import ImageCropModal from '../../../../components/ImageCropModal';
 import { createEventApi } from '../../../../services/api.service';
 import { EventHighlight, EventStatus, EventMode, EventTheme } from '../../../../types/event.types';
@@ -275,22 +275,22 @@ Upon payment confirmation, participants are instantly routed to the official Wha
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
-      <Navbar />
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans">
+      <AdminNavbar />
 
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10">
-        <div className="flex items-center justify-between mb-6">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <Link 
             href="/admin" 
-            className="inline-flex items-center gap-1.5 text-xs text-[#a69181] hover:text-white transition-colors font-medium"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors font-bold uppercase tracking-wider"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Admin Console</span>
+            <span>Back to Dashboard</span>
           </Link>
 
           {/* Event Presets Dropdown */}
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#ff9933] shrink-0" />
+            <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
             <select
               value={selectedPreset}
               onChange={(e) => {
@@ -299,7 +299,7 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                 else if (val === 'pratidhawni') loadPratidhawniTemplate();
                 else if (val === 'blank') resetToBlankTemplate();
               }}
-              className="px-3.5 py-1.5 rounded-xl bg-[#180509] border border-[#ff9933]/50 text-[#ff9933] text-xs font-bold font-mono focus:outline-none focus:ring-2 focus:ring-[#ff9933] shadow-md cursor-pointer hover:border-[#ff9933] transition-all"
+              className="px-3 py-1.5 bg-white border border-slate-300 text-slate-900 text-xs font-bold outline-none focus:border-slate-900 shadow-sm cursor-pointer"
             >
               <option value="" disabled>✨ Load Event Preset Template...</option>
               <option value="swaraj">🇮🇳 SWARAJ-E-HIND 4.0 (Online Flagship)</option>
@@ -309,123 +309,123 @@ Upon payment confirmation, participants are instantly routed to the official Wha
           </div>
         </div>
 
-        <div className="glass-panel p-6 sm:p-8 border border-[#f7f1e5]/10">
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+        <div className="bg-white border border-slate-200 p-6 sm:p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
             <div>
-              <h1 className="text-2xl font-bold text-white">Create New Event</h1>
-              <p className="text-xs text-[#a69181] mt-0.5">Publish flagship events like Swaraj-E-Hind or custom club activities.</p>
+              <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Create New Event</h1>
+              <p className="text-xs text-slate-500 mt-0.5">Publish flagship celebrations like Navroopam, Swaraj-E-Hind or custom club initiatives.</p>
             </div>
-            <span className="px-3 py-1 rounded-full bg-[#800020]/30 text-[#e6c594] border border-[#e6c594]/30 text-xs font-semibold inline-flex items-center gap-1">
-              <Lock className="w-3.5 h-3.5" />
-              <span>Admin Mode</span>
+            <span className="px-3 py-1 bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold inline-flex items-center gap-1 uppercase tracking-wider">
+              <Lock className="w-3.5 h-3.5 text-slate-600" />
+              <span>Admin Console</span>
             </span>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Dual Image Uploaders */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#180509] p-5 rounded-2xl border border-white/10">
-              <div className="form-group mb-0">
-                <label className="form-label font-semibold flex items-center justify-between text-xs mb-2">
-                  <span className="flex items-center gap-1.5 text-white">
-                    <ImageIcon className="w-4 h-4 text-[#e6c594]" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-5 border border-slate-200">
+              <div className="mb-0">
+                <label className="font-bold flex items-center justify-between text-xs mb-2 uppercase tracking-wider text-slate-700">
+                  <span className="flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-blue-600" />
                     <span>Header Banner (16:9)</span>
                   </span>
-                  <span className="text-[10px] text-[#e6c594] font-mono px-2 py-0.5 rounded bg-[#800020]/40">16 : 9</span>
+                  <span className="text-[10px] text-slate-600 font-mono px-2 py-0.5 bg-slate-200 border border-slate-300 font-bold">16 : 9</span>
                 </label>
 
                 {formData.bannerUrl ? (
-                  <div className="relative rounded-xl overflow-hidden border border-[#e6c594]/40 h-36 bg-black/40 group">
+                  <div className="relative border border-slate-300 h-36 bg-slate-100 group">
                     <img src={formData.bannerUrl} alt="Banner Preview" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <button 
                         type="button" 
                         onClick={() => setFormData(prev => ({ ...prev, bannerUrl: '' }))}
-                        className="px-3 py-1 rounded bg-rose-600 text-white text-xs font-semibold"
+                        className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
                       >
                         Remove Banner
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center p-4 h-36 border-2 border-dashed border-white/10 rounded-xl bg-white/[0.02] hover:border-[#e6c594]/40 transition-colors cursor-pointer text-center">
-                    <Crop className="w-6 h-6 text-[#e6c594] mb-1" />
-                    <span className="text-xs font-medium text-white mb-0.5">Crop & Compress Banner</span>
-                    <span className="text-[10px] text-[#a69181]">Optional (Can add later)</span>
+                  <label className="flex flex-col items-center justify-center p-4 h-36 border-2 border-dashed border-slate-300 bg-white hover:border-slate-400 transition-colors cursor-pointer text-center">
+                    <Crop className="w-6 h-6 text-slate-500 mb-1" />
+                    <span className="text-xs font-bold text-slate-800 mb-0.5 uppercase">Crop & Compress Banner</span>
+                    <span className="text-[10px] text-slate-500">Optional (Can add later)</span>
                     <input type="file" onChange={(e) => triggerCropModal(e, 'banner')} accept="image/*" className="hidden" />
                   </label>
                 )}
               </div>
 
-              <div className="form-group mb-0">
-                <label className="form-label font-semibold flex items-center justify-between text-xs mb-2">
-                  <span className="flex items-center gap-1.5 text-white">
-                    <ImageIcon className="w-4 h-4 text-cyan-400" />
+              <div className="mb-0">
+                <label className="font-bold flex items-center justify-between text-xs mb-2 uppercase tracking-wider text-slate-700">
+                  <span className="flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-blue-600" />
                     <span>Card Cover (4:3)</span>
                   </span>
-                  <span className="text-[10px] text-cyan-300 font-mono px-2 py-0.5 rounded bg-cyan-500/20">4 : 3</span>
+                  <span className="text-[10px] text-slate-600 font-mono px-2 py-0.5 bg-slate-200 border border-slate-300 font-bold">4 : 3</span>
                 </label>
 
                 {formData.coverUrl ? (
-                  <div className="relative rounded-xl overflow-hidden border border-cyan-500/40 h-36 bg-black/40 group">
+                  <div className="relative border border-slate-300 h-36 bg-slate-100 group">
                     <img src={formData.coverUrl} alt="Cover Preview" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <button 
                         type="button" 
                         onClick={() => setFormData(prev => ({ ...prev, coverUrl: '' }))}
-                        className="px-3 py-1 rounded bg-rose-600 text-white text-xs font-semibold"
+                        className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
                       >
                         Remove Cover
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center p-4 h-36 border-2 border-dashed border-white/10 rounded-xl bg-white/[0.02] hover:border-cyan-400/40 transition-colors cursor-pointer text-center">
-                    <Crop className="w-6 h-6 text-cyan-400 mb-1" />
-                    <span className="text-xs font-medium text-white mb-0.5">Crop & Compress Cover</span>
-                    <span className="text-[10px] text-[#a69181]">Optional (Can add later)</span>
+                  <label className="flex flex-col items-center justify-center p-4 h-36 border-2 border-dashed border-slate-300 bg-white hover:border-slate-400 transition-colors cursor-pointer text-center">
+                    <Crop className="w-6 h-6 text-slate-500 mb-1" />
+                    <span className="text-xs font-bold text-slate-800 mb-0.5 uppercase">Crop & Compress Cover</span>
+                    <span className="text-[10px] text-slate-500">Optional (Can add later)</span>
                     <input type="file" onChange={(e) => triggerCropModal(e, 'cover')} accept="image/*" className="hidden" />
                   </label>
                 )}
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Event Name *</label>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Event Name *</label>
               <input 
                 type="text"
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                placeholder="e.g. SWARAJ-E-HIND 4.0 or HITian Tech Symposium"
-                className="form-input"
+                placeholder="e.g. NAVROOPAM v7.0 or SWARAJ-E-HIND 4.0"
+                className="w-full bg-slate-50 border border-slate-300 p-2.5 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white font-bold"
                 required
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Event Description *</label>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Event Description *</label>
               <textarea 
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Provide detailed event description..."
+                placeholder="Provide detailed event description and rules..."
                 rows={4}
-                className="form-textarea"
+                className="w-full bg-slate-50 border border-slate-300 p-2.5 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white font-medium"
                 required
               />
             </div>
 
             {/* Date Range Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#180509] p-4 rounded-2xl border border-white/10">
-              <div className="form-group mb-0">
-                <label className="form-label flex items-center gap-1.5 text-xs text-white">
-                  <Calendar className="w-4 h-4 text-[#e6c594]" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 border border-slate-200">
+              <div className="mb-0">
+                <label className="flex items-center gap-1.5 text-xs text-slate-700 font-bold mb-1.5 uppercase tracking-wider">
+                  <Calendar className="w-4 h-4 text-blue-600" />
                   <span>Start Date *</span>
                 </label>
                 <input 
@@ -433,14 +433,14 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                   name="startDate"
                   value={formData.startDate}
                   onChange={handleChange}
-                  className="form-input text-xs"
+                  className="w-full bg-white border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 font-bold"
                   required
                 />
               </div>
 
-              <div className="form-group mb-0">
-                <label className="form-label flex items-center gap-1.5 text-xs text-[#e6d7c3]">
-                  <Calendar className="w-4 h-4 text-cyan-400" />
+              <div className="mb-0">
+                <label className="flex items-center gap-1.5 text-xs text-slate-700 font-bold mb-1.5 uppercase tracking-wider">
+                  <Calendar className="w-4 h-4 text-slate-600" />
                   <span>End Date (Optional)</span>
                 </label>
                 <input 
@@ -449,62 +449,62 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                   value={formData.endDate}
                   onChange={handleChange}
                   min={formData.startDate}
-                  className="form-input text-xs"
+                  className="w-full bg-white border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 font-bold"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="form-group">
-                <label className="form-label">Event Mode *</label>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Event Mode *</label>
                 <select
                   name="mode"
                   value={formData.mode}
                   onChange={handleChange}
-                  className="form-select"
+                  className="w-full bg-slate-50 border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 font-bold"
                 >
                   <option value="OFFLINE">OFFLINE (In-Person Campus Venue)</option>
-                  <option value="ONLINE">ONLINE (Virtual / Google Meet / Zoom)</option>
+                  <option value="ONLINE">ONLINE (Virtual / Portal Submission)</option>
                 </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">
-                  {formData.mode === 'ONLINE' ? 'Online Meeting Link' : 'Location / Venue *'}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                  {formData.mode === 'ONLINE' ? 'Submission Link / Platform' : 'Location / Venue *'}
                 </label>
                 <input 
                   type="text"
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
-                  placeholder={formData.mode === 'ONLINE' ? 'e.g. Google Meet Link' : 'e.g. Main Auditorium'}
-                  className="form-input"
+                  placeholder={formData.mode === 'ONLINE' ? 'e.g. HITian Inside Portal' : 'e.g. Main Auditorium'}
+                  className="w-full bg-slate-50 border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 font-bold"
                   required={formData.mode === 'OFFLINE'}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="form-group">
-                <label className="form-label">Event Theme / Aesthetic</label>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Event Theme / Aesthetic</label>
                 <select
                   name="theme"
                   value={formData.theme}
                   onChange={handleChange}
-                  className="form-select font-semibold"
+                  className="w-full bg-slate-50 border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 font-bold"
                 >
                   <option value="DEFAULT">DEFAULT (Maroon & Gold)</option>
-                  <option value="TRICOLOUR">🇮🇳 TRICOLOUR (Swaraj-E-Hind Independence Day Theme)</option>
+                  <option value="TRICOLOUR">🇮🇳 TRICOLOUR (Swaraj-E-Hind Independence Day)</option>
                 </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Initial Event Status</label>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Initial Event Status</label>
                 <select
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  className="form-select"
+                  className="w-full bg-slate-50 border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 font-bold"
                 >
                   <option value="UPCOMING">UPCOMING (Registration Open)</option>
                   <option value="LIVE">LIVE Now</option>
@@ -513,46 +513,46 @@ Upon payment confirmation, participants are instantly routed to the official Wha
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-6 pt-2">
-              <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+            <div className="flex flex-wrap items-center gap-6 pt-2 bg-slate-50 p-4 border border-slate-200">
+              <label className="flex items-center gap-2 text-xs text-slate-700 font-bold cursor-pointer">
                 <input 
                   type="checkbox"
                   name="isFlagship"
                   checked={formData.isFlagship}
                   onChange={handleChange}
-                  className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
+                  className="w-4 h-4 border-slate-300 text-slate-900 focus:ring-0"
                 />
-                <span className="font-bold text-[#ff9933]">Flagship Swaraj-E-Hind Event</span>
+                <span>Flagship Event Badge</span>
               </label>
 
-              <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-slate-700 font-bold cursor-pointer">
                 <input 
                   type="checkbox"
                   name="hasAttendance"
                   checked={formData.hasAttendance}
                   onChange={handleChange}
-                  className="w-4 h-4 rounded border-white/20 text-[#800020] focus:ring-0"
+                  className="w-4 h-4 border-slate-300 text-slate-900 focus:ring-0"
                 />
-                <span className="font-semibold text-white">Enable QR Code Attendance System</span>
+                <span>Enable QR Code Attendance System</span>
               </label>
 
-              <label className="flex items-center gap-2 text-xs text-[#e6d7c3] cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-rose-700 font-bold cursor-pointer">
                 <input 
                   type="checkbox"
                   name="isHidden"
                   checked={formData.isHidden}
                   onChange={handleChange}
-                  className="w-4 h-4 rounded border-white/20 text-rose-500 focus:ring-0"
+                  className="w-4 h-4 border-slate-300 text-rose-600 focus:ring-0"
                 />
-                <span className="font-bold text-rose-400">🙈 Keep Hidden from Main Website Catalog</span>
+                <span>🙈 Keep Hidden from Main Website Catalog</span>
               </label>
             </div>
 
             {/* Custom Highlights */}
-            <div className="space-y-4 pt-4 border-t border-white/10">
+            <div className="space-y-4 pt-4 border-t border-slate-200">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-[#e6c594] flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4" />
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
                   <span>Custom Event Highlights (Drag handle to reorder)</span>
                 </h3>
               </div>
@@ -565,11 +565,11 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                     onDragStart={() => handleDragStart(idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnd={handleDragEnd}
-                    className={`flex gap-2 items-center bg-[#180509] p-3 rounded-xl border transition-all ${
-                      draggedIdx === idx ? 'border-[#e6c594] opacity-50' : 'border-white/5 hover:border-white/20'
+                    className={`flex gap-2 items-center bg-slate-50 p-3 border transition-all ${
+                      draggedIdx === idx ? 'border-slate-900 opacity-50' : 'border-slate-200 hover:border-slate-400'
                     }`}
                   >
-                    <div className="cursor-grab active:cursor-grabbing p-1 text-[#a69181] hover:text-[#e6c594]">
+                    <div className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-800">
                       <GripVertical className="w-4 h-4" />
                     </div>
 
@@ -578,7 +578,7 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                       value={item.title}
                       onChange={e => handleUpdateHighlight(idx, 'title', e.target.value)}
                       placeholder="Highlight Title"
-                      className="form-input flex-1 text-xs"
+                      className="w-1/3 bg-white border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900 font-bold"
                     />
 
                     <input 
@@ -586,13 +586,13 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                       value={item.description}
                       onChange={e => handleUpdateHighlight(idx, 'description', e.target.value)}
                       placeholder="Description"
-                      className="form-input flex-1 text-xs"
+                      className="flex-1 bg-white border border-slate-300 p-2 text-xs text-slate-900 outline-none focus:border-slate-900"
                     />
 
                     <button 
                       type="button" 
                       onClick={() => handleRemoveHighlight(idx)}
-                      className="text-rose-400 p-2 text-sm hover:text-rose-300"
+                      className="text-rose-600 p-2 text-sm hover:text-rose-800 cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -603,21 +603,21 @@ Upon payment confirmation, participants are instantly routed to the official Wha
               <button 
                 type="button" 
                 onClick={handleAddHighlight}
-                className="w-full py-2.5 text-xs font-semibold rounded-xl bg-[#800020]/30 hover:bg-[#800020] text-[#e6c594] hover:text-white border border-[#e6c594]/30 inline-flex items-center justify-center gap-1.5 transition-all mt-2"
+                className="w-full py-2.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 inline-flex items-center justify-center gap-1.5 transition-all mt-2 cursor-pointer uppercase tracking-wider"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Custom Highlight</span>
               </button>
             </div>
 
-            <div className="pt-4 flex justify-end gap-3 border-t border-white/10">
-              <Link href="/admin" className="btn-secondary text-sm">
+            <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
+              <Link href="/admin" className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold uppercase tracking-wider">
                 Cancel
               </Link>
               <button 
                 type="submit" 
                 disabled={loading}
-                className="btn-primary text-sm min-w-[180px] justify-center"
+                className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-wider min-w-[220px] justify-center cursor-pointer shadow-sm"
               >
                 {loading ? 'Creating...' : 'Save & Build Registration Form →'}
               </button>

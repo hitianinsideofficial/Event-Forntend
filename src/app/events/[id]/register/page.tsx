@@ -171,6 +171,98 @@ const SWARAJ_DOMAINS: SwarajDomain[] = [
   }
 ];
 
+const NAVROOPAM_DOMAINS: SwarajDomain[] = [
+  {
+    id: 'inkquilab',
+    title: 'CREATIVE WRITING',
+    subtitle: 'INKQUILAB / WRITING',
+    icon: BookOpen,
+    accept: '.pdf,.doc,.docx',
+    maxSize: 'Strictly under 4.0 MB',
+    maxBytesMb: 4,
+    isDriveLinkRequired: false,
+    themes: [
+      'The Trishul Within — Durga\'s trident symbolic & 3 virtues to defeat inner demons',
+      'The Ashes of Mahishasura — What must burn within ourselves to begin again',
+      'The Third Eye — Awakening of Shakti & inner power',
+      'Maa Durga: Bengal\'s Beloved Daughter — Uma coming home in autumn'
+    ],
+    rules: [
+      'Participants can submit a single entry per theme and participate in multiple domains.',
+      'Submissions accepted in English, Hindi, and Bengali.',
+      'File upload format: .pdf, .doc, .docx (Max 4.0 MB).',
+      'Plagiarized content will lead to immediate disqualification.',
+      'Include your registration details and chosen theme on the title page.'
+    ]
+  },
+  {
+    id: 'puja_vlog',
+    title: 'PUJA VLOG',
+    subtitle: 'REEL & VIDEO VLOG',
+    icon: Film,
+    accept: 'Google Drive Link',
+    maxSize: '1 GB (MP4 format via Google Drive)',
+    maxBytesMb: 1024,
+    isDriveLinkRequired: true,
+    themes: [
+      'Pandalchemy — Transformation of ordinary bamboo & cloth into sacred art',
+      'Agomoni — Arrival of Maa Durga, rhythms of the Dhak & awakening of spirits',
+      'Utsavnama — Faces of the festival, midnight tea stalls & unseen artisans',
+      'Pujo Diaries — Personal moments, nostalgic traditions & shared festive joy'
+    ],
+    rules: [
+      'Upload your video vlog (MP4, Max 1GB) to personal Google Drive and set sharing to "Anyone with the link can view".',
+      'Paste the viewable Google Drive link in the input field.',
+      'Ensure high video and audio clarity.',
+      'Restricted or non-viewable links will be disqualified.'
+    ]
+  },
+  {
+    id: 'puja_photography',
+    title: 'PHOTOGRAPHY',
+    subtitle: 'PUJA PHOTOGRAPHY',
+    icon: Camera,
+    accept: '.jpg,.jpeg,.png,image/*',
+    maxSize: 'Under 10 MB (Auto-compressed to < 4 MB)',
+    maxBytesMb: 10,
+    isDriveLinkRequired: false,
+    themes: [
+      'Sculpting Ma Shakti — Clay, straw, eyes being painted in Kumartuli',
+      'Drishtipat — Perspectives of faith, devotion & festive lights',
+      'Pandalverse — Architectural wonders, illumination & themes',
+      'Saishab — Innocence of children celebrating Durga Puja'
+    ],
+    rules: [
+      'Upload high-resolution photography in .jpg, .jpeg, or .png format.',
+      'Minimal post-processing allowed. AI-generated images are strictly prohibited.',
+      'Each photo is automatically optimized & compressed to under 4 MB for cloud verification.',
+      'Provide a caption or brief description of the shot if desired.'
+    ]
+  },
+  {
+    id: 'artwork',
+    title: 'ARTWORK',
+    subtitle: 'PAINTING, SKETCH & DIGITAL ART',
+    icon: Palette,
+    accept: '.jpg,.jpeg,.png,image/*',
+    maxSize: 'Under 10 MB (Auto-compressed to < 4 MB)',
+    maxBytesMb: 10,
+    isDriveLinkRequired: false,
+    themes: [
+      'Antarshakti — Show the power within us that gives us courage, strength, and the ability to overcome challenges',
+      'Avirbhava — Depict the rise of light over darkness and the victory of good over evil through the emergence of Shakti',
+      'Shakti Beyond the Idol — Explore how the power of Maa Durga lives beyond the idol through everyday acts of courage, kindness, and strength',
+      'Navashakti — Represent the nine forms of Maa Durga, each with unique powers, coming together as one divine force'
+    ],
+    rules: [
+      'Submissions accepted for Digital Art, Canvas Painting, and Sketching.',
+      'Plagiarised or AI-generated artwork is strictly forbidden.',
+      'Upload your artwork in high resolution (.jpg, .jpeg, or .png). Our portal auto-compresses for cloud verification.',
+      'Provide an explanation or artist statement along with your entry if desired.'
+    ]
+  }
+];
+
 // Helper: Client-Side Image Compressor (Compresses images to strictly under 3.5MB WebP for Vercel serverless upload)
 async function compressImageFile(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) return file;
@@ -257,7 +349,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
   // Step 2: Domain & Theme Selection
   const [activeStep, setActiveStep] = useState<number>(1);
-  const [selectedDomainId, setSelectedDomainId] = useState<string>('tricolens');
+  const [selectedDomainId, setSelectedDomainId] = useState<string>('inkquilab');
   const [selectedTheme, setSelectedTheme] = useState<string>('');
   const [driveReelUrl, setDriveReelUrl] = useState<string>('');
   const [caption, setCaption] = useState<string>('');
@@ -290,22 +382,39 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
   const totalPratidhwaniFee = (pratidhawniCategories.length || 1) * 50;
 
+  // Navroopam Payment & QR Toggler State
+  const [selectedPayee, setSelectedPayee] = useState<'srijita' | 'ayush'>('srijita');
+  const [navroopamUtr, setNavroopamUtr] = useState<string>('');
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+
+  const isNavroopam = Boolean(
+    eventId === '6aca70825588e8009b8e8e83' ||
+    eventId?.toLowerCase().includes('nav') ||
+    event?.id === '6aca70825588e8009b8e8e83' ||
+    event?.title?.toLowerCase()?.includes('navroopam') ||
+    event?.title?.toLowerCase()?.includes('navaroopam')
+  );
+
   const isPratidhawni = Boolean(
-    eventId === 'pratidhawni' || 
-    eventId === 'pratidhwani' || 
-    event?.id === 'pratidhawni' || 
-    event?.id === 'pratidhwani' || 
-    event?.title?.toLowerCase()?.includes('pratid')
+    !isNavroopam && (
+      eventId === 'pratidhawni' || 
+      eventId === 'pratidhwani' || 
+      event?.id === 'pratidhawni' || 
+      event?.id === 'pratidhwani' || 
+      event?.title?.toLowerCase()?.includes('pratid')
+    )
   );
 
   const isSwarajEHind = Boolean(
-    !isPratidhawni && (
+    !isPratidhawni && !isNavroopam && (
       event?.isFlagship || 
       event?.theme === 'TRICOLOUR' || 
       event?.title?.toLowerCase()?.includes('swaraj') ||
       event?.title?.toLowerCase()?.includes('hind')
     )
   );
+
+  const activeEventDomains = isNavroopam ? NAVROOPAM_DOMAINS : SWARAJ_DOMAINS;
 
   // Load saved student credentials from session
   useEffect(() => {
@@ -390,7 +499,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       return;
     }
 
-    if (isSwarajEHind) {
+    if (isNavroopam || isSwarajEHind) {
       if (!selectedDept || !selectedYear || !rollSuffix) {
         setError('Please select your Department, Academic Year, and enter your Roll Number.');
         return;
@@ -415,8 +524,8 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
           const subDomainText = sub.answers?.['Selected Domain'] || '';
           
           if (subRoll === normCurrentRoll && subDomainText) {
-            // Match against SWARAJ_DOMAINS
-            const foundDomain = SWARAJ_DOMAINS.find(d => 
+            // Match against activeEventDomains
+            const foundDomain = activeEventDomains.find(d => 
               subDomainText.toLowerCase().includes(d.title.toLowerCase()) || 
               subDomainText.toLowerCase().includes(d.id.toLowerCase())
             );
@@ -436,13 +545,13 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       }
 
       // Pick first unsubmitted domain
-      const unsubmitted = SWARAJ_DOMAINS.find(d => !currentSubmitted.includes(d.id));
+      const unsubmitted = activeEventDomains.find(d => !currentSubmitted.includes(d.id));
       if (unsubmitted) {
         setSelectedDomainId(unsubmitted.id);
       }
     }
 
-    if (isSwarajEHind) {
+    if (isNavroopam || isSwarajEHind) {
       setActiveStep(2);
     } else {
       handleFinalSubmission(e);
@@ -460,6 +569,11 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
     if (!upiId.trim()) {
       setError('Please input your UPI ID used for making the payment.');
+      return;
+    }
+
+    if (!paymentProofFile) {
+      setError('Please upload your Payment Screenshot Proof (Mandatory for fee verification).');
       return;
     }
 
@@ -483,6 +597,10 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       formPayload.append('email', email);
       formPayload.append('phone', phone);
       formPayload.append('answers', JSON.stringify(combinedAnswers));
+
+      if (paymentProofFile) {
+        formPayload.append('paymentProof', paymentProofFile);
+      }
 
       const res = await submitRegistrationApi(formPayload);
 
@@ -549,15 +667,16 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
     e.preventDefault();
     setError('');
 
-    if (isSwarajEHind) {
+    const activeDomainObj = activeEventDomains.find(d => d.id === selectedDomainId) || activeEventDomains[0];
+
+    if (isNavroopam || isSwarajEHind) {
       if (!selectedTheme) {
         setError('Please select a theme for your chosen competition domain.');
         return;
       }
 
-      const activeDomainObj = SWARAJ_DOMAINS.find(d => d.id === selectedDomainId);
       if (activeDomainObj?.isDriveLinkRequired && !driveReelUrl.trim()) {
-        setError('Google Drive Video Link is mandatory for TRICOLENS Reel submissions. Please upload your video to Google Drive and paste the shareable link.');
+        setError('Google Drive Video Link is mandatory for video/vlog submissions. Please upload your video to Google Drive and paste the shareable link.');
         return;
       }
 
@@ -567,12 +686,22 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       }
     }
 
+    if (isNavroopam) {
+      if (!navroopamUtr.trim()) {
+        setError('Please enter the 12-digit UPI Transaction Ref (UTR) number for your ₹9.00 payment.');
+        return;
+      }
+
+      if (!paymentProofFile) {
+        setError('Please upload your Payment Screenshot Proof (Mandatory for payment verification).');
+        return;
+      }
+    }
+
     setSubmitting(true);
     setUploadProgress(0);
     try {
-      const activeDomainObj = SWARAJ_DOMAINS.find(d => d.id === selectedDomainId);
-
-      // Construct clean answers without normalized roll string
+      // Construct clean answers
       const combinedAnswers: Record<string, any> = {
         ...answers,
         'Department': selectedDept,
@@ -580,13 +709,20 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         'College Roll Number': fullRollNumber
       };
 
-      if (isSwarajEHind && activeDomainObj) {
+      if ((isNavroopam || isSwarajEHind) && activeDomainObj) {
         combinedAnswers['Selected Domain'] = `${activeDomainObj.title} (${activeDomainObj.subtitle})`;
         combinedAnswers['Selected Theme'] = selectedTheme;
         if (activeDomainObj.isDriveLinkRequired) {
           combinedAnswers['Google Drive Video Reel Link'] = driveReelUrl.trim();
         }
         if (caption) combinedAnswers['Caption / Write-up / Raw Notes'] = caption;
+      }
+
+      if (isNavroopam) {
+        combinedAnswers['Registration Fee'] = '₹9.00 INR';
+        combinedAnswers['Transaction UID'] = navroopamUtr.trim();
+        combinedAnswers['Selected Payee'] = selectedPayee === 'srijita' ? 'Srijita Bandyopadhyay (srijitab.2005@oksbi)' : 'Ayush Raj (ayushraj@ybl)';
+        combinedAnswers['Payment Status'] = 'PAID (₹9.00)';
       }
 
       const formPayload = new FormData();
@@ -599,6 +735,10 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       const fileToUpload = submissionFile || file;
       if (fileToUpload && !activeDomainObj?.isDriveLinkRequired) {
         formPayload.append('files', fileToUpload);
+      }
+
+      if (paymentProofFile) {
+        formPayload.append('paymentProof', paymentProofFile, `payment_proof_${paymentProofFile.name}`);
       }
 
       const res = await submitRegistrationApi(formPayload, (pct) => {
@@ -632,10 +772,12 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
     setCaption('');
     setSubmissionFile(null);
     setFile(null);
+    setNavroopamUtr('');
+    setPaymentProofFile(null);
     setError('');
 
     // Pick next unsubmitted domain
-    const nextUnsubmitted = SWARAJ_DOMAINS.find(d => !submittedDomains.includes(d.id));
+    const nextUnsubmitted = activeEventDomains.find(d => !submittedDomains.includes(d.id));
     if (nextUnsubmitted) {
       setSelectedDomainId(nextUnsubmitted.id);
     }
@@ -669,7 +811,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
     );
   }
 
-  const selectedDomainObj = SWARAJ_DOMAINS.find(d => d.id === selectedDomainId) || SWARAJ_DOMAINS[0];
+  const selectedDomainObj = activeEventDomains.find(d => d.id === selectedDomainId) || activeEventDomains[0];
   const isSelectedDomainSubmitted = submittedDomains.includes(selectedDomainId);
 
   return (
@@ -870,12 +1012,14 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
               </div>
 
               {/* STANDALONE OFFICIAL TICKET PASS CARD (PRINTABLE) */}
-              <div className="print-ticket-container bg-[#1c060b] border-2 border-[#ff9933] rounded-3xl p-6 sm:p-8 text-left space-y-6 shadow-2xl shadow-[#ff9933]/10">
+              <div className={`print-ticket-container bg-[#1c060b] border-2 ${isNavroopam ? 'navroopam-gold-border navroopam-theme-bg' : 'border-[#ff9933]'} rounded-3xl p-6 sm:p-8 text-left space-y-6 shadow-2xl ${isNavroopam ? 'shadow-[#e6c594]/15' : 'shadow-[#ff9933]/10'}`}>
                 {/* Header Bar */}
                 <div className="flex items-center justify-between pb-4 border-b border-white/10">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-[#ff9933] uppercase tracking-widest font-mono">🇮🇳 HITian Inside</span>
+                      <span className={`text-xs font-black ${isNavroopam ? 'text-[#e6c594]' : 'text-[#ff9933]'} uppercase tracking-widest font-mono`}>
+                        {isNavroopam ? '🔱 HITian Inside' : '🇮🇳 HITian Inside'}
+                      </span>
                       <span className="text-xs text-[#a69181]">• Official Event Ticket</span>
                     </div>
                     <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
@@ -895,7 +1039,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   <div className="sm:col-span-2 space-y-2.5 text-xs">
                     <div className="flex justify-between pb-1.5 border-b border-white/5">
                       <span className="text-[#a69181]">Ticket ID:</span>
-                      <span className="font-mono font-extrabold text-[#ff9933] text-sm">{ticket.ticketId}</span>
+                      <span className={`font-mono font-extrabold ${isNavroopam ? 'text-[#e6c594]' : 'text-[#ff9933]'} text-sm`}>{ticket.ticketId}</span>
                     </div>
                     <div className="flex justify-between pb-1.5 border-b border-white/5">
                       <span className="text-[#a69181]">Participant Name:</span>
@@ -919,7 +1063,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     {ticket.answers?.['College Roll Number'] && (
                       <div className="flex justify-between pb-1.5 border-b border-white/5">
                         <span className="text-[#a69181]">College Roll Number:</span>
-                        <span className="font-bold text-[#ff9933] font-mono">{ticket.answers['College Roll Number']}</span>
+                        <span className={`font-bold ${isNavroopam ? 'text-[#e6c594]' : 'text-[#ff9933]'} font-mono`}>{ticket.answers['College Roll Number']}</span>
                       </div>
                     )}
 
@@ -937,6 +1081,20 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                       </div>
                     )}
 
+                    {ticket.answers?.['Registration Fee'] && (
+                      <div className="flex justify-between pb-1.5 border-b border-white/5">
+                        <span className="text-[#a69181]">Fee Paid:</span>
+                        <span className="font-bold text-[#e6c594] font-mono">{ticket.answers['Registration Fee']}</span>
+                      </div>
+                    )}
+
+                    {ticket.answers?.['Transaction UID'] && (
+                      <div className="flex justify-between pb-1.5 border-b border-white/5">
+                        <span className="text-[#a69181]">Transaction UID / UTR:</span>
+                        <span className="font-bold text-white font-mono">{ticket.answers['Transaction UID']}</span>
+                      </div>
+                    )}
+
                     {ticket.answers?.['Caption / Write-up / Raw Notes'] && (
                       <div className="flex justify-between pb-1.5 border-b border-white/5">
                         <span className="text-[#a69181]">Caption / Write-up / Raw Notes:</span>
@@ -946,9 +1104,9 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
                     {ticket.answers?.['Google Drive Video Reel Link'] && (
                       <div className="flex justify-between pb-1.5 border-b border-white/5">
-                        <span className="text-[#a69181]">Google Drive Reel Link:</span>
+                        <span className="text-[#a69181]">Google Drive Video Link:</span>
                         <a href={ticket.answers['Google Drive Video Reel Link']} target="_blank" rel="noreferrer" className="text-cyan-400 font-semibold underline truncate max-w-[200px]">
-                          View Reel Link
+                          View Video Link
                         </a>
                       </div>
                     )}
@@ -964,7 +1122,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   </div>
 
                   {/* QR Code Pass */}
-                  <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 border-[#ff9933]/50">
+                  <div className={`flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 ${isNavroopam ? 'border-[#e6c594]' : 'border-[#ff9933]/50'}`}>
                     <QRCodeSVG value={ticket.ticketId} size={140} />
                     <span className="font-mono text-[10px] font-bold text-black mt-2">
                       {ticket.ticketId}
@@ -981,6 +1139,16 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
               {/* SEAMLESS MULTI-DOMAIN SUBMISSION ACTION BUTTONS (HIDDEN ON PRINT) */}
               <div className="no-print flex flex-wrap items-center justify-center gap-3 pt-4">
+                {isNavroopam && submittedDomains.length < NAVROOPAM_DOMAINS.length && (
+                  <button 
+                    onClick={handleStartAnotherDomainSubmission} 
+                    className="navroopam-pill-btn text-xs py-2.5 px-6 font-extrabold inline-flex items-center gap-1.5 shadow-xl animate-pulse"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Submit Entry for Another Domain 🎨</span>
+                  </button>
+                )}
+
                 {isSwarajEHind && submittedDomains.length < SWARAJ_DOMAINS.length && (
                   <button 
                     onClick={handleStartAnotherDomainSubmission} 
@@ -1003,8 +1171,21 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
           )
         ) : (
           /* REGISTRATION WIZARD */
-          <div className="glass-panel p-3 sm:p-8 border border-[#f7f1e5]/10">
-            <div className="mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <div className="space-y-6">
+            {/* Header Banner if present */}
+            {(event.bannerUrl || isNavroopam) && (
+              <div className="relative w-full aspect-[16/9] max-h-72 rounded-2xl overflow-hidden border-2 border-[#e6c594]/50 shadow-2xl">
+                <img 
+                  src={event.bannerUrl || '/navroopam_banner.png'} 
+                  alt={event.title || 'NAVROOPAM v7.0'} 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#150408]/80 via-transparent to-transparent" />
+              </div>
+            )}
+
+            <div className="glass-panel p-3 sm:p-8 border border-[#f7f1e5]/10">
+              <div className="mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div>
                 {isPratidhawni ? (
                   <div>
@@ -1016,6 +1197,18 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     </h1>
                     <span className="text-xs text-[#e6c594] font-semibold tracking-widest uppercase block mt-0.5 font-mono">
                       ONE LINER ... ONE LINER..
+                    </span>
+                  </div>
+                ) : isNavroopam ? (
+                  <div>
+                    <span className="text-[11px] font-black text-[#e6c594] uppercase tracking-wider block font-mono">
+                      🔱 HITian Inside • Tabloid, Media & Literary Club
+                    </span>
+                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white mt-0.5 drop-shadow-md">
+                      NAVROOPAM <span className="text-[#e6c594]">v7.0</span>
+                    </h1>
+                    <span className="text-xs text-[#e6c594] font-bold tracking-widest uppercase block mt-0.5 font-mono">
+                      Durga Puja Socio-Cultural Celebration
                     </span>
                   </div>
                 ) : (
@@ -1037,6 +1230,18 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                 </div>
               )}
 
+              {isNavroopam && (
+                <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-0">
+                  <span className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold ${activeStep === 1 ? 'bg-[#e6c594] text-black' : 'bg-white/10 text-white'}`}>
+                    1. Participant Info
+                  </span>
+                  <span className="text-xs text-[#a69181]">→</span>
+                  <span className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold ${activeStep === 2 ? 'navroopam-pill-btn' : 'bg-white/10 text-[#a69181]'}`}>
+                    2. Domain & Payment (₹9.00) ({submittedDomains.length}/{NAVROOPAM_DOMAINS.length})
+                  </span>
+                </div>
+              )}
+
               {isSwarajEHind && (
                 <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-0">
                   <span className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold ${activeStep === 1 ? 'bg-[#ff9933] text-black' : 'bg-white/10 text-white'}`}>
@@ -1051,12 +1256,12 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
             </div>
 
             {/* Queries Contact Banner */}
-            <div className="mb-4 sm:mb-6 p-3 rounded-xl bg-[#180509] border border-[#ff9933]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3 text-xs">
+            <div className={`mb-4 sm:mb-6 p-3 rounded-xl bg-[#180509] border ${isNavroopam ? 'border-[#e6c594]/40' : 'border-[#ff9933]/30'} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3 text-xs`}>
               <span className="text-[#a69181] font-semibold text-[11px] sm:text-xs">For any queries, please reach out to:</span>
               <div className="flex items-center gap-3 font-bold text-white text-[11px] sm:text-xs">
-                <a href="tel:9836018190" className="hover:text-[#ff9933] transition-colors">Srijita: 98360 18190</a>
+                <a href="tel:9836018190" className="hover:text-[#e6c594] transition-colors">Srijita: 98360 18190</a>
                 <span className="text-[#a69181]">|</span>
-                <a href="tel:9135444297" className="hover:text-[#ff9933] transition-colors">Ayush: 91354 44297</a>
+                <a href="tel:9135444297" className="hover:text-[#e6c594] transition-colors">Ayush: 91354 44297</a>
               </div>
             </div>
 
@@ -1261,9 +1466,13 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
                   <button 
                     type="submit"
-                    className="btn-tricolour text-sm py-3 sm:py-2.5 px-6 inline-flex items-center justify-center gap-2 font-extrabold w-full sm:w-auto shadow-lg"
+                    className={
+                      isNavroopam 
+                        ? 'btn-navroopam text-sm py-3 sm:py-2.5 px-6 inline-flex items-center justify-center gap-2 font-black w-full sm:w-auto shadow-xl'
+                        : 'btn-tricolour text-sm py-3 sm:py-2.5 px-6 inline-flex items-center justify-center gap-2 font-extrabold w-full sm:w-auto shadow-lg'
+                    }
                   >
-                    <span>{isPratidhawni ? `SUBMIT & PROCEED TO PAYMENT (RS. ${totalPratidhwaniFee}/-) →` : 'Proceed to Domain Selection →'}</span>
+                    <span>{isPratidhawni ? `SUBMIT & PROCEED TO PAYMENT (RS. ${totalPratidhwaniFee}/-) →` : isNavroopam ? 'Proceed to Domain & Payment (₹9.00) →' : 'Proceed to Domain Selection →'}</span>
                   </button>
                 </div>
               </form>
@@ -1328,6 +1537,23 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                       required
                     />
                   </div>
+
+                  <div className="form-group mb-0">
+                    <label className="form-label text-xs text-white font-bold flex items-center justify-between">
+                      <span>Payment Screenshot Proof * (Mandatory)</span>
+                      <span className="text-[10px] text-amber-300 font-mono">Max 4.0 MB</span>
+                    </label>
+                    <input 
+                      type="file" 
+                      accept="image/*,.pdf"
+                      onChange={e => {
+                        const f = e.target.files?.[0] || null;
+                        setPaymentProofFile(f);
+                      }}
+                      className="text-xs text-[#a69181] file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#ff9933] file:text-black hover:file:bg-[#e68a00]"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
@@ -1345,6 +1571,380 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     className="btn-tricolour flex-1 py-3 sm:py-2.5 text-xs sm:text-sm font-extrabold justify-center inline-flex items-center gap-2 shadow-lg"
                   >
                     <span>{submitting ? 'Verifying & Generating Receipt...' : 'PROCEED & GENERATE RECEIPT →'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 2: DOMAIN SELECTION & FILE SUBMISSION PORTAL (NAVROOPAM) */}
+            {activeStep === 2 && isNavroopam && (
+              <form onSubmit={handleFinalSubmission} className="space-y-6 animate-fadeIn">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-[#e6c594] flex items-center gap-2">
+                      <span>🔱 2. Choose Durga Puja Competition Domain & Theme</span>
+                    </h3>
+                    <button 
+                      type="button" 
+                      onClick={() => setActiveStep(1)}
+                      className="text-xs text-[#a69181] hover:text-[#e6c594] underline"
+                    >
+                      ← Edit Participant Info ({fullName} | {fullRollNumber})
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#a69181] mb-4">
+                    Submit entries across multiple domains (₹9.00 per domain entry)! Once submitted, a domain is locked.
+                  </p>
+
+                  {/* Navroopam 3 Domain Cards Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                    {NAVROOPAM_DOMAINS.map((domain) => {
+                      const IconComp = domain.icon;
+                      const isSelected = selectedDomainId === domain.id;
+                      const isSubmitted = submittedDomains.includes(domain.id);
+
+                      return (
+                        <div 
+                          key={domain.id}
+                          onClick={() => {
+                            if (!isSubmitted) {
+                              setSelectedDomainId(domain.id);
+                              setSelectedTheme('');
+                              setSubmissionFile(null);
+                            }
+                          }}
+                          className={`p-4 rounded-2xl border transition-all ${
+                            isSubmitted
+                              ? 'bg-emerald-950/30 border-emerald-500/40 cursor-not-allowed opacity-75'
+                              : isSelected 
+                                ? 'bg-gradient-to-b from-[#800020]/60 via-[#2a040d]/90 to-[#180509] border-2 border-[#e6c594] shadow-lg shadow-[#e6c594]/20 ring-1 ring-[#e6c594] cursor-pointer' 
+                                : 'bg-[#180509] border-white/10 hover:border-[#e6c594]/40 cursor-pointer opacity-80'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`p-2.5 rounded-xl ${isSubmitted ? 'bg-emerald-500/20 text-emerald-400' : isSelected ? 'bg-[#e6c594] text-black font-black' : 'bg-white/10 text-white'}`}>
+                                <IconComp className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-extrabold text-white">{domain.title}</h4>
+                                <span className="text-[10px] text-[#e6c594] font-bold block uppercase">{domain.subtitle}</span>
+                              </div>
+                            </div>
+
+                            {isSubmitted && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold flex items-center gap-1 border border-emerald-500/40">
+                                <Check className="w-3 h-3" />
+                                Submitted
+                              </span>
+                            )}
+                          </div>
+                          
+                          <span className="text-[10px] text-[#a69181]">
+                            {domain.isDriveLinkRequired ? 'Required: Google Drive Video Link' : `Limit: ${domain.maxSize}`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {isSelectedDomainSubmitted ? (
+                  <div className="p-6 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/40 text-center space-y-3">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+                    <h4 className="text-base font-bold text-white">Domain Already Submitted</h4>
+                    <p className="text-xs text-[#a69181]">
+                      You have already submitted an entry for <strong className="text-white">{selectedDomainObj.title}</strong>. Please select another unsubmitted domain card above!
+                    </p>
+                  </div>
+                ) : (
+                  /* Selected Domain Rules, Themes, Upload, and Payment Gateway */
+                  <div className="glass-panel p-6 border-2 navroopam-gold-border navroopam-theme-bg space-y-5">
+                    <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                      <span className="px-3 py-1 rounded-full bg-[#800020] text-[#e6c594] text-xs font-bold border border-[#e6c594]/40">
+                        🔱 {selectedDomainObj.title} ({selectedDomainObj.subtitle})
+                      </span>
+                      <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-mono font-bold border border-emerald-500/40">
+                        FEE: ₹9.00 INR
+                      </span>
+                    </div>
+
+                    {/* Theme Selector */}
+                    <div className="form-group mb-4">
+                      <label className="form-label font-bold text-white text-xs">
+                        Select Theme for {selectedDomainObj.title} *
+                      </label>
+                      <div className="space-y-2 mt-2">
+                        {selectedDomainObj.themes.map((thm, idx) => (
+                          <label 
+                            key={idx} 
+                            className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                              selectedTheme === thm ? 'bg-[#800020]/70 border-[#e6c594] text-white font-bold shadow-md shadow-[#e6c594]/10' : 'bg-black/40 border-white/10 text-[#e6d7c3]'
+                            }`}
+                          >
+                            <input 
+                              type="radio" 
+                              name="navroopamTheme" 
+                              value={thm} 
+                              checked={selectedTheme === thm}
+                              onChange={() => setSelectedTheme(thm)}
+                              className="text-[#e6c594] accent-[#e6c594] mt-0.5"
+                              required
+                            />
+                            <span className="text-xs leading-relaxed">{thm}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Domain Specific Rules */}
+                    <div className="p-4 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                      <h5 className="text-xs font-bold text-[#e6c594] flex items-center gap-1.5">
+                        <FileCheck className="w-3.5 h-3.5" />
+                        <span>Domain Rules & Submission Instructions:</span>
+                      </h5>
+                      <ul className="list-disc list-inside text-[11px] text-[#a69181] space-y-1">
+                        {selectedDomainObj.rules.map((rule, idx) => (
+                          <li key={idx}>{rule}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* MANDATORY GOOGLE DRIVE LINK FIELD FOR PUJA VLOG */}
+                    {selectedDomainObj.isDriveLinkRequired ? (
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/50 text-amber-200 text-xs space-y-2">
+                          <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                            <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
+                            <span>⚠️ MANDATORY FOR PUJA VLOG SUBMISSIONS:</span>
+                          </div>
+                          <p className="leading-relaxed">
+                            Upload your MP4 video vlog (Max 1GB) to personal Google Drive, set permissions to <strong>"Anyone with the link can view"</strong>, and paste the shareable link below.
+                          </p>
+                        </div>
+
+                        <div className="form-group bg-[#22080f] p-4 rounded-2xl border-2 border-[#e6c594]/50 space-y-2">
+                          <label className="form-label font-bold text-white text-xs flex items-center gap-1.5">
+                            <LinkIcon className="w-4 h-4 text-[#e6c594]" />
+                            <span>Google Drive Video Link * (Mandatory)</span>
+                          </label>
+                          <input 
+                            type="url" 
+                            value={driveReelUrl}
+                            onChange={e => setDriveReelUrl(e.target.value)}
+                            placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+                            className="form-input font-mono text-xs"
+                            required
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      /* DIRECT FILE UPLOAD DROPZONE FOR CREATIVE WRITING & PHOTOGRAPHY */
+                      <div className="form-group mb-0 space-y-2">
+                        <label className="form-label font-bold text-white text-xs flex items-center justify-between">
+                          <span>Upload {selectedDomainObj.title} Submission File *</span>
+                          <span className="text-[10px] text-[#e6c594] font-mono">Max File Size: 4.0 MB</span>
+                        </label>
+
+                        {compressing && (
+                          <div className="p-3 rounded-xl bg-[#e6c594]/20 border border-[#e6c594]/40 text-[#e6c594] text-xs flex items-center gap-2 animate-pulse">
+                            <Zap className="w-4 h-4" />
+                            <span>Auto-Compressing image file under 4 MB... Please wait.</span>
+                          </div>
+                        )}
+
+                        <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#e6c594]/50 rounded-2xl bg-white/[0.02] hover:border-[#e6c594] transition-colors cursor-pointer text-center mt-2">
+                          <UploadCloud className="w-8 h-8 text-[#e6c594] mb-2 animate-bounce" />
+                          <span className="text-xs font-bold text-white mb-1">
+                            {submissionFile ? (
+                              <span className="text-emerald-400 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4 inline" />
+                                {submissionFile.name} ({(submissionFile.size / (1024 * 1024)).toFixed(2)} MB)
+                              </span>
+                            ) : (
+                              `Click to Upload ${selectedDomainObj.subtitle} File (Max 4.0 MB)`
+                            )}
+                          </span>
+                          <span className="text-[10px] text-[#a69181]">
+                            Accepted: {selectedDomainObj.accept} (Strictly Under 4.0 MB)
+                          </span>
+                          <input 
+                            type="file" 
+                            onChange={e => handleFileChange(e, selectedDomainObj.maxBytesMb)}
+                            accept={selectedDomainObj.accept}
+                            className="hidden"
+                            required
+                          />
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Caption / Note Optional */}
+                    <div className="form-group mb-0">
+                      <label className="form-label text-xs">Caption / Description / Raw File Notes (Optional)</label>
+                      <textarea 
+                        rows={2}
+                        value={caption}
+                        onChange={e => setCaption(e.target.value)}
+                        placeholder="Write a brief caption or mention notes regarding your submission..."
+                        className="form-textarea text-xs"
+                      />
+                    </div>
+
+                    {/* ==================================================== */}
+                    {/* NAVROOPAM ₹9.00 PAYMENT GATEWAY & QR TOGGLER */}
+                    {/* ==================================================== */}
+                    <div className="p-5 rounded-2xl bg-[#120306] border-2 border-[#e6c594]/60 space-y-4 shadow-xl">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-white/10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">💳</span>
+                          <h4 className="text-xs font-black text-white uppercase tracking-wider font-mono">
+                            Navroopam Registration Fee: <span className="text-[#e6c594]">₹9.00 INR</span>
+                          </h4>
+                        </div>
+                        <span className="text-[10px] text-[#a69181] font-mono">Symbolic for 9 Days of Durga Puja</span>
+                      </div>
+
+                      {/* Payee QR Toggler Tabs */}
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold text-[#e6c594] block">
+                          Choose Payment Recipient / QR Code:
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPayee('srijita')}
+                            className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
+                              selectedPayee === 'srijita'
+                                ? 'bg-[#800020] border-[#e6c594] text-white shadow-md shadow-[#e6c594]/20 ring-1 ring-[#e6c594]'
+                                : 'bg-black/30 border-white/10 text-[#a69181] hover:border-white/20'
+                            }`}
+                          >
+                            <span className="block text-white">Srijita Bandyopadhyay</span>
+                            <span className="text-[10px] text-[#e6c594] font-mono block mt-0.5">srijitab.2005@oksbi</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPayee('ayush')}
+                            className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
+                              selectedPayee === 'ayush'
+                                ? 'bg-[#800020] border-[#e6c594] text-white shadow-md shadow-[#e6c594]/20 ring-1 ring-[#e6c594]'
+                                : 'bg-black/30 border-white/10 text-[#a69181] hover:border-white/20'
+                            }`}
+                          >
+                            <span className="block text-white">Ayush Raj</span>
+                            <span className="text-[10px] text-[#e6c594] font-mono block mt-0.5">ayushraj@ybl</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Dynamic Payment QR Box */}
+                      <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 border-[#e6c594] max-w-xs mx-auto text-center shadow-2xl">
+                        <QRCodeSVG 
+                          value={
+                            selectedPayee === 'srijita'
+                              ? 'upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee'
+                              : 'upi://pay?pa=ayushraj@ybl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee'
+                          } 
+                          size={150} 
+                        />
+                        <span className="font-mono text-xs font-black text-black mt-2">
+                          {selectedPayee === 'srijita' ? 'srijitab.2005@oksbi' : 'ayushraj@ybl'}
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-700 font-mono mt-0.5">
+                          Amount: ₹9.00 INR
+                        </span>
+                        <a 
+                          href={
+                            selectedPayee === 'srijita'
+                              ? 'upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee'
+                              : 'upi://pay?pa=ayushraj@ybl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee'
+                          }
+                          className="mt-2 text-[10px] px-3 py-1 bg-black text-white font-bold rounded-lg inline-flex items-center gap-1 sm:hidden"
+                        >
+                          <span>Open in UPI App (GPay/PhonePe) ↗</span>
+                        </a>
+                      </div>
+
+                      {/* 12-Digit UTR and Screenshot Upload */}
+                      <div className="space-y-3 pt-2">
+                        <div className="form-group mb-0">
+                          <label className="form-label flex items-center justify-between text-xs text-white font-semibold mb-1">
+                            <span>12-Digit UPI Transaction Ref / UTR *</span>
+                            <span className="text-[10px] text-[#e6c594] font-mono">Mandatory</span>
+                          </label>
+                          <input 
+                            type="text" 
+                            value={navroopamUtr}
+                            onChange={e => setNavroopamUtr(e.target.value)}
+                            placeholder="Enter 12-digit UTR Number (e.g. 429381902849)"
+                            className="form-input text-xs font-mono uppercase"
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group mb-0">
+                          <label className="form-label text-xs text-white font-bold flex items-center justify-between">
+                            <span>Payment Screenshot Proof * (Mandatory)</span>
+                            <span className="text-[10px] text-[#e6c594] font-mono">Max 4.0 MB</span>
+                          </label>
+                          <input 
+                            type="file" 
+                            accept="image/*,.pdf"
+                            onChange={e => {
+                              const f = e.target.files?.[0] || null;
+                              setPaymentProofFile(f);
+                            }}
+                            className="text-xs text-[#a69181] file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#800020] file:text-[#e6c594] hover:file:bg-[#9a0028]"
+                            required
+                          />
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 text-[10px] text-[#a69181]">
+                          ℹ️ All registration fees are non-refundable. Please ensure UTR is entered accurately for instant verified pass issuance.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {submitting && (
+                  <div className="p-4 rounded-2xl bg-[#800020]/30 border-2 border-[#e6c594]/50 space-y-2.5">
+                    <div className="flex justify-between items-center text-xs font-bold text-[#e6c594]">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#e6c594] animate-ping" />
+                        <span>Uploading & Registering to NAVROOPAM v7.0...</span>
+                      </span>
+                      <span className="font-mono text-sm">{uploadProgress}%</span>
+                    </div>
+
+                    <div className="w-full h-3 bg-black/60 rounded-full overflow-hidden p-0.5 border border-[#e6c594]/30">
+                      <div 
+                        className="h-full bg-gradient-to-r from-[#800020] via-[#c41e3a] to-[#e6c594] rounded-full transition-all duration-300 ease-out shadow-lg"
+                        style={{ width: `${Math.max(uploadProgress, 5)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-white/10 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setActiveStep(1)} 
+                    disabled={submitting}
+                    className="btn-secondary text-xs py-3 sm:py-2.5 px-5 text-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ← Back to Step 1
+                  </button>
+
+                  <button 
+                    type="submit"
+                    disabled={submitting || compressing || isSelectedDomainSubmitted}
+                    className="navroopam-pill-btn text-sm min-w-full sm:min-w-[240px] justify-center inline-flex items-center gap-2 py-3 px-6 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto font-black"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>{submitting ? `Uploading... (${uploadProgress}%)` : 'Submit Entry to NAVROOPAM 🔱'}</span>
                   </button>
                 </div>
               </form>
@@ -1639,6 +2239,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                 </div>
               </form>
             )}
+          </div>
           </div>
         )}
       </main>

@@ -17,16 +17,24 @@ export default function EventCard({ event }: EventCardProps) {
     eventId === 'pratidhwani' || 
     title?.toLowerCase().includes('pratid')
   );
-  const isTricolour = (isFlagship || theme === 'TRICOLOUR' || title.toLowerCase().includes('swaraj')) && !isPratidhwani;
+  const isNavroopam = Boolean(
+    eventId === '6aca70825588e8009b8e8e83' ||
+    eventId?.toLowerCase().includes('nav') ||
+    title?.toLowerCase().includes('navroopam') ||
+    title?.toLowerCase().includes('navaroopam')
+  );
+  const isTricolour = (isFlagship || theme === 'TRICOLOUR' || title.toLowerCase().includes('swaraj')) && !isPratidhwani && !isNavroopam;
   const cardImage = coverUrl || bannerUrl;
 
   return (
     <div className={`glass-card flex flex-col justify-between h-full group relative overflow-hidden transition-all ${
-      isPratidhwani
-        ? 'border-2 border-[#ff9933]/60 hover:border-[#ff9933] shadow-lg shadow-[#ff9933]/15'
-        : isTricolour 
-          ? 'border-2 border-[#ff9933]/50 hover:border-[#138808]/80 shadow-lg shadow-[#ff9933]/10' 
-          : 'border border-[#f7f1e5]/10 hover:border-[#e6c594]/50'
+      isNavroopam
+        ? 'border-2 border-[#e6c594]/70 hover:border-[#e6c594] shadow-xl shadow-[#800020]/25 bg-gradient-to-b from-[#22060e] to-[#160307]'
+        : isPratidhwani
+          ? 'border-2 border-[#ff9933]/60 hover:border-[#ff9933] shadow-lg shadow-[#ff9933]/15'
+          : isTricolour 
+            ? 'border-2 border-[#ff9933]/50 hover:border-[#138808]/80 shadow-lg shadow-[#ff9933]/10' 
+            : 'border border-[#f7f1e5]/10 hover:border-[#e6c594]/50'
     }`}>
       {/* 4:3 Aspect Ratio Card Cover Image */}
       {cardImage ? (
@@ -40,7 +48,7 @@ export default function EventCard({ event }: EventCardProps) {
         </div>
       ) : (
         <div className={`absolute -right-12 -top-12 w-28 h-28 rounded-full blur-xl transition-all ${
-          isPratidhwani ? 'bg-[#ff9933]/30 group-hover:bg-[#800020]/40' : isTricolour ? 'bg-[#ff9933]/30 group-hover:bg-[#138808]/40' : 'bg-[#800020]/20 group-hover:bg-[#800020]/40'
+          isNavroopam ? 'bg-[#e6c594]/30 group-hover:bg-[#800020]/60' : isPratidhwani ? 'bg-[#ff9933]/30 group-hover:bg-[#800020]/40' : isTricolour ? 'bg-[#ff9933]/30 group-hover:bg-[#138808]/40' : 'bg-[#800020]/20 group-hover:bg-[#800020]/40'
         }`} />
       )}
 
@@ -62,6 +70,21 @@ export default function EventCard({ event }: EventCardProps) {
               {date}
             </span>
           </div>
+
+          {/* Flagship Trademark Banner for Navroopam */}
+          {isNavroopam && (
+            <div className="mb-3 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#800020]/60 via-[#4a0013] to-[#800020]/60 border border-[#e6c594]/60 flex items-center justify-between shadow-md">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs">🔱</span>
+                <span className="text-[10px] font-black tracking-wider uppercase text-[#e6c594] font-mono">
+                  DURGA PUJA FESTIVE CELEBRATION
+                </span>
+              </div>
+              <span className="text-[9px] font-mono font-extrabold text-[#150408] bg-[#e6c594] px-2 py-0.5 rounded border border-[#e6c594]">
+                ₹9.00 / ENTRY
+              </span>
+            </div>
+          )}
 
           {/* Flagship Trademark Banner for Swaraj-e-Hind */}
           {isTricolour && (
@@ -123,7 +146,7 @@ export default function EventCard({ event }: EventCardProps) {
           </div>
 
           <h3 className={`text-lg font-bold mb-2 transition-colors line-clamp-1 ${
-            isTricolour ? 'text-white group-hover:text-[#ff9933]' : 'text-[#fdfbf7] group-hover:text-[#e6c594]'
+            isNavroopam ? 'text-white group-hover:text-[#e6c594]' : isTricolour ? 'text-white group-hover:text-[#ff9933]' : 'text-[#fdfbf7] group-hover:text-[#e6c594]'
           }`}>
             {title}
           </h3>
@@ -138,12 +161,14 @@ export default function EventCard({ event }: EventCardProps) {
           <Link 
             href={`/events/${eventId}`}
             className={
-              isTricolour 
-                ? 'btn-tricolour w-full justify-center text-center text-xs py-2.5 px-4 font-bold shadow-lg' 
-                : 'w-full justify-center text-center py-2.5 px-4 text-xs font-bold text-[#150408] bg-[#e6c594] hover:bg-[#f7f1e5] rounded-xl transition-all shadow-md shadow-[#e6c594]/20 inline-flex items-center gap-1.5'
+              isNavroopam
+                ? 'w-full justify-center text-center py-2.5 px-4 text-xs font-bold text-[#150408] bg-gradient-to-r from-[#e6c594] via-[#f7f1e5] to-[#e6c594] hover:brightness-110 rounded-xl transition-all shadow-md shadow-[#800020]/40 inline-flex items-center gap-1.5'
+                : isTricolour 
+                  ? 'btn-tricolour w-full justify-center text-center text-xs py-2.5 px-4 font-bold shadow-lg' 
+                  : 'w-full justify-center text-center py-2.5 px-4 text-xs font-bold text-[#150408] bg-[#e6c594] hover:bg-[#f7f1e5] rounded-xl transition-all shadow-md shadow-[#e6c594]/20 inline-flex items-center gap-1.5'
             }
           >
-            <span>{isTricolour ? 'Register for Swaraj-E-Hind' : 'View Details & Rules'}</span>
+            <span>{isNavroopam ? 'Register for Navroopam v7.0 🔱' : isTricolour ? 'Register for Swaraj-E-Hind' : 'View Details & Rules'}</span>
             <ArrowRight className="w-3.5 h-3.5 shrink-0" />
           </Link>
         </div>

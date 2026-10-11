@@ -85,7 +85,15 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
     event.title?.toLowerCase()?.includes('pratid')
   );
 
-  const isTricolour = (event.isFlagship || event.theme === 'TRICOLOUR' || event.title.toLowerCase().includes('swaraj')) && !isPratidhwani;
+  const isNavroopam = Boolean(
+    eventId === '6aca70825588e8009b8e8e83' ||
+    eventId?.toLowerCase().includes('nav') ||
+    event.id === '6aca70825588e8009b8e8e83' ||
+    event.title?.toLowerCase()?.includes('navroopam') ||
+    event.title?.toLowerCase()?.includes('navaroopam')
+  );
+
+  const isTricolour = (event.isFlagship || event.theme === 'TRICOLOUR' || event.title.toLowerCase().includes('swaraj')) && !isPratidhwani && !isNavroopam;
 
   const SWARAJ_HIGHLIGHTS = [
     { 
@@ -136,6 +144,23 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#150408] via-transparent to-transparent opacity-90" />
+          </div>
+        ) : isNavroopam ? (
+          <div className="relative w-full p-8 sm:p-10 rounded-3xl navroopam-theme-bg navroopam-gold-border navroopam-header-glow mb-8 text-center shadow-2xl overflow-hidden">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#800020]/50 border border-[#e6c594]/60 text-[#e6c594] text-xs font-black uppercase tracking-wider mb-3">
+              <span className="text-sm">🔱</span>
+              <span>HITian Inside • Tabloid, Media & Literary Club</span>
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow-lg">
+              NAVROOPAM <span className="text-[#e6c594]">v7.0</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-[#e6c594] font-extrabold tracking-widest uppercase mt-1 font-mono">
+              Socio-Cultural Festive Celebration of Durga Puja
+            </p>
+            <div className="mt-4 inline-flex items-center gap-3 bg-[#800020]/40 px-4 py-1.5 rounded-full border border-[#e6c594]/40">
+              <span className="text-xs font-bold text-white">ENTRY FEE:</span>
+              <span className="text-sm font-black text-[#e6c594] font-mono">₹9.00 INR (Per Domain Entry)</span>
+            </div>
           </div>
         ) : isPratidhwani ? (
           <div className="relative w-full p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-[#800020]/40 via-[#2a0810] to-[#c41e3a]/40 border-2 border-[#ff9933] mb-8 text-center shadow-2xl overflow-hidden">
@@ -195,7 +220,13 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
             {/* Prominent Top Register Button */}
             <Link 
               href={`/events/${eventId}/register`}
-              className={isTricolour ? 'btn-tricolour text-sm py-2.5 px-6 shadow-xl shrink-0' : 'btn-primary text-sm py-2.5 px-6 shrink-0 inline-flex items-center gap-2'}
+              className={
+                isNavroopam 
+                  ? 'btn-navroopam text-sm py-2.5 px-6 shadow-xl shrink-0 inline-flex items-center gap-2 font-black' 
+                  : isTricolour 
+                    ? 'btn-tricolour text-sm py-2.5 px-6 shadow-xl shrink-0 inline-flex items-center gap-2' 
+                    : 'btn-primary text-sm py-2.5 px-6 shrink-0 inline-flex items-center gap-2'
+              }
             >
               <span>Register Now for Event</span>
               <ArrowRight className="w-4 h-4" />
@@ -427,9 +458,15 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
 
           <Link 
             href={`/events/${eventId}/register`}
-            className={isTricolour ? 'btn-tricolour text-sm py-3 px-8' : 'btn-primary text-sm py-3 px-8 inline-flex items-center gap-2'}
+            className={
+              isNavroopam 
+                ? 'btn-navroopam text-sm py-3 px-8 inline-flex items-center gap-2 font-black shadow-xl' 
+                : isTricolour 
+                  ? 'btn-tricolour text-sm py-3 px-8' 
+                  : 'btn-primary text-sm py-3 px-8 inline-flex items-center gap-2'
+            }
           >
-            <span>Fill Registration Form →</span>
+            <span>{isNavroopam ? 'Fill Navroopam v7.0 Registration Form →' : 'Fill Registration Form →'}</span>
           </Link>
         </div>
       </main>

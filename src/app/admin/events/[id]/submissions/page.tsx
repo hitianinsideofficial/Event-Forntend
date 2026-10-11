@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Navbar from '../../../../../components/Navbar';
+import AdminNavbar from '../../../../../components/AdminNavbar';
 import { 
   fetchEventById, 
   fetchSubmissionsApi, 
-  checkInAttendeeApi,
+  checkInAttendeeApi, 
   acknowledgeSubmissionApi,
-  deleteSubmissionApi
+  deleteSubmissionApi,
+  updatePaymentStatusApi
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
@@ -22,7 +23,9 @@ import {
   ExternalLink,
   Send,
   CheckCircle2,
-  Flag,
+  XCircle,
+  Clock,
+  CreditCard,
   Grid,
   List,
   Filter,
@@ -30,7 +33,20 @@ import {
   Image as ImageIcon,
   User,
   Hash,
-  Trash2
+  Trash2,
+  RefreshCw,
+  Search,
+  Eye,
+  FileCheck,
+  AlertCircle,
+  DollarSign,
+  Building2,
+  Phone,
+  Mail,
+  ShieldCheck,
+  ShieldAlert,
+  ChevronDown,
+  Download
 } from 'lucide-react';
 
 export default function EventSubmissionsPage() {
@@ -44,16 +60,25 @@ export default function EventSubmissionsPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
 
+  // QR Check-in scanner
   const [scanInput, setScanInput] = useState<string>('');
   const [checkInResult, setCheckInResult] = useState<ApiResponse<SubmissionItem> | null>(null);
   const [checkInLoading, setCheckInLoading] = useState<boolean>(false);
+
+  // Actions Loading State
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
   const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
 
-  // Gallery View & Domain -> Theme Filter state
-  const [viewMode, setViewMode] = useState<'gallery' | 'table'>('gallery');
+  // View Mode & Filters
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedDomainFilter, setSelectedDomainFilter] = useState<string>('ALL');
   const [selectedThemeFilter, setSelectedThemeFilter] = useState<string>('ALL');
+  const [selectedPaymentFilter, setSelectedPaymentFilter] = useState<string>('ALL');
+
+  // Preview Modal for Proof / Submission File
+  const [previewMediaUrl, setPreviewMediaUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -90,6 +115,8 @@ export default function EventSubmissionsPage() {
 
   if (!isAuthenticated) return null;
 
+  const isNavroopam = eventId === '6aca70825588e8009b8e8e83' || eventId?.includes('nav') || event?.title?.toLowerCase().includes('nav');
+
   const handleCheckInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scanInput.trim()) return;
@@ -101,20 +128,11 @@ export default function EventSubmissionsPage() {
       const res = await checkInAttendeeApi(scanInput.trim());
       setCheckInResult(res);
       setScanInput('');
-      loadData();
+      await loadData();
     } catch (err: any) {
       setCheckInResult({ success: false, message: err.message });
     } finally {
       setCheckInLoading(false);
-    }
-  };
-
-  const handleManualCheckIn = async (ticketId: string) => {
-    try {
-      await checkInAttendeeApi(ticketId);
-      loadData();
-    } catch (err: any) {
-      alert(err.message);
     }
   };
 
@@ -124,7 +142,7 @@ export default function EventSubmissionsPage() {
       const res = await acknowledgeSubmissionApi(subId);
       if (res.success) {
         alert(res.message);
-        loadData();
+        await loadData();
       }
     } catch (err: any) {
       alert(err.message || 'Failed to acknowledge submission');
@@ -133,8 +151,25 @@ export default function EventSubmissionsPage() {
     }
   };
 
+  const handleUpdatePayment = async (subId: string, status: 'PENDING' | 'VERIFIED' | 'REJECTED') => {
+    setUpdatingPaymentId(subId);
+    try {
+      await updatePaymentStatusApi(subId, status);
+      setSubmissions(prev => prev.map(s => {
+        if (s.id === subId) {
+          return { ...s, paymentStatus: status, paymentVerifiedAt: status === 'VERIFIED' ? new Date().toISOString() : null };
+        }
+        return s;
+      }));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update payment status');
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  };
+
   const handleDeleteSubmission = async (subId: string, participantName: string, ticketId: string) => {
-    if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE the registration/submission for "${participantName}" (Ticket: ${ticketId})? This action cannot be undone.`)) {
+    if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE the registration for "${participantName}" (Ticket: ${ticketId})? This action cannot be undone.`)) {
       return;
     }
 
@@ -149,7 +184,7 @@ export default function EventSubmissionsPage() {
     }
   };
 
-  // Extract unique domains present in submissions
+  // Available Domains & Themes
   const availableDomains = Array.from(
     new Set(
       submissions
@@ -158,7 +193,6 @@ export default function EventSubmissionsPage() {
     )
   );
 
-  // Extract unique themes present for the active domain
   const availableThemes = Array.from(
     new Set(
       submissions
@@ -168,361 +202,671 @@ export default function EventSubmissionsPage() {
     )
   );
 
+  // Filtered Submissions
   const filteredSubmissions = submissions.filter(sub => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = 
       sub.fullName?.toLowerCase().includes(query) ||
       sub.email?.toLowerCase().includes(query) ||
+      sub.phone?.toLowerCase().includes(query) ||
       sub.ticketId?.toLowerCase().includes(query) ||
       sub.answers?.['College Roll Number']?.toLowerCase().includes(query) ||
-      sub.answers?.['Department']?.toLowerCase().includes(query);
+      sub.answers?.['Department']?.toLowerCase().includes(query) ||
+      sub.answers?.['Transaction UID']?.toLowerCase().includes(query);
 
     const matchesDomain = selectedDomainFilter === 'ALL' || sub.answers?.['Selected Domain'] === selectedDomainFilter;
     const matchesTheme = selectedThemeFilter === 'ALL' || sub.answers?.['Selected Theme'] === selectedThemeFilter;
+    
+    const computedStatus = sub.paymentStatus || (sub.answers?.['Payment Status']?.includes('PAID') ? 'PAID' : 'PENDING');
+    const matchesPayment = selectedPaymentFilter === 'ALL' || computedStatus === selectedPaymentFilter;
 
-    return matchesSearch && matchesDomain && matchesTheme;
+    return matchesSearch && matchesDomain && matchesTheme && matchesPayment;
   });
 
+  // Summary Metrics
+  const paymentStats = {
+    total: submissions.length,
+    verified: submissions.filter(s => s.paymentStatus === 'VERIFIED' || s.paymentStatus === 'PAID').length,
+    pending: submissions.filter(s => !s.paymentStatus || s.paymentStatus === 'PENDING').length,
+    rejected: submissions.filter(s => s.paymentStatus === 'REJECTED').length,
+  };
+
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
-      <Navbar />
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
+      <AdminNavbar />
 
-      <main className="flex-1 max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link 
-          href="/admin" 
-          className="inline-flex items-center gap-1.5 text-xs text-[#a69181] hover:text-white mb-6 transition-colors font-medium"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Admin Console</span>
-        </Link>
+      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        {/* HEADER BAR */}
+        <div className="bg-white border border-slate-200 p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <Link 
+              href="/admin" 
+              className="text-xs font-semibold text-slate-500 hover:text-slate-900 inline-flex items-center gap-1 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Admin Dashboard</span>
+            </Link>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              {event?.title || 'Event'} - <span className="gradient-text">Submissions</span>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              {isNavroopam && <span className="text-rose-600">🔱</span>}
+              <span>{event?.title || 'Event Submissions'}</span>
+              <span className="text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-300 uppercase">
+                {submissions.length} Total Submissions
+              </span>
             </h1>
-            <p className="text-xs text-[#a69181] mt-1">Registrations, custom answers, uploaded files, and email acknowledgments.</p>
+            <p className="text-xs text-slate-600">
+              Direct review table, 12-digit UTR payment verification, media previews, and attendee check-in.
+            </p>
           </div>
 
-          <Link 
-            href={`/admin/events/${eventId}/form-builder`} 
-            className="btn-secondary text-xs"
-          >
-            ✏️ Edit Registration Form
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+
+            <Link 
+              href={`/admin/events/${eventId}/edit`}
+              className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+            >
+              <span>Edit Event Details</span>
+            </Link>
+
+            <Link 
+              href={`/admin/events/${eventId}/form-builder`}
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors shadow-sm"
+            >
+              <span>Edit Form Fields</span>
+            </Link>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2 glass-panel p-6 border border-emerald-500/20">
-            {event?.hasAttendance ? (
-              <>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Live QR Attendance Scanner
-                  </h2>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-mono inline-flex items-center gap-1">
-                    <QrCode className="w-3 h-3" />
-                    SCANNER READY
-                  </span>
-                </div>
-                <p className="text-xs text-[#a69181] mb-4">
-                  Scan attendee QR code ticket or enter Ticket ID (e.g. <span className="font-mono text-[#e6c594]">HIT-EVT-XXXXXX</span>).
-                </p>
+        {/* 4 SUMMARY STATS + LIVE QR CHECK-IN BAR */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Quick Metrics */}
+          <div className="bg-white border border-slate-200 p-4 border-l-4 border-l-slate-900">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total Entries</span>
+            <p className="text-2xl font-black text-slate-900 mt-1">{paymentStats.total}</p>
+            <span className="text-[10px] text-slate-500">Across all domains</span>
+          </div>
 
-                <form onSubmit={handleCheckInSubmit} className="flex gap-2 mb-3">
-                  <input 
-                    type="text" 
-                    value={scanInput}
-                    onChange={e => setScanInput(e.target.value)}
-                    placeholder="Scan or enter Ticket ID (e.g., HIT-EVT-XXXXXX)..."
-                    className="form-input flex-1 font-mono text-sm uppercase"
-                  />
-                  <button 
-                    type="submit" 
-                    disabled={checkInLoading}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 shrink-0 inline-flex items-center gap-1.5"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>{checkInLoading ? 'Checking...' : 'Check-In Attendee'}</span>
-                  </button>
-                </form>
+          <div className="bg-white border border-slate-200 p-4 border-l-4 border-l-emerald-600">
+            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">Verified Payments</span>
+            <p className="text-2xl font-black text-emerald-800 mt-1">{paymentStats.verified}</p>
+            <span className="text-[10px] text-emerald-700">UTR / Online Approved</span>
+          </div>
 
-                {checkInResult && (
-                  <div className={`p-3 rounded-xl border text-xs font-medium ${
-                    checkInResult.success 
-                      ? checkInResult.alreadyCheckedIn ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                      : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-                  }`}>
-                    {checkInResult.message}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex flex-col justify-center h-full text-left">
-                <h3 className="text-base font-bold text-white mb-1">Submissions Portal Overview</h3>
-                <p className="text-xs text-[#a69181]">
-                  Review submissions, verify attached files & drive links, and send official Tricolour email acknowledgments to participants.
-                </p>
+          <div className="bg-white border border-slate-200 p-4 border-l-4 border-l-amber-500">
+            <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">Pending Verification</span>
+            <p className="text-2xl font-black text-amber-800 mt-1">{paymentStats.pending}</p>
+            <span className="text-[10px] text-amber-700">Requires manual check</span>
+          </div>
+
+          {/* QR Code Scanner Compact Form */}
+          <div className="bg-white border border-slate-200 p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1">
+                <QrCode className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Ticket Check-In</span>
+              </span>
+            </div>
+
+            <form onSubmit={handleCheckInSubmit} className="flex gap-1.5 mt-1">
+              <input 
+                type="text" 
+                value={scanInput}
+                onChange={e => setScanInput(e.target.value)}
+                placeholder="Scan / Enter Ticket ID..."
+                className="flex-1 px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 text-slate-900 font-mono uppercase outline-none focus:border-slate-900"
+              />
+              <button 
+                type="submit" 
+                disabled={checkInLoading}
+                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer shrink-0"
+              >
+                {checkInLoading ? '...' : 'Check-In'}
+              </button>
+            </form>
+
+            {checkInResult && (
+              <div className={`mt-2 p-1.5 text-[10px] font-bold border ${
+                checkInResult.success ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-rose-50 border-rose-300 text-rose-800'
+              }`}>
+                {checkInResult.message}
               </div>
             )}
           </div>
-
-          <div className="glass-panel p-6 flex flex-col justify-between">
-            <h3 className="text-sm font-semibold text-[#e6d7c3] mb-4">Event Submissions Stats</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                <span className="text-xs text-[#a69181]">Total Submissions</span>
-                <span className="text-lg font-bold text-white">{submissions.length}</span>
-              </div>
-              <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                <span className="text-xs text-[#a69181]">Acknowledged Emails Sent</span>
-                <span className="text-lg font-bold text-[#ff9933]">
-                  {submissions.filter(s => s.acknowledged).length}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-[#a69181]">Media Files & Links</span>
-                <span className="text-lg font-bold text-[#e6c594]">
-                  {submissions.reduce((acc, s) => acc + (s.files?.length || 0), 0)}
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <section className="glass-panel p-6 border border-[#f7f1e5]/10">
-          {/* HEADER BAR WITH VIEW TOGGLE & SEARCH */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
-            <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <span>Submissions Console</span>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#ff9933]/20 text-[#ff9933] border border-[#ff9933]/40 text-xs font-mono">
-                  {filteredSubmissions.length} Items
-                </span>
-              </h2>
-              <p className="text-xs text-[#a69181] mt-0.5">Filter by Domain & Theme to view participant images and submission media.</p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-              {/* VIEW MODE TOGGLE BUTTONS */}
-              <div className="flex items-center p-1 rounded-xl bg-[#180509] border border-white/10 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('gallery')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    viewMode === 'gallery' ? 'bg-[#ff9933] text-black shadow-md' : 'text-[#a69181] hover:text-white'
-                  }`}
-                >
-                  <Grid className="w-3.5 h-3.5" />
-                  <span>Image Gallery View</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('table')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    viewMode === 'table' ? 'bg-[#ff9933] text-black shadow-md' : 'text-[#a69181] hover:text-white'
-                  }`}
-                >
-                  <List className="w-3.5 h-3.5" />
-                  <span>Table View</span>
-                </button>
+        {/* ========================================================= */}
+        {/* SUBMISSIONS TABLE & CONTROL TOOLBAR */}
+        {/* ========================================================= */}
+        <section className="bg-white border border-slate-200 shadow-sm space-y-4 p-5">
+          
+          {/* SEARCH & FILTER CONTROLS */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+              
+              {/* Search Bar */}
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search name, roll, UTR, ticket..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 text-slate-900 outline-none focus:border-slate-900 font-sans"
+                />
               </div>
 
-              {/* SEARCH INPUT */}
-              <input 
-                type="text" 
-                placeholder="Search name, roll, ticket..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="bg-[#20070d] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-[#a69181] outline-none w-full sm:w-56"
-              />
-            </div>
-          </div>
-
-          {/* DOMAIN & THEME FILTERING DROPDOWN BAR */}
-          <div className="mb-6 p-4 rounded-xl bg-[#180509] border border-[#ff9933]/30 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="form-group mb-0">
-              <label className="form-label text-xs text-[#ff9933] font-bold flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5" />
-                <span>1. View Submissions by Domain:</span>
-              </label>
+              {/* Domain Filter */}
               <select
                 value={selectedDomainFilter}
                 onChange={e => {
                   setSelectedDomainFilter(e.target.value);
-                  setSelectedThemeFilter('ALL'); // Reset theme filter when domain changes
+                  setSelectedThemeFilter('ALL');
                 }}
-                className="form-select text-xs"
+                className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 text-slate-900 outline-none cursor-pointer"
               >
-                <option value="ALL">All Domains ({submissions.length} total)</option>
-                {availableDomains.map((dom, i) => (
-                  <option key={i} value={dom}>{dom}</option>
+                <option value="ALL">All Domains ({submissions.length})</option>
+                {availableDomains.map((d, i) => (
+                  <option key={i} value={d}>{d}</option>
                 ))}
+              </select>
+
+              {/* Theme Filter */}
+              {availableThemes.length > 0 && (
+                <select
+                  value={selectedThemeFilter}
+                  onChange={e => setSelectedThemeFilter(e.target.value)}
+                  className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 text-slate-900 outline-none cursor-pointer"
+                >
+                  <option value="ALL">All Themes</option>
+                  {availableThemes.map((thm, i) => (
+                    <option key={i} value={thm}>{thm}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Payment Status Filter */}
+              <select
+                value={selectedPaymentFilter}
+                onChange={e => setSelectedPaymentFilter(e.target.value)}
+                className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 text-slate-900 outline-none cursor-pointer"
+              >
+                <option value="ALL">All Payment Statuses</option>
+                <option value="VERIFIED">VERIFIED / PAID</option>
+                <option value="PENDING">PENDING</option>
+                <option value="REJECTED">REJECTED</option>
               </select>
             </div>
 
-            <div className="form-group mb-0">
-              <label className="form-label text-xs text-[#e6c594] font-bold flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5" />
-                <span>2. View Submissions by Theme:</span>
-              </label>
-              <select
-                value={selectedThemeFilter}
-                onChange={e => setSelectedThemeFilter(e.target.value)}
-                className="form-select text-xs"
+            {/* VIEW MODE SWITCHER */}
+            <div className="flex items-center gap-1 border border-slate-300 p-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                  viewMode === 'table' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <option value="ALL">All Themes</option>
-                {availableThemes.map((thm, i) => (
-                  <option key={i} value={thm}>{thm}</option>
-                ))}
-              </select>
+                <List className="w-3.5 h-3.5" />
+                <span>Table View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                  viewMode === 'cards' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Grid className="w-3.5 h-3.5" />
+                <span>Card / Gallery View</span>
+              </button>
             </div>
           </div>
 
+          {/* TABLE DISPLAY */}
           {loading ? (
-            <div className="py-16 text-center text-[#a69181]">
-              <div className="inline-block w-6 h-6 border-2 border-[#e6c594] border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-xs">Loading submission records...</p>
+            <div className="py-20 text-center text-slate-400">
+              <div className="inline-block w-6 h-6 border-2 border-slate-900 border-t-transparent animate-spin mb-2" />
+              <p className="text-xs font-semibold">Loading submissions...</p>
             </div>
           ) : filteredSubmissions.length === 0 ? (
-            <div className="py-12 text-center text-[#a69181]">
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3">
-                <FileX className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-semibold text-white mb-1">No Submissions Match Filters</p>
-              <p className="text-xs text-[#a69181]">
-                {selectedDomainFilter !== 'ALL' || selectedThemeFilter !== 'ALL' || searchQuery
-                  ? 'No submissions found matching the selected Domain, Theme, or Search criteria.'
-                  : 'No attendees have registered for this event yet.'}
+            <div className="py-16 text-center text-slate-500 border border-dashed border-slate-300">
+              <FileX className="w-10 h-10 mx-auto mb-2 text-slate-400" />
+              <p className="text-sm font-bold text-slate-800">No submissions found</p>
+              <p className="text-xs text-slate-500 mt-1">
+                No participant records match the current search or domain/payment filter.
               </p>
             </div>
-          ) : viewMode === 'gallery' ? (
-            /* SEPARATE SECTION: DOMAIN & THEME IMAGE & MEDIA GALLERY VIEW */
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          ) : viewMode === 'table' ? (
+            <div className="overflow-x-auto border border-slate-200">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="p-3">Ticket ID</th>
+                    <th className="p-3">Participant Details</th>
+                    <th className="p-3">Domain & Theme</th>
+                    <th className="p-3">Payment Info & 12-Digit UTR</th>
+                    <th className="p-3">Payment Verification</th>
+                    <th className="p-3">Media / Attached File</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {filteredSubmissions.map(sub => {
+                    const paymentStatus = sub.paymentStatus || (sub.answers?.['Payment Status']?.includes('PAID') ? 'PAID' : 'PENDING');
+                    const utr = sub.answers?.['Transaction UID'] || sub.answers?.['UTR Number'] || sub.answers?.['Transaction UID / Txn ID'] || '-';
+                    const fee = sub.answers?.['Registration Fee'] || sub.answers?.['Payment Amount'] || (isNavroopam ? '₹9.00' : '-');
+                    const payee = sub.answers?.['Selected Payee'] || '-';
+                    
+                    const paymentProofFile = sub.files && sub.files.find(f => {
+                      const n = (f.originalName || '').toLowerCase();
+                      return n.includes('proof') || n.includes('pay') || n.includes('screen') || n.includes('utr') || n.includes('receipt') || f.provider === 'cloudinary_payment_proof';
+                    });
+                    
+                    // The actual submission entry file (excluding payment proof)
+                    const entryFiles = sub.files ? sub.files.filter(f => f !== paymentProofFile) : [];
+                    const mediaFile = entryFiles.length > 0 ? entryFiles[0] : null;
+                    const driveLink = sub.answers?.['Google Drive Video Reel Link'] || sub.answers?.['Google Drive Video Link'];
+
+                    return (
+                      <tr key={sub.id} className="hover:bg-slate-50/80 transition-colors">
+                        
+                        {/* TICKET ID */}
+                        <td className="p-3 align-top font-mono font-bold text-slate-900 whitespace-nowrap">
+                          <span className="px-2 py-1 bg-slate-100 border border-slate-300 block text-center">
+                            {sub.ticketId}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-sans block mt-1">
+                            {new Date(sub.createdAt).toLocaleDateString()}
+                          </span>
+                        </td>
+
+                        {/* PARTICIPANT DETAILS */}
+                        <td className="p-3 align-top max-w-[220px]">
+                          <div className="font-extrabold text-slate-900 text-xs">{sub.fullName}</div>
+                          <div className="text-[11px] text-slate-600 truncate flex items-center gap-1 mt-0.5">
+                            <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span>{sub.email}</span>
+                          </div>
+                          {sub.phone && (
+                            <div className="text-[11px] text-slate-600 flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span>{sub.phone}</span>
+                            </div>
+                          )}
+                          <div className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 mt-1 inline-block">
+                            Roll: {sub.answers?.['College Roll Number'] || 'N/A'} • {sub.answers?.['Department'] || ''} ({sub.answers?.['Academic Year'] || ''})
+                          </div>
+                        </td>
+
+                        {/* DOMAIN & THEME */}
+                        <td className="p-3 align-top max-w-[220px]">
+                          <div className="font-bold text-slate-900 text-xs">
+                            {sub.answers?.['Selected Domain'] || sub.answers?.['Enrolled Event Options'] || 'General Entry'}
+                          </div>
+                          {sub.answers?.['Selected Theme'] && (
+                            <div className="text-[11px] text-slate-600 italic mt-0.5">
+                              Theme: {sub.answers['Selected Theme']}
+                            </div>
+                          )}
+                          {sub.answers?.['Caption / Write-up / Raw Notes'] && (
+                            <div className="text-[10px] text-slate-500 mt-1 line-clamp-2 bg-slate-50 p-1 border border-slate-200">
+                              "{sub.answers['Caption / Write-up / Raw Notes']}"
+                            </div>
+                          )}
+                        </td>
+
+                        {/* PAYMENT INFO & UTR */}
+                        <td className="p-3 align-top whitespace-nowrap">
+                          <div className="text-xs font-black text-slate-900 flex items-center gap-1">
+                            <CreditCard className="w-3.5 h-3.5 text-slate-500" />
+                            <span>{fee}</span>
+                          </div>
+                          <div className="mt-1 font-mono text-[11px] font-bold text-slate-800 bg-slate-100 px-2 py-0.5 border border-slate-300">
+                            UTR: {utr}
+                          </div>
+                          {payee !== '-' && (
+                            <div className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[180px]">
+                              Payee: {payee}
+                            </div>
+                          )}
+
+                          {/* PAYMENT PROOF SCREENSHOT PREVIEW BUTTON (UNDER PAYMENT INFO) */}
+                          {(() => {
+                            // Find explicit proof file or any second uploaded image file
+                            let proofFile = sub.files && sub.files.find(f => {
+                              const n = (f.originalName || '').toLowerCase();
+                              return n.includes('proof') || n.includes('pay') || n.includes('screen') || n.includes('utr') || n.includes('receipt') || f.provider === 'cloudinary_payment_proof';
+                            });
+
+                            // If not found by keyword, check if there's more than 1 image file
+                            if (!proofFile && sub.files && sub.files.length > 1) {
+                              const imageFiles = sub.files.filter(f => (f.mimeType || '').startsWith('image/'));
+                              if (imageFiles.length > 1) {
+                                proofFile = imageFiles[imageFiles.length - 1];
+                              }
+                            }
+
+                            // If still only 1 file and it's named with receipt/proof/screenshot/or is a standalone payment event
+                            if (!proofFile && sub.files && sub.files.length === 1 && !sub.answers?.['Selected Domain']) {
+                              proofFile = sub.files[0];
+                            }
+
+                            if (!proofFile) {
+                              return (
+                                <div className="mt-1.5 text-[10px] text-slate-400 italic">
+                                  No screenshot attached
+                                </div>
+                              );
+                            }
+
+                            const proofUrl = proofFile.localUrl || proofFile.driveLink || '';
+                            return (
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPreviewMediaUrl(proofUrl);
+                                    setPreviewTitle(`Payment Screenshot - ${sub.fullName} (UTR: ${utr})`);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 text-[11px] font-black inline-flex items-center justify-center gap-1.5 shadow-xs transition-colors rounded-none"
+                                  title="Click to preview payment screenshot proof"
+                                >
+                                  <ImageIcon className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                                  <span>View Payment SS 📸</span>
+                                </button>
+                              </div>
+                            );
+                          })()}
+                        </td>
+
+                        {/* PAYMENT VERIFICATION CONTROLS */}
+                        <td className="p-3 align-top whitespace-nowrap">
+                          <div className="space-y-1.5">
+                            {paymentStatus === 'VERIFIED' || paymentStatus === 'PAID' ? (
+                              <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] font-black uppercase">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>VERIFIED / PAID</span>
+                              </div>
+                            ) : paymentStatus === 'REJECTED' ? (
+                              <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-800 border border-rose-300 text-[10px] font-black uppercase">
+                                <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                <span>REJECTED</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-300 text-[10px] font-black uppercase">
+                                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                <span>PENDING REVIEW</span>
+                              </div>
+                            )}
+
+                            {/* Verification Quick Action Buttons */}
+                            <div className="flex items-center gap-1 pt-1">
+                              {paymentStatus !== 'VERIFIED' && paymentStatus !== 'PAID' && (
+                                <button
+                                  type="button"
+                                  disabled={updatingPaymentId === sub.id}
+                                  onClick={() => handleUpdatePayment(sub.id, 'VERIFIED')}
+                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase transition-colors"
+                                  title="Approve & Delete SS Proof"
+                                >
+                                  ✓ Approve
+                                </button>
+                              )}
+
+                              {paymentStatus !== 'REJECTED' && (
+                                <button
+                                  type="button"
+                                  disabled={updatingPaymentId === sub.id}
+                                  onClick={() => handleUpdatePayment(sub.id, 'REJECTED')}
+                                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-[10px] font-bold uppercase transition-colors"
+                                  title="Reject Payment"
+                                >
+                                  ✕ Reject
+                                </button>
+                              )}
+
+                              {paymentStatus === 'REJECTED' && (
+                                <button
+                                  type="button"
+                                  disabled={updatingPaymentId === sub.id}
+                                  onClick={() => handleUpdatePayment(sub.id, 'VERIFIED')}
+                                  className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold uppercase transition-colors"
+                                >
+                                  Restore
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* MEDIA / FILE PREVIEWS */}
+                        <td className="p-3 align-top whitespace-nowrap">
+                          {driveLink ? (
+                            <a 
+                              href={driveLink} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="px-2.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold inline-flex items-center gap-1 transition-colors"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>View Google Drive Video ↗</span>
+                            </a>
+                          ) : mediaFile ? (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPreviewMediaUrl(mediaFile.localUrl || mediaFile.driveLink || '');
+                                    setPreviewTitle(`${sub.fullName} - ${mediaFile.originalName}`);
+                                  }}
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold inline-flex items-center gap-1 transition-colors"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-slate-600" />
+                                  <span>Preview Media</span>
+                                </button>
+
+                                <a
+                                  href={mediaFile.localUrl || mediaFile.driveLink}
+                                  download={mediaFile.originalName}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors"
+                                  title="Download File"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                              <a
+                                href={mediaFile.localUrl || mediaFile.driveLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-blue-600 hover:underline block truncate max-w-[160px]"
+                              >
+                                {mediaFile.originalName}
+                              </a>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">No media file</span>
+                          )}
+                        </td>
+
+                        {/* ACTIONS (ACKNOWLEDGE & DELETE) */}
+                        <td className="p-3 align-top text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {sub.acknowledged ? (
+                              <button 
+                                onClick={() => handleAcknowledge(sub.id)}
+                                disabled={acknowledgingId === sub.id}
+                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-[10px] font-bold inline-flex items-center gap-1"
+                                title="Resend Confirmation Email"
+                              >
+                                <span>{acknowledgingId === sub.id ? '...' : 'Resend Email 🔄'}</span>
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => handleAcknowledge(sub.id)}
+                                disabled={acknowledgingId === sub.id}
+                                className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow-sm"
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>{acknowledgingId === sub.id ? 'Sending...' : 'Send Email'}</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => handleDeleteSubmission(sub.id, sub.fullName, sub.ticketId)}
+                              disabled={deletingSubId === sub.id}
+                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors"
+                              title="Delete Submission"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            /* CARD / GALLERY VIEW */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredSubmissions.map(sub => {
                 const mediaUrl = sub.files && sub.files.length > 0
                   ? (sub.files[0].localUrl || sub.files[0].driveLink || null)
                   : null;
-
                 const isImage = mediaUrl ? /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(mediaUrl) || mediaUrl.includes('cloudinary') || mediaUrl.includes('imagekit') : false;
+                const paymentStatus = sub.paymentStatus || (sub.answers?.['Payment Status']?.includes('PAID') ? 'PAID' : 'PENDING');
+                const utr = sub.answers?.['Transaction UID'] || sub.answers?.['UTR Number'] || '-';
 
                 return (
-                  <div key={sub.id} className="bg-[#1c060b] rounded-2xl border border-white/10 overflow-hidden shadow-xl hover:border-[#ff9933]/50 transition-all flex flex-col justify-between group">
-                    {/* TOP MEDIA PREVIEW AREA */}
-                    <div className="relative w-full h-56 bg-black/60 border-b border-white/10 flex items-center justify-center overflow-hidden">
-                      {mediaUrl && isImage ? (
+                  <div key={sub.id} className="bg-white border border-slate-200 p-4 shadow-sm flex flex-col justify-between space-y-3">
+                    {/* Media Preview Box */}
+                    <div className="relative w-full h-48 bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                      {isImage && mediaUrl ? (
                         <img 
                           src={mediaUrl} 
                           alt={sub.fullName} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                          onClick={() => {
+                            setPreviewMediaUrl(mediaUrl);
+                            setPreviewTitle(sub.fullName);
+                          }}
                         />
                       ) : sub.answers?.['Google Drive Video Reel Link'] ? (
-                        <div className="p-4 text-center space-y-2">
-                          <div className="w-12 h-12 rounded-full bg-[#ff9933]/20 text-[#ff9933] flex items-center justify-center mx-auto border border-[#ff9933]/40">
-                            <ExternalLink className="w-6 h-6" />
-                          </div>
-                          <p className="text-xs font-bold text-white">Google Drive Video Reel</p>
+                        <div className="text-center p-3">
+                          <ExternalLink className="w-8 h-8 text-blue-600 mx-auto mb-1" />
+                          <span className="text-xs font-bold text-slate-800 block">Google Drive Video</span>
                           <a 
                             href={sub.answers['Google Drive Video Reel Link']} 
                             target="_blank" 
                             rel="noreferrer" 
-                            className="btn-tricolour text-[11px] py-1 px-3 inline-flex items-center gap-1"
+                            className="mt-2 inline-block px-3 py-1 bg-slate-900 text-white text-[10px] font-bold uppercase"
                           >
-                            <span>Watch Reel ↗</span>
+                            Open Video ↗
                           </a>
                         </div>
                       ) : mediaUrl ? (
-                        <div className="p-4 text-center space-y-2">
-                          <div className="w-12 h-12 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center mx-auto border border-cyan-500/40">
-                            <ImageIcon className="w-6 h-6" />
-                          </div>
-                          <p className="text-xs font-bold text-white truncate max-w-[200px]">{sub.files?.[0]?.originalName || 'Attached Media File'}</p>
+                        <div className="text-center p-3">
+                          <ImageIcon className="w-8 h-8 text-indigo-600 mx-auto mb-1" />
+                          <span className="text-xs font-bold text-slate-800 truncate max-w-[180px] block">{sub.files?.[0]?.originalName}</span>
                           <a 
                             href={mediaUrl} 
                             target="_blank" 
                             rel="noreferrer" 
-                            className="px-3 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px] font-bold inline-flex items-center gap-1"
+                            className="mt-2 inline-block px-3 py-1 bg-slate-100 border border-slate-300 text-slate-800 text-[10px] font-bold uppercase"
                           >
-                            <span>Open Media File ↗</span>
+                            Download File ↗
                           </a>
                         </div>
                       ) : (
-                        <div className="p-4 text-center text-[#a69181]">
-                          <FileX className="w-8 h-8 mx-auto mb-1 opacity-40" />
-                          <span className="text-xs">No media file attached</span>
+                        <div className="text-center text-slate-400">
+                          <FileX className="w-8 h-8 mx-auto mb-1" />
+                          <span className="text-xs">No media file</span>
                         </div>
                       )}
 
-                      {/* DOMAIN OVERLAY BADGE */}
-                      {sub.answers?.['Selected Domain'] && (
-                        <span className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-md border border-[#ff9933]/50 text-[#ff9933] text-[10px] font-black uppercase tracking-wider shadow-lg">
-                          {sub.answers['Selected Domain']}
-                        </span>
-                      )}
+                      {/* Domain Badge */}
+                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-slate-900 text-white text-[9px] font-bold uppercase tracking-wider">
+                        {sub.answers?.['Selected Domain'] || 'General'}
+                      </span>
                     </div>
 
-                    {/* PARTICIPANT DETAILS & ROLL NUMBER UNDERNEATH IMAGE */}
-                    <div className="p-4 space-y-3">
-                      <div>
-                        <div className="text-sm font-bold text-white flex items-center gap-1.5">
-                          <User className="w-4 h-4 text-[#ff9933] shrink-0" />
-                          <span>{sub.fullName}</span>
+                    {/* Participant Details */}
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-slate-900 text-sm">{sub.fullName}</span>
+                        <span className="font-mono text-[10px] font-bold text-slate-600">{sub.ticketId}</span>
+                      </div>
+                      <div className="text-slate-600 text-[11px]">{sub.email} • {sub.phone}</div>
+                      <div className="text-indigo-700 font-bold text-[11px]">
+                        Roll: {sub.answers?.['College Roll Number'] || 'N/A'} ({sub.answers?.['Department'] || ''})
+                      </div>
+                      <div className="bg-slate-50 p-2 border border-slate-200 mt-2 space-y-1">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500 font-semibold">UTR:</span>
+                          <span className="font-mono font-bold text-slate-800">{utr}</span>
                         </div>
-
-                        <div className="text-xs font-mono font-bold text-[#ff9933] mt-1 bg-[#800020]/25 px-2.5 py-1 rounded-lg border border-[#ff9933]/30 inline-flex items-center gap-1.5">
-                          <Hash className="w-3.5 h-3.5 text-[#ff9933]" />
-                          <span>Roll: {sub.answers?.['College Roll Number'] || 'N/A'}</span>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500 font-semibold">Payment:</span>
+                          <span className={`font-bold uppercase ${
+                            paymentStatus === 'VERIFIED' || paymentStatus === 'PAID' ? 'text-emerald-700' :
+                            paymentStatus === 'REJECTED' ? 'text-rose-700' : 'text-amber-700'
+                          }`}>
+                            {paymentStatus}
+                          </span>
                         </div>
                       </div>
+                    </div>
 
-                      <div className="text-[11px] text-[#a69181] space-y-1 pt-2 border-t border-white/5">
-                        <div><strong className="text-white">Dept & Year:</strong> {sub.answers?.['Department'] || 'N/A'} ({sub.answers?.['Academic Year'] || 'N/A'})</div>
-                        {sub.answers?.['Selected Theme'] && (
-                          <div className="text-[#e6c594] font-medium italic">
-                            <strong className="text-white">Theme:</strong> {sub.answers['Selected Theme']}
-                          </div>
+                    {/* Quick Payment Action Bar */}
+                    <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1">
+                        {paymentStatus !== 'VERIFIED' && paymentStatus !== 'PAID' && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdatePayment(sub.id, 'VERIFIED')}
+                            className="px-2 py-1 bg-emerald-600 text-white text-[10px] font-bold uppercase"
+                          >
+                            ✓ Approve
+                          </button>
                         )}
-                        <div className="font-mono text-[10px] text-slate-400">
-                          <strong className="text-white">Ticket ID:</strong> {sub.ticketId}
-                        </div>
+                        {paymentStatus !== 'REJECTED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdatePayment(sub.id, 'REJECTED')}
+                            className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-300 text-[10px] font-bold uppercase"
+                          >
+                            ✕ Reject
+                          </button>
+                        )}
                       </div>
 
-                      {/* ACKNOWLEDGMENT EMAIL & DELETE BUTTONS */}
-                      <div className="pt-2 flex items-center justify-between gap-2 border-t border-white/5">
-                        <div className="flex-1">
-                          {sub.acknowledged ? (
-                            <div className="flex items-center justify-between">
-                              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Sent
-                              </span>
-                              <button 
-                                onClick={() => handleAcknowledge(sub.id)}
-                                disabled={acknowledgingId === sub.id}
-                                className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition-all disabled:opacity-50"
-                              >
-                                {acknowledgingId === sub.id ? '...' : 'Resend 🔄'}
-                              </button>
-                            </div>
-                          ) : (
-                            <button 
-                              onClick={() => handleAcknowledge(sub.id)}
-                              disabled={acknowledgingId === sub.id}
-                              className="btn-tricolour text-xs py-1 px-3 w-full justify-center inline-flex items-center gap-1 shadow-md disabled:opacity-50"
-                            >
-                              <Send className="w-3 h-3" />
-                              <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge'}</span>
-                            </button>
-                          )}
-                        </div>
-
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => handleAcknowledge(sub.id)}
+                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300"
+                          title="Send Email"
+                        >
+                          <Send className="w-3 h-3" />
+                        </button>
                         <button
                           onClick={() => handleDeleteSubmission(sub.id, sub.fullName, sub.ticketId)}
-                          disabled={deletingSubId === sub.id}
-                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all shrink-0"
-                          title="Delete Submission"
+                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200"
+                          title="Delete"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
@@ -530,152 +874,54 @@ export default function EventSubmissionsPage() {
                 );
               })}
             </div>
-          ) : (
-            /* TRADITIONAL TABLE VIEW */
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-white/10 text-[#a69181] font-semibold bg-white/[0.02]">
-                    <th className="p-3">Ticket ID</th>
-                    <th className="p-3">Attendee & Roll Number</th>
-                    <th className="p-3">Domain & Theme Details</th>
-                    <th className="p-3">Attached Media / Links</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {filteredSubmissions.map(sub => (
-                    <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-3 font-mono font-bold text-[#ff9933]">
-                        {sub.ticketId}
-                      </td>
-
-                      <td className="p-3">
-                        <div className="font-semibold text-white">{sub.fullName}</div>
-                        <div className="text-[11px] text-[#a69181]">{sub.email}</div>
-                        {sub.answers?.['College Roll Number'] && (
-                          <div className="text-[10px] text-[#ff9933] font-mono font-bold mt-0.5">
-                            Roll: {sub.answers['College Roll Number']}
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="p-3 text-[#a69181] max-w-[240px]">
-                        {sub.answers ? (
-                          <div className="space-y-1">
-                            {sub.answers['Selected Domain'] && (
-                              <div className="text-xs font-bold text-white">
-                                {sub.answers['Selected Domain']}
-                              </div>
-                            )}
-                            {sub.answers['Selected Theme'] && (
-                              <div className="text-[11px] text-[#ff9933] font-medium italic">
-                                Theme: {sub.answers['Selected Theme']}
-                              </div>
-                            )}
-                            {Object.entries(sub.answers)
-                              .filter(([k]) => !['Selected Domain', 'Selected Theme', 'College Roll Number', 'Department', 'Academic Year'].includes(k))
-                              .map(([k, v]) => (
-                                <div key={k} className="text-[10px] text-slate-400 truncate">
-                                  <span className="font-semibold">{k}:</span> {String(v)}
-                                </div>
-                              ))
-                            }
-                          </div>
-                        ) : (
-                          <span className="text-slate-600">None</span>
-                        )}
-                      </td>
-
-                      <td className="p-3">
-                        {sub.answers?.['Google Drive Video Reel Link'] ? (
-                          <a 
-                            href={sub.answers['Google Drive Video Reel Link']}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 underline font-semibold truncate max-w-[200px]"
-                          >
-                            <ExternalLink className="w-3 h-3 shrink-0" />
-                            <span>View Google Drive Reel</span>
-                          </a>
-                        ) : sub.files && sub.files.length > 0 ? (
-                          sub.files.map((f, idx) => (
-                            <a 
-                              key={idx}
-                              href={f.driveLink || f.localUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 underline font-medium truncate max-w-[180px] block"
-                            >
-                              <ExternalLink className="w-3 h-3 shrink-0" />
-                              <span>{f.originalName || 'Download File'}</span>
-                            </a>
-                          ))
-                        ) : (
-                          <span className="text-slate-600">No file</span>
-                        )}
-                      </td>
-
-                      <td className="p-3">
-                        {sub.acknowledged ? (
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold inline-flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Acknowledged</span>
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-medium">
-                            Pending Ack
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {sub.acknowledged ? (
-                            <>
-                              <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                                <Check className="w-3 h-3 text-emerald-400" />
-                                <span>Sent</span>
-                              </span>
-                              <button 
-                                onClick={() => handleAcknowledge(sub.id)}
-                                disabled={acknowledgingId === sub.id}
-                                className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1"
-                                title="Resend Acknowledgment Email"
-                              >
-                                <Send className="w-3 h-3" />
-                                <span>{acknowledgingId === sub.id ? '...' : 'Resend 🔄'}</span>
-                              </button>
-                            </>
-                          ) : (
-                            <button 
-                              onClick={() => handleAcknowledge(sub.id)}
-                              disabled={acknowledgingId === sub.id}
-                              className="btn-tricolour text-[11px] py-1.5 px-3 inline-flex items-center gap-1.5 shadow-md disabled:opacity-50"
-                            >
-                              <Send className="w-3 h-3" />
-                              <span>{acknowledgingId === sub.id ? 'Sending...' : 'Acknowledge'}</span>
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() => handleDeleteSubmission(sub.id, sub.fullName, sub.ticketId)}
-                            disabled={deletingSubId === sub.id}
-                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all shrink-0"
-                            title="Delete Submission"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           )}
         </section>
+
+        {/* MEDIA PREVIEW MODAL */}
+        {previewMediaUrl && (
+          <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <h3 className="text-sm font-bold text-slate-900 truncate">{previewTitle}</h3>
+                <button 
+                  onClick={() => setPreviewMediaUrl(null)}
+                  className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold uppercase"
+                >
+                  ✕ Close
+                </button>
+              </div>
+              <div className="p-4 overflow-auto flex-1 flex items-center justify-center bg-slate-100 max-h-[70vh]">
+                <img 
+                  src={previewMediaUrl} 
+                  alt="Submission Preview" 
+                  className="max-w-full max-h-[65vh] object-contain border border-slate-300 shadow-sm bg-white"
+                />
+              </div>
+              <div className="p-3 border-t border-slate-200 flex items-center justify-end gap-2 bg-white">
+                <a 
+                  href={previewMediaUrl} 
+                  download
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download File</span>
+                </a>
+                <a 
+                  href={previewMediaUrl} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open Full Resolution in New Tab</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );
