@@ -812,7 +812,7 @@ export default function EventSubmissionsPage() {
                                 onClick={() => handleAcknowledge(sub.id)}
                                 disabled={acknowledgingId === sub.id}
                                 className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
-                                title="Resend unverified payment acknowledgment email"
+                                title="Resend payment & submission acknowledgment email"
                               >
                                 <Mail className="w-3 h-3 text-amber-700" />
                                 <span>{acknowledgingId === sub.id ? 'Sending...' : 'Resend Ack 🔄'}</span>
@@ -822,7 +822,7 @@ export default function EventSubmissionsPage() {
                                 onClick={() => handleAcknowledge(sub.id)}
                                 disabled={acknowledgingId === sub.id}
                                 className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow-xs cursor-pointer"
-                                title="Send initial unverified payment acknowledgment email"
+                                title="Send payment & submission received acknowledgment email"
                               >
                                 <Mail className="w-3 h-3" />
                                 <span>{acknowledgingId === sub.id ? 'Sending...' : 'Send Ack Email'}</span>
