@@ -68,11 +68,6 @@ export default function Home() {
             <div className="hidden md:grid md:grid-cols-12 gap-8 lg:gap-12 items-center">
               {/* Left Column: Mission & Brand Positioning */}
               <div className="md:col-span-7 space-y-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#800020]/30 border border-[#e6c594]/40 text-[#e6c594] text-xs font-bold tracking-wider uppercase">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Official Student Media & Event Portal</span>
-                </div>
-
                 <h1 className="text-4xl lg:text-5xl xl:text-6xl font-black text-white tracking-tight leading-[1.1]">
                   Discover, Register & <br />
                   <span className="bg-gradient-to-r from-[#ffffff] via-[#f7f1e5] to-[#e6c594] bg-clip-text text-transparent">
@@ -105,9 +100,9 @@ export default function Home() {
                   <div className="space-y-0.5">
                     <div className="text-xl font-black text-white flex items-center gap-1.5">
                       <Award className="w-4 h-4 text-[#e6c594]" />
-                      <span>Cash & Medals</span>
+                      <span>Medals & Rewards</span>
                     </div>
-                    <p className="text-[11px] text-[#a69181] font-medium">Prizes & Recognition</p>
+                    <p className="text-[11px] text-[#a69181] font-medium">Trophies, Medals & Certificates</p>
                   </div>
                 </div>
               </div>
@@ -172,11 +167,6 @@ export default function Home() {
 
             {/* MOBILE HERO VIEW (Mobile-first layout optimized for thumb interaction) */}
             <div className="md:hidden space-y-5 text-center">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#800020]/40 border border-[#e6c594]/40 text-[#e6c594] text-[11px] font-bold tracking-wider uppercase mx-auto">
-                <Sparkles className="w-3 h-3" />
-                <span>HITian Inside • Event Portal</span>
-              </div>
-
               <h1 className="text-3xl font-black text-white tracking-tight leading-tight">
                 Official Event <br />
                 <span className="bg-gradient-to-r from-[#ffffff] via-[#f7f1e5] to-[#e6c594] bg-clip-text text-transparent">
@@ -362,10 +352,6 @@ export default function Home() {
             <a href="https://instagram.com/hitianinside" target="_blank" rel="noreferrer" className="hover:underline">
               Instagram
             </a>
-            <span className="text-[#a69181]">•</span>
-            <Link href="/admin" className="hover:underline text-[#a69181] hover:text-white">
-              Admin Portal
-            </Link>
           </div>
         </div>
       </footer>
