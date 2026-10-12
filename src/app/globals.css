@@ -251,14 +251,22 @@ body::after {
 
 .events-grid-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
   width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .events-grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 1.75rem;
+  }
 }
 
 @media (max-width: 640px) {
   .events-grid-container {
     grid-template-columns: 1fr;
+    gap: 1.25rem;
   }
 }
 

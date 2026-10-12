@@ -131,9 +131,11 @@ export default function AdminDashboardPage() {
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('adminToken', res.token);
         }
+      } else {
+        setAuthError(res.message || 'Login failed. Please check your credentials.');
       }
     } catch (err: any) {
-      setAuthError(err.message || 'Invalid Admin Email or Password');
+      setAuthError(err.message || 'Server connection error. Please try again.');
     } finally {
       setAuthLoading(false);
     }
@@ -437,9 +439,12 @@ export default function AdminDashboardPage() {
             </p>
 
             {authError && (
-              <div className="mb-4 p-3 bg-rose-50 border border-rose-300 text-rose-700 text-xs font-semibold flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>{authError}</span>
+              <div className="mb-5 p-3.5 bg-rose-50 border-l-4 border-rose-600 text-rose-800 text-xs font-semibold flex items-start gap-2.5 shadow-sm animate-shake">
+                <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-rose-900 leading-snug">{authError}</p>
+                  <p className="text-[11px] text-rose-700 font-normal mt-0.5">Double check your email, password, or check if backend is running.</p>
+                </div>
               </div>
             )}
 

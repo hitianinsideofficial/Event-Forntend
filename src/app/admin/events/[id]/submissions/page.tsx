@@ -9,6 +9,7 @@ import {
   fetchSubmissionsApi, 
   checkInAttendeeApi, 
   acknowledgeSubmissionApi,
+  sendConfirmationEmailApi,
   deleteSubmissionApi,
   updatePaymentStatusApi
 } from '../../../../../services/api.service';
@@ -84,6 +85,11 @@ export default function EventSubmissionsPage() {
   // Email Templates Preview Modal
   const [isEmailPreviewOpen, setIsEmailPreviewOpen] = useState<boolean>(false);
 
+  // Send Confirmation Email with Instagram link modal
+  const [confirmationModalSub, setConfirmationModalSub] = useState<SubmissionItem | null>(null);
+  const [instagramInput, setInstagramInput] = useState<string>('');
+  const [sendingConfirmationId, setSendingConfirmationId] = useState<string | null>(null);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = sessionStorage.getItem('adminToken');
@@ -154,6 +160,40 @@ export default function EventSubmissionsPage() {
       alert(err.message || 'Failed to acknowledge submission');
     } finally {
       setAcknowledgingId(null);
+    }
+  };
+
+  const handleOpenConfirmationModal = (sub: SubmissionItem) => {
+    if (!sub.acknowledged) {
+      alert('Acknowledgment email must be sent first before sending the confirmation email.');
+      return;
+    }
+    setConfirmationModalSub(sub);
+    setInstagramInput(sub.instagramPostUrl || '');
+  };
+
+  const handleSendConfirmationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirmationModalSub) return;
+
+    if (!instagramInput.trim()) {
+      alert('Please enter the Instagram post URL where the submission has been published.');
+      return;
+    }
+
+    setSendingConfirmationId(confirmationModalSub.id);
+    try {
+      const res = await sendConfirmationEmailApi(confirmationModalSub.id, instagramInput.trim());
+      if (res.success) {
+        alert(res.message);
+        setConfirmationModalSub(null);
+        setInstagramInput('');
+        await loadData();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to send confirmation email');
+    } finally {
+      setSendingConfirmationId(null);
     }
   };
 
@@ -746,35 +786,84 @@ export default function EventSubmissionsPage() {
                           ) : (
                             <span className="text-[11px] text-slate-400 italic">No media file</span>
                           )}
+
+                          {/* SAVED INSTAGRAM POST LINK BADGE */}
+                          {sub.instagramPostUrl && (
+                            <div className="mt-2">
+                              <a
+                                href={sub.instagramPostUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-300 text-[10px] font-bold tracking-tight transition-colors"
+                                title={sub.instagramPostUrl}
+                              >
+                                <span>IG Post ↗</span>
+                              </a>
+                            </div>
+                          )}
                         </td>
 
-                        {/* ACTIONS (ACKNOWLEDGE & DELETE) */}
+                        {/* ACTIONS (ACKNOWLEDGE, CONFIRMATION & DELETE) */}
                         <td className="p-3 align-top text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* 1. ACKNOWLEDGEMENT EMAIL BUTTON */}
                             {sub.acknowledged ? (
                               <button 
                                 onClick={() => handleAcknowledge(sub.id)}
                                 disabled={acknowledgingId === sub.id}
-                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-[10px] font-bold inline-flex items-center gap-1"
-                                title="Resend Confirmation Email"
+                                className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                title="Resend payment & submission acknowledgment email"
                               >
-                                <span>{acknowledgingId === sub.id ? '...' : 'Resend Email 🔄'}</span>
+                                <Mail className="w-3 h-3 text-amber-700" />
+                                <span>{acknowledgingId === sub.id ? 'Sending...' : 'Resend Ack 🔄'}</span>
                               </button>
                             ) : (
                               <button 
                                 onClick={() => handleAcknowledge(sub.id)}
                                 disabled={acknowledgingId === sub.id}
-                                className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow-sm"
+                                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow-xs cursor-pointer"
+                                title="Send payment & submission received acknowledgment email"
                               >
-                                <Send className="w-3 h-3" />
-                                <span>{acknowledgingId === sub.id ? 'Sending...' : 'Send Email'}</span>
+                                <Mail className="w-3 h-3" />
+                                <span>{acknowledgingId === sub.id ? 'Sending...' : 'Send Ack Email'}</span>
+                              </button>
+                            )}
+
+                            {/* 2. CONFIRMATION EMAIL BUTTON (ENABLED ONLY AFTER ACKNOWLEDGMENT) */}
+                            {sub.confirmationEmailSent ? (
+                              <button 
+                                onClick={() => handleOpenConfirmationModal(sub)}
+                                disabled={sendingConfirmationId === sub.id}
+                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                title="Resend payment verified confirmation email with Instagram link"
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Resend Conf 🔄</span>
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => handleOpenConfirmationModal(sub)}
+                                disabled={!sub.acknowledged || sendingConfirmationId === sub.id}
+                                className={`px-2.5 py-1 text-[10px] font-bold inline-flex items-center gap-1 transition-colors ${
+                                  sub.acknowledged
+                                    ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-xs cursor-pointer'
+                                    : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+                                }`}
+                                title={
+                                  sub.acknowledged
+                                    ? 'Send payment verified confirmation email with Instagram post link'
+                                    : 'Send acknowledgment email first to enable confirmation email'
+                                }
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Send Confirmation</span>
                               </button>
                             )}
 
                             <button
                               onClick={() => handleDeleteSubmission(sub.id, sub.fullName, sub.ticketId)}
                               disabled={deletingSubId === sub.id}
-                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors"
+                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors cursor-pointer"
                               title="Delete Submission"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -902,19 +991,49 @@ export default function EventSubmissionsPage() {
                       </div>
 
                       <div className="flex items-center gap-1">
+                        {/* Ack Email */}
                         <button 
                           onClick={() => handleAcknowledge(sub.id)}
-                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300"
-                          title="Send Email"
+                          disabled={acknowledgingId === sub.id}
+                          className={`p-1.5 border transition-colors ${
+                            sub.acknowledged 
+                              ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300' 
+                              : 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600'
+                          }`}
+                          title={sub.acknowledged ? 'Resend Acknowledgment Email' : 'Send Acknowledgment Email'}
                         >
-                          <Send className="w-3 h-3" />
+                          <Mail className="w-3.5 h-3.5" />
                         </button>
+
+                        {/* Confirmation Email */}
+                        <button 
+                          onClick={() => handleOpenConfirmationModal(sub)}
+                          disabled={!sub.acknowledged || sendingConfirmationId === sub.id}
+                          className={`p-1.5 border transition-colors ${
+                            sub.confirmationEmailSent
+                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : sub.acknowledged
+                                ? 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                          }`}
+                          title={
+                            !sub.acknowledged
+                              ? 'Send acknowledgment email first'
+                              : sub.confirmationEmailSent
+                                ? 'Resend Confirmation Email with Instagram link'
+                                : 'Send Confirmation Email with Instagram link'
+                          }
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Delete */}
                         <button
                           onClick={() => handleDeleteSubmission(sub.id, sub.fullName, sub.ticketId)}
                           className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200"
                           title="Delete"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1047,6 +1166,97 @@ export default function EventSubmissionsPage() {
           onClose={() => setIsEmailPreviewOpen(false)}
           event={event}
         />
+
+        {/* SEND CONFIRMATION EMAIL MODAL (WITH INSTAGRAM LINK INPUT) */}
+        {confirmationModalSub && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-fade-in">
+            <div 
+              className="bg-white border border-slate-300 w-full max-w-lg shadow-2xl p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">
+                    Send Payment Verified & Instagram Post Email
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setConfirmationModalSub(null)}
+                  className="p-1 text-slate-400 hover:text-slate-800 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 p-3 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Participant:</span>
+                  <span className="font-bold text-slate-900">{confirmationModalSub.fullName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Pass:</span>
+                  <span className="font-mono font-bold text-slate-800">{confirmationModalSub.ticketId}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Email:</span>
+                  <span className="font-mono text-slate-700">{confirmationModalSub.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Domain:</span>
+                  <span className="font-semibold text-slate-800">
+                    {confirmationModalSub.answers?.['Selected Domain'] || 'General Entry'}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Provide the direct link to the Instagram post where this submission has been featured. Once sent, the participant will receive the confirmation email and their payment status will be marked as verified.
+              </p>
+
+              <form onSubmit={handleSendConfirmationSubmit} className="space-y-4">
+                <div className="space-y-1 text-left">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Instagram Post Link *
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="url"
+                      required
+                      value={instagramInput}
+                      onChange={(e) => setInstagramInput(e.target.value)}
+                      placeholder="https://www.instagram.com/p/DB_..."
+                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 text-slate-900 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 font-mono"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-500 block">
+                    Example: https://www.instagram.com/p/Cxyz12345/
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmationModalSub(null)}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={sendingConfirmationId === confirmationModalSub.id}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{sendingConfirmationId === confirmationModalSub.id ? 'Sending Email...' : 'Send Confirmation Email'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </main>
     </div>

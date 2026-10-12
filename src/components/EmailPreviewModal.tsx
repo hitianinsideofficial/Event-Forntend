@@ -20,7 +20,7 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
     event?.title?.toLowerCase().includes('nav')
   );
 
-  const bannerSrc = isNavroopam ? '/navroopam_banner.png' : (event?.bannerUrl || '/navroopam_banner.png');
+  const bannerSrc = isNavroopam ? 'https://ik.imagekit.io/n6cw3mewa/navroopam_banner.png' : (event?.bannerUrl || 'https://ik.imagekit.io/n6cw3mewa/navroopam_banner.png');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
@@ -56,24 +56,24 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
             onClick={() => setActiveTab('received')}
             className={`px-4 py-2.5 text-xs font-bold border-t-2 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'received'
-                ? 'bg-white border-t-amber-600 text-slate-900 border-x border-slate-200 -mb-[1px] shadow-xs'
+                ? 'bg-white border-t-emerald-600 text-slate-900 border-x border-slate-200 -mb-[1px] shadow-xs'
                 : 'border-t-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            <Clock className="w-3.5 h-3.5 text-amber-600" />
-            <span>1. Submission Received (Under Verification)</span>
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>1. Submission & Payment Received (Queued for Instagram)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('verified')}
             className={`px-4 py-2.5 text-xs font-bold border-t-2 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'verified'
-                ? 'bg-white border-t-emerald-600 text-slate-900 border-x border-slate-200 -mb-[1px] shadow-xs'
+                ? 'bg-white border-t-pink-600 text-slate-900 border-x border-slate-200 -mb-[1px] shadow-xs'
                 : 'border-t-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>2. Payment Verified & Instagram Post Confirmation</span>
+            <ExternalLink className="w-3.5 h-3.5 text-pink-600" />
+            <span>2. Instagram Post Live Confirmation (with Post Link)</span>
           </button>
         </div>
 
@@ -85,7 +85,7 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
               <span className="text-slate-500 font-bold w-16">Subject:</span>
               <span className="font-bold text-slate-900">
                 {activeTab === 'received'
-                  ? `Submission Received: ${eventTitle} [Pass: HIT-NAV-4821]`
+                  ? `Submission & Payment Received: ${eventTitle} [Pass: HIT-NAV-4821]`
                   : `Payment Verified & Featured on Instagram: ${eventTitle} [Pass: HIT-NAV-4821]`}
               </span>
             </div>
@@ -108,23 +108,23 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
                 alt="Event Banner"
                 className="w-full h-auto max-h-[220px] object-cover block"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/navroopam_banner.png';
+                  (e.target as HTMLImageElement).src = 'https://ik.imagekit.io/n6cw3mewa/navroopam_banner.png';
                 }}
               />
             </div>
 
-            {/* TEMPLATE 1: SUBMISSION RECEIVED & PAYMENT UNDER VERIFICATION */}
+            {/* TEMPLATE 1: SUBMISSION & PAYMENT RECEIVED */}
             {activeTab === 'received' && (
               <div className="p-6 sm:p-8 space-y-6">
                 <div className="border-b border-slate-200 pb-4">
-                  <span className="inline-block px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-300 text-[11px] font-bold uppercase tracking-wider mb-2">
-                    Payment Status: Under Verification
+                  <span className="inline-block px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold uppercase tracking-wider mb-2">
+                    Payment & Submission Received
                   </span>
                   <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                    We Have Received Your Submission
+                    We Have Received Your Submission & Payment
                   </h3>
                   <p className="text-xs text-slate-600 mt-1">
-                    Dear <strong>Arjun Sen</strong>, thank you for registering for <strong>{eventTitle}</strong>.
+                    Dear <strong>Arjun Sen</strong>, thank you for registering for <strong>{eventTitle}</strong>. We have successfully received your submission entry along with your registration payment details.
                   </p>
                 </div>
 
@@ -146,20 +146,20 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
                     <span className="font-mono text-slate-700">429188201948</span>
                   </div>
                   <div className="flex justify-between py-1">
-                    <span className="text-slate-500 font-medium">Payment Verification:</span>
-                    <span className="font-bold text-amber-700 bg-amber-100/70 px-2 py-0.5 border border-amber-300">
-                      UNDER VERIFICATION
+                    <span className="text-slate-500 font-medium">Payment Status:</span>
+                    <span className="font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 border border-emerald-300">
+                      PAYMENT RECEIVED
                     </span>
                   </div>
                 </div>
 
-                <div className="space-y-3 text-xs text-slate-700 leading-relaxed bg-amber-50/50 border border-amber-200 p-4">
-                  <p className="font-semibold text-slate-900">Next Steps & Manual Verification:</p>
+                <div className="space-y-3 text-xs text-slate-700 leading-relaxed bg-emerald-50/50 border border-emerald-200 p-4">
+                  <p className="font-semibold text-slate-900">What Happens Next?</p>
                   <p>
-                    Our administrative organizing team is currently cross-verifying your submitted 12-digit transaction UTR with our bank statements.
+                    Our organizing panel has received your entry and payment. Your submission is now queued for feature on our official Instagram handle.
                   </p>
                   <p>
-                    Once your payment has been manually reconciled and approved, your entry will be posted on our official Instagram page. You will then receive a final confirmation email along with the direct link to your published submission post.
+                    Once your post goes live on Instagram, we will send you a follow-up confirmation email containing the direct link to your post!
                   </p>
                 </div>
 
@@ -189,45 +189,30 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
             {activeTab === 'verified' && (
               <div className="p-6 sm:p-8 space-y-6">
                 <div className="border-b border-slate-200 pb-4">
-                  <span className="inline-block px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold uppercase tracking-wider mb-2">
-                    Payment Status: Verified & Live
+                  <span className="inline-block px-2.5 py-1 bg-pink-50 text-pink-700 border border-pink-300 text-[11px] font-bold uppercase tracking-wider mb-2">
+                    You Are Live on Instagram
                   </span>
                   <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                    Payment Verified & Submission Featured on Instagram
+                    Your Submission is Live on Instagram!
                   </h3>
                   <p className="text-xs text-slate-600 mt-1">
-                    Dear <strong>Arjun Sen</strong>, your registration and payment for <strong>{eventTitle}</strong> have been confirmed.
+                    Dear <strong>Arjun Sen</strong>, congratulations! Your submission for <strong>{eventTitle}</strong> has been officially featured and published on the <strong>HITian Inside</strong> Instagram page.
                   </p>
                 </div>
 
-                <div className="bg-emerald-50/40 border border-emerald-200 p-4 space-y-2 text-xs">
-                  <div className="flex justify-between py-1 border-b border-emerald-100">
-                    <span className="text-slate-600 font-medium">Participant Name:</span>
+                <div className="bg-slate-50 border border-slate-200 p-4 space-y-2 text-xs">
+                  <div className="flex justify-between py-1 border-b border-slate-200">
+                    <span className="text-slate-500 font-medium">Participant Name:</span>
                     <span className="font-bold text-slate-900">Arjun Sen</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-emerald-100">
-                    <span className="text-slate-600 font-medium">Registration Pass:</span>
+                  <div className="flex justify-between py-1 border-b border-slate-200">
+                    <span className="text-slate-500 font-medium">Registration Pass:</span>
                     <span className="font-mono font-bold text-slate-900">HIT-NAV-4821</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-emerald-100">
-                    <span className="text-slate-600 font-medium">Domain & Theme:</span>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-500 font-medium">Selected Domain & Theme:</span>
                     <span className="font-bold text-slate-900">Photography &bull; Traditional Festivities</span>
                   </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-slate-600 font-medium">Payment Status:</span>
-                    <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 border border-emerald-300">
-                      VERIFIED & RECONCILED
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-3 text-xs text-slate-700 leading-relaxed">
-                  <p>
-                    Following manual payment verification by the organizing committee, your submission has been reviewed and officially published on the HITian Inside Instagram feed.
-                  </p>
-                  <p>
-                    You can view, like, and share your featured entry using the direct link below:
-                  </p>
                 </div>
 
                 {/* INSTAGRAM POST FEATURE BOX */}
@@ -236,20 +221,33 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
                     <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                       <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                     </svg>
-                    <span>Official Instagram Feature Link</span>
+                    <span>Your Official Instagram Feature Link</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Click the button below to check your submission post on our official page. Tag your friends and share your entry.
+                    Here is the direct link to your published entry on our official handle:
                   </p>
                   <a
-                    href="https://www.instagram.com/hitianinside/"
+                    href="https://www.instagram.com/p/DB123456789/"
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
                   >
-                    <span>View Your Submission Post on Instagram</span>
+                    <span>Open Your Post on Instagram ↗</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
+                  <p className="font-mono text-[11px] text-sky-400 break-all underline">
+                    https://www.instagram.com/p/DB123456789/
+                  </p>
+                </div>
+
+                {/* SHARE & WIN TIPS BOX */}
+                <div className="bg-amber-50/70 border-l-4 border-amber-500 p-4 space-y-1.5 text-xs text-amber-950">
+                  <p className="font-bold text-amber-900 text-sm">
+                    Share with friends, grab likes & win exciting prizes!
+                  </p>
+                  <p className="leading-relaxed">
+                    Public engagement, audience appreciation, and peer votes play a huge role in the contest! Share your post link on your Instagram Story, WhatsApp groups, and with your friends. The more love and likes your post gets, the higher your chances to stand out and take home the winning prize!
+                  </p>
                 </div>
 
                 <div className="bg-slate-100 border border-slate-200 p-4 text-xs text-slate-700 space-y-1.5">
