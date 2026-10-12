@@ -24,7 +24,6 @@ export default function Home() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
   const loadEvents = async () => {
     setLoading(true);
@@ -49,24 +48,11 @@ export default function Home() {
     return id === '6aca70825588e8009b8e8e83' || id.includes('nav') || t.includes('navroopam');
   });
 
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = 
-      event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.organizer?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    if (!matchesSearch) return false;
-
-    if (selectedCategory === 'ALL') return true;
-    if (selectedCategory === 'FLAGSHIP') {
-      const id = event.id || event._id || '';
-      const t = event.title?.toLowerCase() || '';
-      return event.isFlagship || id.includes('nav') || id.includes('pratid') || t.includes('navroopam') || t.includes('pratidh');
-    }
-    if (selectedCategory === 'ONLINE') return event.mode === 'ONLINE';
-    if (selectedCategory === 'OFFLINE') return event.mode === 'OFFLINE';
-    return true;
-  });
+  const filteredEvents = events.filter(event => 
+    event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.organizer?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0b0204] text-[#fdfbf7] w-full selection:bg-[#e6c594] selection:text-[#150408]">
@@ -246,9 +232,9 @@ export default function Home() {
         {/* EVENT DIRECTORY & CONTROLS SECTION */}
         {/* ========================================================= */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
-          {/* Controls Bar: Search & Category Chips */}
-          <div className="space-y-4 mb-8">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5">
+          {/* Controls Bar: Search Box */}
+          <div className="mb-8">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5 pb-4 border-b border-white/10">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
                   <span>Available Registrations</span>
@@ -273,55 +259,6 @@ export default function Home() {
                 />
               </div>
             </div>
-
-            {/* Quick Filter Chips (Horizontal scrollable on mobile) */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('ALL')}
-                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-colors cursor-pointer ${
-                  selectedCategory === 'ALL'
-                    ? 'bg-[#e6c594] text-[#150408] shadow-sm'
-                    : 'bg-white/5 hover:bg-white/10 text-[#a69181] border border-white/10'
-                }`}
-              >
-                All Events
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('FLAGSHIP')}
-                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  selectedCategory === 'FLAGSHIP'
-                    ? 'bg-[#e6c594] text-[#150408] shadow-sm'
-                    : 'bg-white/5 hover:bg-white/10 text-[#a69181] border border-white/10'
-                }`}
-              >
-                <Flame className="w-3.5 h-3.5 text-amber-500" />
-                <span>Flagship Fests</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('ONLINE')}
-                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-colors cursor-pointer ${
-                  selectedCategory === 'ONLINE'
-                    ? 'bg-[#e6c594] text-[#150408] shadow-sm'
-                    : 'bg-white/5 hover:bg-white/10 text-[#a69181] border border-white/10'
-                }`}
-              >
-                Online Submissions
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('OFFLINE')}
-                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-colors cursor-pointer ${
-                  selectedCategory === 'OFFLINE'
-                    ? 'bg-[#e6c594] text-[#150408] shadow-sm'
-                    : 'bg-white/5 hover:bg-white/10 text-[#a69181] border border-white/10'
-                }`}
-              >
-                On-Campus Venues
-              </button>
-            </div>
           </div>
 
           {/* Catalog Listing */}
@@ -344,15 +281,12 @@ export default function Home() {
                     : 'There are currently no active events in this category. Check back soon for new club updates!'}
                 </p>
 
-                {(searchQuery || selectedCategory !== 'ALL') && (
+                {searchQuery && (
                   <button 
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategory('ALL');
-                    }}
+                    onClick={() => setSearchQuery('')}
                     className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors inline-block"
                   >
-                    Reset Search & Filters
+                    Clear Search
                   </button>
                 )}
               </div>
