@@ -8,6 +8,22 @@ const LIVE_API_URL = process.env.NEXT_PUBLIC_LIVE_API_URL || process.env.NEXT_PU
 
 let cachedApiUrl: string | null = null;
 
+// In-Memory Fast Cache with TTL for instant navigation between pages
+const apiCache = new Map<string, { data: any; timestamp: number }>();
+const DEFAULT_CACHE_TTL_MS = 60 * 1000; // 60 seconds fresh TTL
+
+export function clearApiCache(prefix?: string) {
+  if (!prefix) {
+    apiCache.clear();
+  } else {
+    for (const key of apiCache.keys()) {
+      if (key.startsWith(prefix) || key.includes(prefix)) {
+        apiCache.delete(key);
+      }
+    }
+  }
+}
+
 export async function getApiBaseUrl(): Promise<string> {
   if (typeof window !== 'undefined' && cachedApiUrl) {
     return cachedApiUrl;
@@ -19,10 +35,19 @@ export async function getApiBaseUrl(): Promise<string> {
     return cachedApiUrl;
   }
 
-  // Quick 600ms health check to see if local backend (localhost:5000) is active
+  // Check sessionStorage for previously validated local backend URL
+  if (typeof window !== 'undefined') {
+    const saved = sessionStorage.getItem('hi_api_base_url');
+    if (saved) {
+      cachedApiUrl = saved;
+      return cachedApiUrl;
+    }
+  }
+
+  // Quick 400ms health check to see if local backend (localhost:5000) is active
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 600);
+    const timeoutId = setTimeout(() => controller.abort(), 400);
     const res = await fetch(`${LOCAL_API_URL}/health`, {
       method: 'GET',
       signal: controller.signal,
@@ -31,6 +56,9 @@ export async function getApiBaseUrl(): Promise<string> {
     clearTimeout(timeoutId);
     if (res.ok) {
       cachedApiUrl = LOCAL_API_URL;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('hi_api_base_url', LOCAL_API_URL);
+      }
       return LOCAL_API_URL;
     }
   } catch (e) {
@@ -38,6 +66,9 @@ export async function getApiBaseUrl(): Promise<string> {
   }
 
   cachedApiUrl = process.env.NEXT_PUBLIC_API_URL || LIVE_API_URL;
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('hi_api_base_url', cachedApiUrl);
+  }
   return cachedApiUrl;
 }
 
@@ -53,28 +84,55 @@ export async function checkBackendHealth(): Promise<BackendHealthResponse> {
   }
 }
 
-export async function fetchEvents(includeDone: boolean = false, admin: boolean = false): Promise<EventItem[]> {
+export async function fetchEvents(includeDone: boolean = false, admin: boolean = false, forceRefresh: boolean = false): Promise<EventItem[]> {
+  const cacheKey = `events_${includeDone}_${admin}`;
+  
+  if (!forceRefresh) {
+    const cached = apiCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < DEFAULT_CACHE_TTL_MS)) {
+      return cached.data;
+    }
+  }
+
   try {
     const baseUrl = await getApiBaseUrl();
     const url = `${baseUrl}/events?includeDone=${includeDone}&admin=${admin}`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result: ApiResponse<EventItem[]> = await res.json();
-    return result.data || [];
+    const data = result.data || [];
+    apiCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
   } catch (err) {
+    // If network error but we have stale cache, return stale data
+    const cached = apiCache.get(cacheKey);
+    if (cached) return cached.data;
     console.error('Error fetching events:', err);
     throw err;
   }
 }
 
-export async function fetchEventById(id: string): Promise<EventItem> {
+export async function fetchEventById(id: string, forceRefresh: boolean = false): Promise<EventItem> {
+  const cacheKey = `event_${id}`;
+
+  if (!forceRefresh) {
+    const cached = apiCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < DEFAULT_CACHE_TTL_MS)) {
+      return cached.data;
+    }
+  }
+
   try {
     const baseUrl = await getApiBaseUrl();
     const res = await fetch(`${baseUrl}/events/${id}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result: ApiResponse<EventItem> = await res.json();
-    return result.data!;
+    const data = result.data!;
+    apiCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
   } catch (err) {
+    const cached = apiCache.get(cacheKey);
+    if (cached) return cached.data;
     console.error('Error fetching event details:', err);
     throw err;
   }
@@ -94,6 +152,7 @@ export async function createEventApi(eventData: Partial<EventItem>): Promise<Api
       throw new Error(errorData.message || 'Failed to create event');
     }
 
+    clearApiCache('event');
     return await res.json();
   } catch (err) {
     console.error('Error creating event:', err);
@@ -115,6 +174,7 @@ export async function updateEventDetailsApi(id: string, eventData: Partial<Event
       throw new Error(errorData.message || 'Failed to update event details');
     }
 
+    clearApiCache('event');
     return await res.json();
   } catch (err) {
     console.error('Error updating event details:', err);
@@ -132,6 +192,7 @@ export async function updateEventStatusApi(id: string, status: EventStatus): Pro
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    clearApiCache('event');
     return await res.json();
   } catch (err) {
     console.error('Error updating event status:', err);
@@ -149,6 +210,7 @@ export async function toggleEventVisibilityApi(id: string, isHidden: boolean): P
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    clearApiCache('event');
     return await res.json();
   } catch (err) {
     console.error('Error toggling event visibility:', err);
@@ -166,6 +228,7 @@ export async function updateEventFormApi(id: string, customFields: CustomFormFie
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    clearApiCache('event');
     return await res.json();
   } catch (err) {
     console.error('Error updating event form schema:', err);
@@ -181,6 +244,7 @@ export async function deleteEventApi(id: string): Promise<ApiResponse<void>> {
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    clearApiCache('event');
     return await res.json();
   } catch (err) {
     console.error('Error deleting event:', err);
@@ -290,15 +354,28 @@ export async function submitRegistrationApi(
   }
 }
 
-export async function fetchSubmissionsApi(eventId?: string): Promise<SubmissionItem[]> {
+export async function fetchSubmissionsApi(eventId?: string, forceRefresh: boolean = false): Promise<SubmissionItem[]> {
+  const cacheKey = `submissions_${eventId || 'all'}`;
+
+  if (!forceRefresh) {
+    const cached = apiCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < DEFAULT_CACHE_TTL_MS)) {
+      return cached.data;
+    }
+  }
+
   try {
     const baseUrl = await getApiBaseUrl();
     const url = eventId ? `${baseUrl}/events/${eventId}/submissions` : `${baseUrl}/submissions`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result: ApiResponse<SubmissionItem[]> = await res.json();
-    return result.data || [];
+    const data = result.data || [];
+    apiCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
   } catch (err) {
+    const cached = apiCache.get(cacheKey);
+    if (cached) return cached.data;
     console.error('Error fetching submissions:', err);
     throw err;
   }
@@ -315,6 +392,7 @@ export async function checkInAttendeeApi(ticketId: string): Promise<ApiResponse<
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Check-in failed');
+    clearApiCache('submissions');
     return data;
   } catch (err: any) {
     console.error('Error checking in attendee:', err);
@@ -345,6 +423,7 @@ export async function acknowledgeSubmissionApi(submissionId: string): Promise<Ap
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to acknowledge submission');
+    clearApiCache('submissions');
     return data;
   } catch (err: any) {
     console.error('Error acknowledging submission:', err);
@@ -383,7 +462,15 @@ export async function fetchObserverSubmissionsApi(eventId?: string): Promise<Sub
 }
 
 // Admin Observer Credentials Management APIs
-export async function fetchObserversAdminApi(): Promise<any[]> {
+export async function fetchObserversAdminApi(forceRefresh: boolean = false): Promise<any[]> {
+  const cacheKey = 'admin_observers';
+  if (!forceRefresh) {
+    const cached = apiCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < DEFAULT_CACHE_TTL_MS)) {
+      return cached.data;
+    }
+  }
+
   const baseUrl = await getApiBaseUrl();
   const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
 
@@ -393,7 +480,9 @@ export async function fetchObserversAdminApi(): Promise<any[]> {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to fetch observers');
-  return data.data || [];
+  const result = data.data || [];
+  apiCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export async function createObserverAdminApi(name: string, email: string, password: string): Promise<any> {
@@ -410,6 +499,7 @@ export async function createObserverAdminApi(name: string, email: string, passwo
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to create observer credentials');
+  clearApiCache('admin_observers');
   return data;
 }
 
@@ -427,6 +517,7 @@ export async function toggleObserverStatusAdminApi(id: string, isActive: boolean
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to update observer status');
+  clearApiCache('admin_observers');
   return data;
 }
 
@@ -440,6 +531,7 @@ export async function deleteObserverAdminApi(id: string): Promise<any> {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to delete observer credentials');
+  clearApiCache('admin_observers');
   return data;
 }
 
@@ -456,10 +548,19 @@ export async function deleteSubmissionApi(submissionId: string): Promise<any> {
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to delete submission');
+  clearApiCache('submissions');
   return data;
 }
 
-export async function fetchLogsAndAnalyticsApi(): Promise<any> {
+export async function fetchLogsAndAnalyticsApi(forceRefresh: boolean = false): Promise<any> {
+  const cacheKey = 'admin_logs_analytics';
+  if (!forceRefresh) {
+    const cached = apiCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < DEFAULT_CACHE_TTL_MS)) {
+      return cached.data;
+    }
+  }
+
   const baseUrl = await getApiBaseUrl();
   const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
 
@@ -469,7 +570,9 @@ export async function fetchLogsAndAnalyticsApi(): Promise<any> {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to fetch audit logs and analytics');
-  return data.data;
+  const result = data.data;
+  apiCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export async function sendAppreciationEmailApi(
@@ -510,6 +613,7 @@ export async function updatePaymentStatusApi(
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to update payment verification status');
+  clearApiCache('submissions');
   return data;
 }
 
@@ -531,6 +635,7 @@ export async function toggleCouponCollectedApi(
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to update coupon status');
+  clearApiCache('submissions');
   return data;
 }
 
@@ -549,6 +654,7 @@ export async function deleteCertificateApi(
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to remove certificate');
+  clearApiCache('submissions');
   return data;
 }
 

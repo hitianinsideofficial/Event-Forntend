@@ -22,6 +22,7 @@ import {
 } from '../../services/analytics.service';
 import { EventItem, EventStatus } from '../../types/event.types';
 import { SubmissionItem } from '../../types/submission.types';
+import EmailPreviewModal from '../../components/EmailPreviewModal';
 import { 
   Lock, 
   LogOut, 
@@ -92,6 +93,7 @@ export default function AdminDashboardPage() {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingVisibilityId, setTogglingVisibilityId] = useState<string | null>(null);
+  const [previewEvent, setPreviewEvent] = useState<EventItem | null>(null);
 
   // Event-Wise Analytics Filter
   const [selectedAnalyticsEventId, setSelectedAnalyticsEventId] = useState<string>('ALL');
@@ -137,12 +139,17 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const loadAdminEventsAndSubmissions = async () => {
-    setLoading(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  const loadAdminEventsAndSubmissions = async (forceRefresh: boolean = false) => {
+    // Only show full loading spinner if we don't have any cached events yet
+    if (events.length === 0) {
+      setLoading(true);
+    }
     try {
       const [eventsList, subsList] = await Promise.all([
-        fetchEvents(true, true),
-        fetchSubmissionsApi()
+        fetchEvents(true, true, forceRefresh),
+        fetchSubmissionsApi(undefined, forceRefresh)
       ]);
       setEvents(eventsList);
       setAllSubmissions(subsList);
@@ -170,10 +177,10 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const loadAnalytics = async () => {
-    setAnalyticsLoading(true);
+  const loadAnalytics = async (forceRefresh: boolean = false) => {
+    if (!analyticsData) setAnalyticsLoading(true);
     try {
-      const data = await fetchAnalyticsDashboardApi();
+      const data = await fetchAnalyticsDashboardApi(forceRefresh);
       setAnalyticsData(data);
     } catch (err) {
       console.error('Failed loading analytics summary:', err);
@@ -182,12 +189,26 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const loadObserversList = async () => {
+  const loadObserversList = async (forceRefresh: boolean = false) => {
     try {
-      const data = await fetchObserversAdminApi();
+      const data = await fetchObserversAdminApi(forceRefresh);
       setObservers(data);
     } catch (err) {
       console.error('Failed loading observers list:', err);
+    }
+  };
+
+  const handleRefreshAll = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadAdminEventsAndSubmissions(true),
+        loadAnalytics(true),
+        loadObserversList(true),
+        loadLogsAndAnalytics(true)
+      ]);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -203,7 +224,7 @@ export default function AdminDashboardPage() {
       setNewObsName('');
       setNewObsEmail('');
       setNewObsPassword('');
-      await loadObserversList();
+      await loadObserversList(true);
     } catch (err: any) {
       setObsError(err.message || 'Failed to create observer credentials');
     } finally {
@@ -214,7 +235,7 @@ export default function AdminDashboardPage() {
   const handleToggleObserverStatus = async (id: string, currentIsActive: boolean) => {
     try {
       await toggleObserverStatusAdminApi(id, !currentIsActive);
-      await loadObserversList();
+      await loadObserversList(true);
     } catch (err: any) {
       alert(err.message || 'Failed to update status');
     }
@@ -227,16 +248,16 @@ export default function AdminDashboardPage() {
 
     try {
       await deleteObserverAdminApi(id);
-      await loadObserversList();
+      await loadObserversList(true);
     } catch (err: any) {
       alert(err.message || 'Failed to remove observer');
     }
   };
 
-  const loadLogsAndAnalytics = async () => {
-    setLogsLoading(true);
+  const loadLogsAndAnalytics = async (forceRefresh: boolean = false) => {
+    if (!logsAnalyticsData) setLogsLoading(true);
     try {
-      const data = await fetchLogsAndAnalyticsApi();
+      const data = await fetchLogsAndAnalyticsApi(forceRefresh);
       setLogsAnalyticsData(data);
     } catch (err) {
       console.error('Failed loading logs and analytics:', err);
@@ -485,6 +506,16 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleRefreshAll}
+              disabled={isRefreshing}
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+              title="Re-fetch fresh data from server (bypasses local cache)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Refreshing...' : 'Refresh Data'}</span>
+            </button>
+
             <Link 
               href="/admin/events/create"
               className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors shadow-sm"
@@ -845,6 +876,16 @@ export default function AdminDashboardPage() {
                         <span>View Submissions ({subsCount})</span>
                       </Link>
 
+                      <button
+                        type="button"
+                        onClick={() => setPreviewEvent(ev)}
+                        className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title="Preview email templates for this event"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Email Previews</span>
+                      </button>
+
                       <Link 
                         href={`/admin/events/${eventId}/edit`}
                         className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
@@ -1001,6 +1042,13 @@ export default function AdminDashboardPage() {
             )}
           </div>
         </section>
+
+        {/* EMAIL PREVIEW MODAL */}
+        <EmailPreviewModal
+          isOpen={Boolean(previewEvent)}
+          onClose={() => setPreviewEvent(null)}
+          event={previewEvent}
+        />
 
       </main>
     </div>
