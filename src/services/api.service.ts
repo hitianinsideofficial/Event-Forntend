@@ -285,8 +285,27 @@ export async function adminLoginApi(email: string, password: string): Promise<{ 
       body: JSON.stringify({ email, password }),
     });
 
-    return await res.json();
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error('API server route not found (404). Please check backend connection.');
+      }
+      if (res.status >= 500) {
+        throw new Error(data?.message || 'Internal server error (500). Please check backend console.');
+      }
+      throw new Error(data?.message || `Authentication failed (HTTP ${res.status})`);
+    }
+
+    if (!data?.success) {
+      throw new Error(data?.message || 'Invalid credentials');
+    }
+
+    return data;
   } catch (err: any) {
+    if (err.name === 'TypeError' && err.message?.includes('fetch')) {
+      throw new Error('Server connection failed. Could not reach backend server.');
+    }
     throw new Error(err.message || 'Login failed');
   }
 }
@@ -427,6 +446,25 @@ export async function acknowledgeSubmissionApi(submissionId: string): Promise<Ap
     return data;
   } catch (err: any) {
     console.error('Error acknowledging submission:', err);
+    throw err;
+  }
+}
+
+export async function sendConfirmationEmailApi(submissionId: string, instagramPostUrl: string): Promise<ApiResponse<SubmissionItem>> {
+  try {
+    const baseUrl = await getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/submissions/${submissionId}/confirmation-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instagramPostUrl })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to send confirmation email');
+    clearApiCache('submissions');
+    return data;
+  } catch (err: any) {
+    console.error('Error sending confirmation email:', err);
     throw err;
   }
 }

@@ -20,7 +20,7 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
     event?.title?.toLowerCase().includes('nav')
   );
 
-  const bannerSrc = isNavroopam ? '/navroopam_banner.png' : (event?.bannerUrl || '/navroopam_banner.png');
+  const bannerSrc = isNavroopam ? 'https://ik.imagekit.io/n6cw3mewa/navroopam_banner.png' : (event?.bannerUrl || 'https://ik.imagekit.io/n6cw3mewa/navroopam_banner.png');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
@@ -108,7 +108,7 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
                 alt="Event Banner"
                 className="w-full h-auto max-h-[220px] object-cover block"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/navroopam_banner.png';
+                  (e.target as HTMLImageElement).src = 'https://ik.imagekit.io/n6cw3mewa/navroopam_banner.png';
                 }}
               />
             </div>
