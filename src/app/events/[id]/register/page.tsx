@@ -1302,9 +1302,46 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
             </div>
 
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
+              <div className="mb-6 p-4 rounded-2xl bg-rose-950/40 border-2 border-rose-500/50 text-rose-200 text-xs shadow-xl animate-shake">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 shrink-0 border border-rose-500/40">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-extrabold text-sm text-white tracking-wide">
+                        Registration Submission Issue
+                      </span>
+                      {error.startsWith('[') && error.includes(']') && (
+                        <span className="px-2 py-0.5 rounded-md bg-rose-500/30 text-rose-200 font-mono text-[10px] font-bold border border-rose-400/40">
+                          {error.slice(1, error.indexOf(']'))}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-rose-200 leading-relaxed font-medium">
+                      {error.startsWith('[') && error.includes(']')
+                        ? error.slice(error.indexOf(']') + 1).trim()
+                        : error}
+                    </p>
+                    <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-rose-500/20 mt-2">
+                      <span className="text-[11px] text-[#e6d7c3]/80">
+                        Need help? Report this error to our student coordinators via WhatsApp or phone.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                            navigator.clipboard.writeText(error);
+                            alert('Error message copied to clipboard! You can now send it to the event team.');
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-mono text-[10px] font-bold transition-colors inline-flex items-center gap-1 cursor-pointer border border-white/20"
+                      >
+                        <span>📋 Copy Error for Reporting</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

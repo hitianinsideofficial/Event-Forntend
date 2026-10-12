@@ -335,21 +335,31 @@ export async function submitRegistrationApi(
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve(data);
             } else if (xhr.status === 413) {
-              reject(new Error('File size exceeds server upload limit (Max 4 MB). Please compress your file or use Google Drive link.'));
+              const codePrefix = data?.errorCode ? `[${data.errorCode}] ` : '';
+              reject(new Error(`${codePrefix}${data?.message || 'File size exceeds server upload limit (Maximum allowed payload exceeded). Please compress your photo or document before uploading.'}`));
             } else {
-              reject(new Error(data.message || `Failed to submit registration (Server Status ${xhr.status})`));
+              const codePrefix = data?.errorCode ? `[${data.errorCode}] ` : '';
+              reject(new Error(`${codePrefix}${data?.message || `Upload failed with HTTP ${xhr.status}`}`));
             }
           } catch (e) {
             if (xhr.status === 413) {
-              reject(new Error('File size exceeds server upload limit (Max 4 MB). Please compress your file or use Google Drive link.'));
+              reject(new Error('[FILE_TOO_LARGE] Uploaded file size exceeds server capacity. Please compress your photo/document or attach a Google Drive link.'));
+            } else if (xhr.status === 404) {
+              reject(new Error('[ENDPOINT_NOT_FOUND] Backend endpoint /submissions not found (404). Please check backend server status.'));
+            } else if (xhr.status >= 500) {
+              reject(new Error(`[SERVER_ERROR_${xhr.status}] Server error (${xhr.status}). Please check backend logs or try again shortly.`));
             } else {
-              reject(new Error('Invalid server response during file submission'));
+              reject(new Error(`[HTTP_${xhr.status}] Failed to submit registration (HTTP ${xhr.status}).`));
             }
           }
         };
 
         xhr.onerror = () => {
-          reject(new Error('Network error during file submission. If your file is larger than 4 MB, please compress it or use a Google Drive link.'));
+          reject(new Error('[NETWORK_DISCONNECTED] Connection to registration server failed. Please check your internet connection or verify the backend server is reachable.'));
+        };
+
+        xhr.ontimeout = () => {
+          reject(new Error('[UPLOAD_TIMEOUT] Upload request timed out due to slow network. Please compress your submission files and try again.'));
         };
 
         xhr.send(formData);
@@ -362,12 +372,13 @@ export async function submitRegistrationApi(
     });
 
     if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || 'Failed to submit registration');
+      const errorData = await res.json().catch(() => null);
+      const codePrefix = errorData?.errorCode ? `[${errorData.errorCode}] ` : '';
+      throw new Error(`${codePrefix}${errorData?.message || `Submission failed with HTTP ${res.status}`}`);
     }
 
     return await res.json();
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error submitting event registration:', err);
     throw err;
   }
