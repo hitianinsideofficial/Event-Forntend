@@ -36,6 +36,23 @@ export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
           </div>
         </Link>
 
+        {/* Right side navigation utilities */}
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-[#e6d7c3]">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-semibold">Live Events Open</span>
+          </div>
+
+          <a 
+            href="https://instagram.com/hitianinside" 
+            target="_blank" 
+            rel="noreferrer"
+            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-[#e6c594] transition-colors inline-flex items-center gap-1.5"
+            title="Follow on Instagram @hitianinside"
+          >
+            <span>Instagram ↗</span>
+          </a>
+        </div>
       </div>
     </header>
   );
