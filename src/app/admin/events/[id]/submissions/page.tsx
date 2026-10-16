@@ -11,7 +11,10 @@ import {
   acknowledgeSubmissionApi,
   sendConfirmationEmailApi,
   deleteSubmissionApi,
-  updatePaymentStatusApi
+  updatePaymentStatusApi,
+  requestDriveLinkUpdateEmailApi,
+  requestResubmissionEmailApi,
+  updatePostingExcelApi
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
@@ -48,8 +51,13 @@ import {
   ShieldCheck,
   ShieldAlert,
   ChevronDown,
-  Download
+  Download,
+  FileSpreadsheet,
+  MailWarning,
+  Upload,
+  AlertTriangle
 } from 'lucide-react';
+import MongoProgressBar from '../../../../../components/MongoProgressBar';
 
 export default function EventSubmissionsPage() {
   const params = useParams();
@@ -71,6 +79,7 @@ export default function EventSubmissionsPage() {
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
   const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
+  const [sendingDriveEmailId, setSendingDriveEmailId] = useState<string | null>(null);
 
   // View Mode & Filters
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -89,6 +98,13 @@ export default function EventSubmissionsPage() {
   const [confirmationModalSub, setConfirmationModalSub] = useState<SubmissionItem | null>(null);
   const [instagramInput, setInstagramInput] = useState<string>('');
   const [sendingConfirmationId, setSendingConfirmationId] = useState<string | null>(null);
+
+  // Re-submission rejection modal (Photo, Artwork, Writing)
+  const [resubmissionModalSub, setResubmissionModalSub] = useState<SubmissionItem | null>(null);
+  const [selectedReasonOption, setSelectedReasonOption] = useState<string>('Photo is not uploaded');
+  const [customReasonText, setCustomReasonText] = useState<string>('');
+  const [sendingResubmissionId, setSendingResubmissionId] = useState<string | null>(null);
+  const [updatingMoveId, setUpdatingMoveId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -230,6 +246,99 @@ export default function EventSubmissionsPage() {
     }
   };
 
+  const handleSendDriveUpdateEmail = async (sub: SubmissionItem) => {
+    if (!window.confirm(
+      `Send Google Drive link update email to "${sub.fullName}" (${sub.email})?\n\nThis will send a step-by-step guide explaining how to make their Google Drive video link public ("Anyone with the link can view") and provide a secure, one-time link for them to update their submission.`
+    )) {
+      return;
+    }
+
+    setSendingDriveEmailId(sub.id);
+    try {
+      const res = await requestDriveLinkUpdateEmailApi(sub.id);
+      if (res.success) {
+        alert(res.message || `Drive link update email successfully dispatched to ${sub.fullName}!`);
+        setSubmissions(prev => prev.map(s => {
+          if (s.id === sub.id) {
+            return {
+              ...s,
+              driveUpdateMailSent: true,
+              driveUpdateMailSentAt: new Date().toISOString(),
+              isDriveNotPublic: true
+            };
+          }
+          return s;
+        }));
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to send Drive link update email');
+    } finally {
+      setSendingDriveEmailId(null);
+    }
+  };
+
+  // Toggle "Move to Posting Excel" checkbox
+  const handleToggleMoveToPostingExcel = async (sub: SubmissionItem, currentValue: boolean) => {
+    const newValue = !currentValue;
+    setUpdatingMoveId(sub.id);
+    try {
+      await updatePostingExcelApi(sub.id, {
+        moveToPostingExcel: newValue
+      });
+      setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, moveToPostingExcel: newValue } : s));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update Move to Posting Excel status');
+    } finally {
+      setUpdatingMoveId(null);
+    }
+  };
+
+  // Open Re-submission Modal
+  const handleOpenResubmissionModal = (sub: SubmissionItem) => {
+    setResubmissionModalSub(sub);
+    setSelectedReasonOption('Photo is not uploaded');
+    setCustomReasonText('');
+  };
+
+  // Dispatch Re-submission Email
+  const handleConfirmSendResubmissionEmail = async () => {
+    if (!resubmissionModalSub) return;
+
+    let finalReason = selectedReasonOption;
+    if (selectedReasonOption === 'OTHER') {
+      finalReason = customReasonText.trim();
+      if (!finalReason) {
+        alert('Please specify the rejection reason.');
+        return;
+      }
+    }
+
+    setSendingResubmissionId(resubmissionModalSub.id);
+    try {
+      const res = await requestResubmissionEmailApi(resubmissionModalSub.id, finalReason);
+      if (res.success) {
+        alert(res.message || `Resubmission email successfully sent to ${resubmissionModalSub.fullName}!`);
+        setSubmissions(prev => prev.map(s => {
+          if (s.id === resubmissionModalSub.id) {
+            return {
+              ...s,
+              resubmissionRequested: true,
+              resubmissionRequestedAt: new Date().toISOString(),
+              resubmissionReason: finalReason,
+              resubmissionCompleted: false
+            };
+          }
+          return s;
+        }));
+        setResubmissionModalSub(null);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to send resubmission email');
+    } finally {
+      setSendingResubmissionId(null);
+    }
+  };
+
   // Available Domains & Themes
   const availableDomains = Array.from(
     new Set(
@@ -278,10 +387,21 @@ export default function EventSubmissionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white relative">
       <AdminNavbar />
 
-      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Centered Modal Progress Bar with blurred backdrop */}
+      {loading && (
+        <MongoProgressBar 
+          asModal={true}
+          theme="light" 
+          message="Loading submissions from MongoDB..." 
+          subMessage="Fetching participant registrations & files"
+          estimatedSeconds={3.5}
+        />
+      )}
+
+      <main className="flex-1 w-full max-w-[100vw] px-2 sm:px-4 lg:px-6 py-4 space-y-4">
         
         {/* HEADER BAR */}
         <div className="bg-white border border-slate-200 p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -307,6 +427,17 @@ export default function EventSubmissionsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {isNavroopam && (
+              <Link
+                href={`/admin/events/${eventId}/posting-excel`}
+                className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors shadow-sm"
+                title="Posting Excel - Mark Qualified, Posted, Disqualified & Save Instagram link"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Posting Excel</span>
+              </Link>
+            )}
+
             <button
               onClick={() => setIsEmailPreviewOpen(true)}
               className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
@@ -489,8 +620,7 @@ export default function EventSubmissionsPage() {
           {/* TABLE DISPLAY */}
           {loading ? (
             <div className="py-20 text-center text-slate-400">
-              <div className="inline-block w-6 h-6 border-2 border-slate-900 border-t-transparent animate-spin mb-2" />
-              <p className="text-xs font-semibold">Loading submissions...</p>
+              <p className="text-xs font-semibold animate-pulse">Syncing submissions from database...</p>
             </div>
           ) : filteredSubmissions.length === 0 ? (
             <div className="py-16 text-center text-slate-500 border border-dashed border-slate-300">
@@ -505,13 +635,18 @@ export default function EventSubmissionsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                    <th className="p-3">Ticket ID</th>
-                    <th className="p-3">Participant Details</th>
-                    <th className="p-3">Domain & Theme</th>
-                    <th className="p-3">Payment Info & 12-Digit UTR</th>
-                    <th className="p-3">Payment Verification</th>
-                    <th className="p-3">Media / Attached File</th>
-                    <th className="p-3 text-right">Actions</th>
+                    <th className="px-2 py-2 w-[110px]">Ticket ID</th>
+                    <th className="px-2 py-2 max-w-[190px]">Participant Details</th>
+                    <th className="px-2 py-2 max-w-[180px]">Domain & Theme</th>
+                    <th className="px-2 py-2 w-[130px]">Payment & UTR</th>
+                    <th className="px-2 py-2 w-[110px]">Verification</th>
+                    <th className="px-2 py-2 w-[140px]">Media / File</th>
+                    {isNavroopam && (
+                      <th className="px-2 py-2 text-center whitespace-nowrap bg-emerald-50 text-emerald-900 border-x border-emerald-200 w-[70px]" title="Move to Posting Excel Sheet">
+                        To Excel
+                      </th>
+                    )}
+                    <th className="px-2 py-2 text-right w-[150px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
@@ -535,74 +670,72 @@ export default function EventSubmissionsPage() {
                       <tr key={sub.id} className="hover:bg-slate-50/80 transition-colors">
                         
                         {/* TICKET ID */}
-                        <td className="p-3 align-top font-mono font-bold text-slate-900 whitespace-nowrap">
-                          <span className="px-2 py-1 bg-slate-100 border border-slate-300 block text-center">
+                        <td className="px-2 py-2 align-top font-mono font-bold text-slate-900">
+                          <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 block text-center text-[11px] truncate">
                             {sub.ticketId}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-sans block mt-1">
+                          <span className="text-[9px] text-slate-400 font-sans block mt-0.5 text-center">
                             {new Date(sub.createdAt).toLocaleDateString()}
                           </span>
                         </td>
 
                         {/* PARTICIPANT DETAILS */}
-                        <td className="p-3 align-top max-w-[220px]">
-                          <div className="font-extrabold text-slate-900 text-xs">{sub.fullName}</div>
-                          <div className="text-[11px] text-slate-600 truncate flex items-center gap-1 mt-0.5">
+                        <td className="px-2 py-2 align-top max-w-[190px]">
+                          <div className="font-extrabold text-slate-900 text-xs truncate" title={sub.fullName}>{sub.fullName}</div>
+                          <div className="text-[10px] text-slate-600 truncate flex items-center gap-1 mt-0.5" title={sub.email}>
                             <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{sub.email}</span>
+                            <span className="truncate">{sub.email}</span>
                           </div>
                           {sub.phone && (
-                            <div className="text-[11px] text-slate-600 flex items-center gap-1">
+                            <div className="text-[10px] text-slate-600 flex items-center gap-1 mt-0.5">
                               <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                               <span>{sub.phone}</span>
                             </div>
                           )}
-                          <div className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 mt-1 inline-block">
-                            Roll: {sub.answers?.['College Roll Number'] || 'N/A'} • {sub.answers?.['Department'] || ''} ({sub.answers?.['Academic Year'] || ''})
+                          <div className="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1 py-0.5 mt-1 block truncate" title={`Roll: ${sub.answers?.['College Roll Number'] || 'N/A'} • ${sub.answers?.['Department'] || ''} (${sub.answers?.['Academic Year'] || ''})`}>
+                            Roll: {sub.answers?.['College Roll Number'] || 'N/A'} • {sub.answers?.['Department'] || ''}
                           </div>
                         </td>
 
                         {/* DOMAIN & THEME */}
-                        <td className="p-3 align-top max-w-[220px]">
-                          <div className="font-bold text-slate-900 text-xs">
+                        <td className="px-2 py-2 align-top max-w-[180px]">
+                          <div className="font-bold text-slate-900 text-[11px] leading-tight">
                             {sub.answers?.['Selected Domain'] || sub.answers?.['Enrolled Event Options'] || 'General Entry'}
                           </div>
                           {sub.answers?.['Selected Theme'] && (
-                            <div className="text-[11px] text-slate-600 italic mt-0.5">
+                            <div className="text-[10px] text-slate-600 italic mt-0.5 leading-snug line-clamp-2" title={sub.answers['Selected Theme']}>
                               Theme: {sub.answers['Selected Theme']}
                             </div>
                           )}
                           {sub.answers?.['Caption / Write-up / Raw Notes'] && (
-                            <div className="text-[10px] text-slate-500 mt-1 line-clamp-2 bg-slate-50 p-1 border border-slate-200">
+                            <div className="text-[9px] text-slate-500 mt-1 line-clamp-1 bg-slate-50 p-1 border border-slate-200" title={sub.answers['Caption / Write-up / Raw Notes']}>
                               "{sub.answers['Caption / Write-up / Raw Notes']}"
                             </div>
                           )}
                         </td>
 
                         {/* PAYMENT INFO & UTR */}
-                        <td className="p-3 align-top whitespace-nowrap">
+                        <td className="px-2 py-2 align-top">
                           <div className="text-xs font-black text-slate-900 flex items-center gap-1">
-                            <CreditCard className="w-3.5 h-3.5 text-slate-500" />
+                            <CreditCard className="w-3 h-3 text-slate-500" />
                             <span>{fee}</span>
                           </div>
-                          <div className="mt-1 font-mono text-[11px] font-bold text-slate-800 bg-slate-100 px-2 py-0.5 border border-slate-300">
+                          <div className="mt-0.5 font-mono text-[10px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 border border-slate-300 truncate" title={`UTR: ${utr}`}>
                             UTR: {utr}
                           </div>
                           {payee !== '-' && (
-                            <div className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[180px]">
+                            <div className="text-[9px] text-slate-500 mt-0.5 truncate max-w-[130px]" title={`Payee: ${payee}`}>
                               Payee: {payee}
                             </div>
                           )}
 
-                          {/* PAYMENT PROOF SCREENSHOT PREVIEW BUTTON (UNDER PAYMENT INFO) */}
+                          {/* PAYMENT PROOF SCREENSHOT PREVIEW BUTTON */}
                           {(() => {
-                            // Find explicit proof file or any second uploaded image file
                             let proofFile = sub.files && sub.files.find(f => {
                               const n = (f.originalName || '').toLowerCase();
                               return n.includes('proof') || n.includes('pay') || n.includes('screen') || n.includes('utr') || n.includes('receipt') || f.provider === 'cloudinary_payment_proof';
                             });
 
-                            // If not found by keyword, check if there's more than 1 image file
                             if (!proofFile && sub.files && sub.files.length > 1) {
                               const imageFiles = sub.files.filter(f => (f.mimeType || '').startsWith('image/'));
                               if (imageFiles.length > 1) {
@@ -610,33 +743,32 @@ export default function EventSubmissionsPage() {
                               }
                             }
 
-                            // If still only 1 file and it's named with receipt/proof/screenshot/or is a standalone payment event
                             if (!proofFile && sub.files && sub.files.length === 1 && !sub.answers?.['Selected Domain']) {
                               proofFile = sub.files[0];
                             }
 
                             if (!proofFile) {
                               return (
-                                <div className="mt-1.5 text-[10px] text-slate-400 italic">
-                                  No screenshot attached
+                                <div className="mt-1 text-[9px] text-slate-400 italic">
+                                  No screenshot
                                 </div>
                               );
                             }
 
                             const proofUrl = proofFile.localUrl || proofFile.driveLink || '';
                             return (
-                              <div className="mt-2">
+                              <div className="mt-1">
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setPreviewMediaUrl(proofUrl);
                                     setPreviewTitle(`Payment Screenshot - ${sub.fullName} (UTR: ${utr})`);
                                   }}
-                                  className="w-full px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 text-[11px] font-black inline-flex items-center justify-center gap-1.5 shadow-xs transition-colors rounded-none"
+                                  className="w-full px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 text-[10px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
                                   title="Click to preview payment screenshot proof"
                                 >
-                                  <ImageIcon className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                                  <span>View Payment SS 📸</span>
+                                  <ImageIcon className="w-3 h-3 text-amber-700 shrink-0" />
+                                  <span>Proof SS 📸</span>
                                 </button>
                               </div>
                             );
@@ -644,36 +776,36 @@ export default function EventSubmissionsPage() {
                         </td>
 
                         {/* PAYMENT VERIFICATION CONTROLS */}
-                        <td className="p-3 align-top whitespace-nowrap">
-                          <div className="space-y-1.5">
+                        <td className="px-2 py-2 align-top">
+                          <div className="space-y-1">
                             {paymentStatus === 'VERIFIED' || paymentStatus === 'PAID' ? (
-                              <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] font-black uppercase">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>VERIFIED / PAID</span>
+                              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[9px] font-black uppercase whitespace-nowrap">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>VERIFIED</span>
                               </div>
                             ) : paymentStatus === 'REJECTED' ? (
-                              <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-800 border border-rose-300 text-[10px] font-black uppercase">
-                                <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 text-rose-800 border border-rose-300 text-[9px] font-black uppercase whitespace-nowrap">
+                                <XCircle className="w-3 h-3 text-rose-600" />
                                 <span>REJECTED</span>
                               </div>
                             ) : (
-                              <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-300 text-[10px] font-black uppercase">
-                                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                <span>PENDING REVIEW</span>
+                              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 text-[9px] font-black uppercase whitespace-nowrap">
+                                <Clock className="w-3 h-3 text-amber-600" />
+                                <span>PENDING</span>
                               </div>
                             )}
 
                             {/* Verification Quick Action Buttons */}
-                            <div className="flex items-center gap-1 pt-1">
+                            <div className="flex items-center gap-1">
                               {paymentStatus !== 'VERIFIED' && paymentStatus !== 'PAID' && (
                                 <button
                                   type="button"
                                   disabled={updatingPaymentId === sub.id}
                                   onClick={() => handleUpdatePayment(sub.id, 'VERIFIED')}
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase transition-colors"
+                                  className="px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold uppercase transition-colors"
                                   title="Approve & Delete SS Proof"
                                 >
-                                  ✓ Approve
+                                  ✓ OK
                                 </button>
                               )}
 
@@ -682,7 +814,7 @@ export default function EventSubmissionsPage() {
                                   type="button"
                                   disabled={updatingPaymentId === sub.id}
                                   onClick={() => handleUpdatePayment(sub.id, 'REJECTED')}
-                                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-[10px] font-bold uppercase transition-colors"
+                                  className="px-1.5 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-[9px] font-bold uppercase transition-colors"
                                   title="Reject Payment"
                                 >
                                   ✕ Reject
@@ -694,7 +826,7 @@ export default function EventSubmissionsPage() {
                                   type="button"
                                   disabled={updatingPaymentId === sub.id}
                                   onClick={() => handleUpdatePayment(sub.id, 'VERIFIED')}
-                                  className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold uppercase transition-colors"
+                                  className="px-1.5 py-0.5 bg-slate-900 hover:bg-slate-800 text-white text-[9px] font-bold uppercase transition-colors"
                                 >
                                   Restore
                                 </button>
@@ -704,19 +836,47 @@ export default function EventSubmissionsPage() {
                         </td>
 
                         {/* MEDIA / FILE PREVIEWS */}
-                        <td className="p-3 align-top whitespace-nowrap">
+                        <td className="px-2 py-2 align-top">
                           {driveLink ? (
-                            <a 
-                              href={driveLink} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="px-2.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold inline-flex items-center gap-1 transition-colors"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span>View Google Drive Video ↗</span>
-                            </a>
+                            <div className="space-y-1">
+                              <a 
+                                href={driveLink} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[10px] font-bold inline-flex items-center gap-1 transition-colors w-full justify-center"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>Drive Video ↗</span>
+                              </a>
+
+                              <div>
+                                {sub.driveLinkUpdated ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.5 font-bold">
+                                    <Check className="w-2.5 h-2.5" />
+                                    <span>Link Updated</span>
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendDriveUpdateEmail(sub)}
+                                    disabled={sendingDriveEmailId === sub.id}
+                                    className="w-full inline-flex items-center justify-center gap-1 px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-bold transition-colors cursor-pointer disabled:opacity-50"
+                                    title="Send email explaining how to make Drive link public"
+                                  >
+                                    {sendingDriveEmailId === sub.id ? (
+                                      <span>Sending...</span>
+                                    ) : (
+                                      <>
+                                        <MailWarning className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                                        <span>{sub.driveUpdateMailSent ? 'Resend Fix Mail' : 'Fix Drive Link Mail'}</span>
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           ) : mediaFile ? (
-                            <div className="space-y-1.5">
+                            <div className="space-y-1">
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
@@ -724,10 +884,10 @@ export default function EventSubmissionsPage() {
                                     setPreviewMediaUrl(mediaFile.localUrl || mediaFile.driveLink || '');
                                     setPreviewTitle(`${sub.fullName} - ${mediaFile.originalName}`);
                                   }}
-                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold inline-flex items-center gap-1 transition-colors"
+                                  className="flex-1 px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-[10px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
                                 >
-                                  <Eye className="w-3.5 h-3.5 text-slate-600" />
-                                  <span>Preview Media</span>
+                                  <Eye className="w-3 h-3 text-slate-600" />
+                                  <span>Preview</span>
                                 </button>
 
                                 <button
@@ -768,33 +928,66 @@ export default function EventSubmissionsPage() {
                                       document.body.removeChild(a);
                                     }
                                   }}
-                                  className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                                  className="p-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors cursor-pointer shrink-0"
                                   title="Download File"
                                 >
-                                  <Download className="w-3.5 h-3.5" />
+                                  <Download className="w-3 h-3" />
                                 </button>
                               </div>
                               <a
                                 href={mediaFile.localUrl || mediaFile.driveLink}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-[10px] text-blue-600 hover:underline block truncate max-w-[160px]"
+                                className="text-[9px] text-blue-600 hover:underline block truncate max-w-[130px]"
+                                title={mediaFile.originalName}
                               >
                                 {mediaFile.originalName}
                               </a>
+
+                              {/* RE-SUBMISSION ACTION FOR NON-VIDEO */}
+                              <div className="pt-0.5 border-t border-slate-100">
+                                {sub.resubmissionCompleted ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.5 font-bold">
+                                    <Check className="w-2.5 h-2.5" />
+                                    <span>Replaced</span>
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenResubmissionModal(sub)}
+                                    className="w-full inline-flex items-center justify-center gap-1 px-1.5 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 text-[9px] font-bold transition-colors cursor-pointer"
+                                    title="Send Re-upload email with specific rejection reason"
+                                  >
+                                    <Upload className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                                    <span>{sub.resubmissionRequested ? 'Resend Re-up' : 'Request Re-up'}</span>
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           ) : (
-                            <span className="text-[11px] text-slate-400 italic">No media file</span>
+                            <div className="space-y-1">
+                              <span className="text-[10px] text-slate-400 italic block">No media</span>
+                              {!driveLink && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenResubmissionModal(sub)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 text-[9px] font-bold transition-colors cursor-pointer"
+                                >
+                                  <Upload className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                                  <span>Request Upload</span>
+                                </button>
+                              )}
+                            </div>
                           )}
 
                           {/* SAVED INSTAGRAM POST LINK BADGE */}
                           {sub.instagramPostUrl && (
-                            <div className="mt-2">
+                            <div className="mt-1">
                               <a
                                 href={sub.instagramPostUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-300 text-[10px] font-bold tracking-tight transition-colors"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-300 text-[9px] font-bold tracking-tight transition-colors"
                                 title={sub.instagramPostUrl}
                               >
                                 <span>IG Post ↗</span>
@@ -803,71 +996,93 @@ export default function EventSubmissionsPage() {
                           )}
                         </td>
 
-                        {/* ACTIONS (ACKNOWLEDGE, CONFIRMATION & DELETE) */}
-                        <td className="p-3 align-top text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
+                        {/* MOVE TO POSTING EXCEL CHECKBOX (NAVROOPAM) */}
+                        {isNavroopam && (
+                          <td className="px-2 py-2 align-middle text-center bg-emerald-50/30 border-x border-emerald-100">
+                            <label className="inline-flex flex-col items-center gap-0.5 cursor-pointer select-none">
+                              <input 
+                                type="checkbox"
+                                checked={Boolean(sub.moveToPostingExcel)}
+                                disabled={updatingMoveId === sub.id}
+                                onChange={() => handleToggleMoveToPostingExcel(sub, Boolean(sub.moveToPostingExcel))}
+                                className="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                              />
+                              <span className={`text-[9px] font-black uppercase tracking-tight ${
+                                sub.moveToPostingExcel ? 'text-emerald-800 font-bold' : 'text-slate-400 font-normal'
+                              }`}>
+                                {sub.moveToPostingExcel ? 'Included' : 'Add'}
+                              </span>
+                            </label>
+                          </td>
+                        )}
+
+                        {/* ACTIONS (STACKED CLEANLY SO IT NEVER OVERFLOWS) */}
+                        <td className="px-2 py-2 align-top text-right">
+                          <div className="flex flex-col items-end gap-1 w-full min-w-[140px]">
                             {/* 1. ACKNOWLEDGEMENT EMAIL BUTTON */}
                             {sub.acknowledged ? (
                               <button 
                                 onClick={() => handleAcknowledge(sub.id)}
                                 disabled={acknowledgingId === sub.id}
-                                className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                className="w-full px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer transition-colors"
                                 title="Resend payment & submission acknowledgment email"
                               >
-                                <Mail className="w-3 h-3 text-amber-700" />
-                                <span>{acknowledgingId === sub.id ? 'Sending...' : 'Resend Ack 🔄'}</span>
+                                <Mail className="w-3 h-3 text-amber-700 shrink-0" />
+                                <span className="truncate">{acknowledgingId === sub.id ? 'Sending...' : 'Resend Ack 🔄'}</span>
                               </button>
                             ) : (
                               <button 
                                 onClick={() => handleAcknowledge(sub.id)}
                                 disabled={acknowledgingId === sub.id}
-                                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow-xs cursor-pointer"
+                                className="w-full px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold inline-flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-colors"
                                 title="Send payment & submission received acknowledgment email"
                               >
-                                <Mail className="w-3 h-3" />
-                                <span>{acknowledgingId === sub.id ? 'Sending...' : 'Send Ack Email'}</span>
+                                <Mail className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{acknowledgingId === sub.id ? 'Sending...' : 'Send Ack Mail'}</span>
                               </button>
                             )}
 
-                            {/* 2. CONFIRMATION EMAIL BUTTON (ENABLED ONLY AFTER ACKNOWLEDGMENT) */}
-                            {sub.confirmationEmailSent ? (
-                              <button 
-                                onClick={() => handleOpenConfirmationModal(sub)}
-                                disabled={sendingConfirmationId === sub.id}
-                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
-                                title="Resend payment verified confirmation email with Instagram link"
-                              >
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>Resend Conf 🔄</span>
-                              </button>
-                            ) : (
-                              <button 
-                                onClick={() => handleOpenConfirmationModal(sub)}
-                                disabled={!sub.acknowledged || sendingConfirmationId === sub.id}
-                                className={`px-2.5 py-1 text-[10px] font-bold inline-flex items-center gap-1 transition-colors ${
-                                  sub.acknowledged
-                                    ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-xs cursor-pointer'
-                                    : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-                                }`}
-                                title={
-                                  sub.acknowledged
-                                    ? 'Send payment verified confirmation email with Instagram post link'
-                                    : 'Send acknowledgment email first to enable confirmation email'
-                                }
-                              >
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>Send Confirmation</span>
-                              </button>
-                            )}
+                            {/* 2. CONFIRMATION EMAIL BUTTON & DELETE IN A ROW */}
+                            <div className="flex items-center gap-1 w-full">
+                              {sub.confirmationEmailSent ? (
+                                <button 
+                                  onClick={() => handleOpenConfirmationModal(sub)}
+                                  disabled={sendingConfirmationId === sub.id}
+                                  className="flex-1 px-1.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                                  title="Resend payment verified confirmation email with Instagram link"
+                                >
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  <span className="truncate">Resend Conf</span>
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={() => handleOpenConfirmationModal(sub)}
+                                  disabled={!sub.acknowledged || sendingConfirmationId === sub.id}
+                                  className={`flex-1 px-1.5 py-1 text-[10px] font-bold inline-flex items-center justify-center gap-1 transition-colors ${
+                                    sub.acknowledged
+                                      ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-xs cursor-pointer'
+                                      : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+                                  }`}
+                                  title={
+                                    sub.acknowledged
+                                      ? 'Send payment verified confirmation email with Instagram post link'
+                                      : 'Send acknowledgment email first to enable confirmation email'
+                                  }
+                                >
+                                  <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">Send Conf</span>
+                                </button>
+                              )}
 
-                            <button
-                              onClick={() => handleDeleteSubmission(sub.id, sub.fullName, sub.ticketId)}
-                              disabled={deletingSubId === sub.id}
-                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors cursor-pointer"
-                              title="Delete Submission"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                              <button
+                                onClick={() => handleDeleteSubmission(sub.id, sub.fullName, sub.ticketId)}
+                                disabled={deletingSubId === sub.id}
+                                className="p-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors cursor-pointer shrink-0"
+                                title="Delete Submission"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -1254,6 +1469,183 @@ export default function EventSubmissionsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* RE-SUBMISSION MODAL FOR REJECTED FILES */}
+        {resubmissionModalSub && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs">
+            <div className="bg-white border border-slate-300 max-w-lg w-full p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
+                    <Upload className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">
+                      Send Re-upload Request Email
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Notify contestant about entry rejection and provide one-time re-upload link
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setResubmissionModalSub(null)}
+                  className="p-1 text-slate-400 hover:text-slate-800 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Participant info preview */}
+              <div className="bg-slate-50 border border-slate-200 p-3 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Participant:</span>
+                  <span className="font-bold text-slate-900">{resubmissionModalSub.fullName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Pass:</span>
+                  <span className="font-mono font-bold text-slate-800">{resubmissionModalSub.ticketId}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Email:</span>
+                  <span className="font-mono text-slate-700">{resubmissionModalSub.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Domain:</span>
+                  <span className="font-semibold text-slate-800">
+                    {resubmissionModalSub.answers?.['Selected Domain'] || 'Contest Entry'}
+                  </span>
+                </div>
+              </div>
+
+              {/* SELECT REJECTION REASON */}
+              <div className="space-y-3">
+                <label className="text-xs font-black text-slate-900 uppercase tracking-wider block">
+                  Select Reason for Rejection:
+                </label>
+
+                <div className="space-y-2 text-xs">
+                  {/* Reason 1 */}
+                  <label className={`flex items-start gap-2.5 p-3 border cursor-pointer transition-colors ${
+                    selectedReasonOption === 'Photo is not uploaded' 
+                      ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold' 
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <input 
+                      type="radio" 
+                      name="rejectionReason"
+                      value="Photo is not uploaded"
+                      checked={selectedReasonOption === 'Photo is not uploaded'}
+                      onChange={() => setSelectedReasonOption('Photo is not uploaded')}
+                      className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <span>1. Photo is not uploaded</span>
+                      <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                        The participant did not attach an original photo/artwork file in their registration form.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Reason 2 */}
+                  <label className={`flex items-start gap-2.5 p-3 border cursor-pointer transition-colors ${
+                    selectedReasonOption === 'Against the rule you cannot upload collage' 
+                      ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold' 
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <input 
+                      type="radio" 
+                      name="rejectionReason"
+                      value="Against the rule you cannot upload collage"
+                      checked={selectedReasonOption === 'Against the rule you cannot upload collage'}
+                      onChange={() => setSelectedReasonOption('Against the rule you cannot upload collage')}
+                      className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <span>2. Against the rule you cannot upload collage</span>
+                      <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                        The contest rules forbid collage pictures or split photos. Single original shots only.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Reason 3 */}
+                  <label className={`flex items-start gap-2.5 p-3 border cursor-pointer transition-colors ${
+                    selectedReasonOption === 'You have submitted the payment ss instead of your photo (swapped position of submission and payment ss.)' 
+                      ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold' 
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <input 
+                      type="radio" 
+                      name="rejectionReason"
+                      value="You have submitted the payment ss instead of your photo (swapped position of submission and payment ss.)"
+                      checked={selectedReasonOption === 'You have submitted the payment ss instead of your photo (swapped position of submission and payment ss.)'}
+                      onChange={() => setSelectedReasonOption('You have submitted the payment ss instead of your photo (swapped position of submission and payment ss.)')}
+                      className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <span>3. Payment screenshot uploaded instead of photo</span>
+                      <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                        Swapped position: The participant uploaded their UPI payment proof into the contest media slot.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Custom Option */}
+                  <label className={`flex items-start gap-2.5 p-3 border cursor-pointer transition-colors ${
+                    selectedReasonOption === 'OTHER' 
+                      ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold' 
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <input 
+                      type="radio" 
+                      name="rejectionReason"
+                      value="OTHER"
+                      checked={selectedReasonOption === 'OTHER'}
+                      onChange={() => setSelectedReasonOption('OTHER')}
+                      className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                    />
+                    <div className="w-full">
+                      <span>4. Custom Rejection Reason</span>
+                      {selectedReasonOption === 'OTHER' && (
+                        <input 
+                          type="text"
+                          required
+                          placeholder="Type custom rejection note..."
+                          value={customReasonText}
+                          onChange={(e) => setCustomReasonText(e.target.value)}
+                          className="mt-2 w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 outline-none focus:border-rose-600 font-sans"
+                        />
+                      )}
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setResubmissionModalSub(null)}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmSendResubmissionEmail}
+                  disabled={sendingResubmissionId === resubmissionModalSub.id}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{sendingResubmissionId === resubmissionModalSub.id ? 'Sending Email...' : 'Send Re-upload Request'}</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -113,6 +113,7 @@ body::after {
 .gradient-text {
   background: linear-gradient(135deg, #ffffff 0%, #f7f1e5 40%, #e6c594 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -120,6 +121,7 @@ body::after {
 .tricolour-gradient-text {
   background: linear-gradient(135deg, #ff9933 0%, #ffffff 50%, #138808 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 

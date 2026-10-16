@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Tag
 } from 'lucide-react';
+import MongoProgressBar from '../components/MongoProgressBar';
 
 export default function Home() {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -55,8 +56,19 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b0204] text-[#fdfbf7] w-full selection:bg-[#e6c594] selection:text-[#150408]">
+    <div className="min-h-screen flex flex-col bg-[#0b0204] text-[#fdfbf7] w-full selection:bg-[#e6c594] selection:text-[#150408] relative">
       <Navbar />
+
+      {/* Centered Modal Progress Bar with blurred backdrop */}
+      {loading && (
+        <MongoProgressBar 
+          asModal={true}
+          theme="gold" 
+          message="Loading data from MongoDB..." 
+          subMessage="Fetching active events & catalog entries"
+          estimatedSeconds={4.5}
+        />
+      )}
 
       <main className="flex-1 w-full pb-16 sm:pb-24">
         {/* ========================================================= */}
@@ -254,10 +266,8 @@ export default function Home() {
           {/* Catalog Listing */}
           <div>
             {loading ? (
-              <div className="py-24 text-center text-[#e6d7c3]">
-                <div className="inline-block w-9 h-9 border-3 border-[#e6c594] border-t-transparent rounded-full animate-spin mb-4" />
-                <p className="text-sm font-semibold tracking-wide">Fetching active college events...</p>
-                <p className="text-xs text-[#a69181] mt-1">Connecting to official event catalog</p>
+              <div className="py-20 text-center text-[#e6d7c3]">
+                <p className="text-xs font-semibold text-[#a69181] animate-pulse">Syncing with MongoDB database...</p>
               </div>
             ) : filteredEvents.length === 0 ? (
               <div className="rounded-3xl bg-[#140307]/70 p-12 text-center my-6 border border-white/10 max-w-xl mx-auto space-y-4">
