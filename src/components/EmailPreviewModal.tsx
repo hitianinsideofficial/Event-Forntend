@@ -359,7 +359,7 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
                     Click Here to Update Your Video Link &rarr;
                   </a>
                   <p className="text-[10px] text-amber-300 font-mono mt-2 underline">
-                    https://hitianinside.in/submissions/update-drive-link?submissionId=...&token=...&utm_source=email_drive_update
+                    https://events.hitianinside.in/submissions/update-drive-link?submissionId=...&token=...&utm_source=email_drive_update
                   </p>
                 </div>
 
@@ -435,7 +435,7 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
                     Click Here to Re-upload Your Submission &rarr;
                   </a>
                   <p className="text-[10px] text-amber-300 font-mono mt-2 underline">
-                    https://hitianinside.in/submissions/reupload?submissionId=...&token=...&utm_source=email_resubmission
+                    https://events.hitianinside.in/submissions/reupload?submissionId=...&token=...&utm_source=email_resubmission
                   </p>
                 </div>
 
