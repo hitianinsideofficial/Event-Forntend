@@ -23,7 +23,6 @@ import {
   Palette,
   Users
 } from 'lucide-react';
-import MongoProgressBar from '../../../components/MongoProgressBar';
 
 export default function DedicatedEventDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -53,16 +52,11 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col relative">
+      <div className="min-h-screen bg-[#150408] text-[#fdfbf7] flex flex-col">
         <Navbar />
-        <MongoProgressBar 
-          asModal={true}
-          theme="gold" 
-          message="Loading event details from MongoDB..." 
-          subMessage="Fetching guidelines, schedule & rules"
-          estimatedSeconds={3.5}
-        />
-        <div className="flex-1 flex items-center justify-center py-20" />
+        <div className="flex-1 flex flex-col items-center justify-center py-24 space-y-3">
+          <div className="w-10 h-10 border-2 border-[#e6c594]/20 border-t-[#e6c594] rounded-full animate-spin" />
+        </div>
       </div>
     );
   }
