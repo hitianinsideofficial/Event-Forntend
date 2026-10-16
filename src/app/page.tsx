@@ -19,7 +19,6 @@ import {
   TrendingUp,
   Tag
 } from 'lucide-react';
-import MongoProgressBar from '../components/MongoProgressBar';
 
 export default function Home() {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -58,17 +57,6 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-[#0b0204] text-[#fdfbf7] w-full selection:bg-[#e6c594] selection:text-[#150408] relative">
       <Navbar />
-
-      {/* Centered Modal Progress Bar with blurred backdrop */}
-      {loading && (
-        <MongoProgressBar 
-          asModal={true}
-          theme="gold" 
-          message="Loading data from MongoDB..." 
-          subMessage="Fetching active events & catalog entries"
-          estimatedSeconds={4.5}
-        />
-      )}
 
       <main className="flex-1 w-full pb-16 sm:pb-24">
         {/* ========================================================= */}
