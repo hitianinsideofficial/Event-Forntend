@@ -9,7 +9,7 @@ interface EmailPreviewModalProps {
 }
 
 export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPreviewModalProps) {
-  const [activeTab, setActiveTab] = useState<'received' | 'verified'>('received');
+  const [activeTab, setActiveTab] = useState<'received' | 'verified' | 'drive_fix' | 'resubmission_request'>('received');
 
   if (!isOpen) return null;
 
@@ -51,29 +51,53 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
         </div>
 
         {/* TEMPLATE SWITCHER TABS */}
-        <div className="bg-slate-100 border-b border-slate-200 px-5 pt-3 flex gap-2">
+        <div className="bg-slate-100 border-b border-slate-200 px-5 pt-3 flex flex-wrap gap-2">
           <button
             onClick={() => setActiveTab('received')}
-            className={`px-4 py-2.5 text-xs font-bold border-t-2 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2 text-xs font-bold border-t-2 transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'received'
                 ? 'bg-white border-t-emerald-600 text-slate-900 border-x border-slate-200 -mb-[1px] shadow-xs'
                 : 'border-t-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>1. Submission & Payment Received (Queued for Instagram)</span>
+            <span>1. Submission & Payment Received</span>
           </button>
 
           <button
             onClick={() => setActiveTab('verified')}
-            className={`px-4 py-2.5 text-xs font-bold border-t-2 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2 text-xs font-bold border-t-2 transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'verified'
                 ? 'bg-white border-t-pink-600 text-slate-900 border-x border-slate-200 -mb-[1px] shadow-xs'
                 : 'border-t-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
             <ExternalLink className="w-3.5 h-3.5 text-pink-600" />
-            <span>2. Instagram Post Live Confirmation (with Post Link)</span>
+            <span>2. Instagram Live Confirmation</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('drive_fix')}
+            className={`px-3 py-2 text-xs font-bold border-t-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'drive_fix'
+                ? 'bg-white border-t-amber-600 text-slate-900 border-x border-slate-200 -mb-[1px] shadow-xs'
+                : 'border-t-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-amber-600" />
+            <span>3. Video: Public Link Request</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('resubmission_request')}
+            className={`px-3 py-2 text-xs font-bold border-t-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'resubmission_request'
+                ? 'bg-white border-t-rose-600 text-slate-900 border-x border-slate-200 -mb-[1px] shadow-xs'
+                : 'border-t-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <Mail className="w-3.5 h-3.5 text-rose-600" />
+            <span>4. Re-upload Rejection Mail</span>
           </button>
         </div>
 
@@ -86,7 +110,11 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
               <span className="font-bold text-slate-900">
                 {activeTab === 'received'
                   ? `Submission & Payment Received: ${eventTitle} [Pass: HIT-NAV-4821]`
-                  : `Payment Verified & Featured on Instagram: ${eventTitle} [Pass: HIT-NAV-4821]`}
+                  : activeTab === 'verified'
+                  ? `Payment Verified & Featured on Instagram: ${eventTitle} [Pass: HIT-NAV-4821]`
+                  : activeTab === 'drive_fix'
+                  ? `Action Required: Make Google Drive Video Link Public [Pass: HIT-NAV-4821]`
+                  : `Action Required: Re-upload Your Submission [Pass: HIT-NAV-4821]`}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -263,6 +291,162 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
                 <div className="text-center pt-2 border-t border-slate-200 text-[11px] text-slate-500">
                   <p>HITian Inside &bull; Haldia Institute of Technology</p>
                   <p className="mt-0.5">Official Student Tabloid, Media & Socio-Cultural Club</p>
+                </div>
+              </div>
+            )}
+
+            {/* TEMPLATE 3: REQUEST TO MAKE GOOGLE DRIVE LINK PUBLIC */}
+            {activeTab === 'drive_fix' && (
+              <div className="bg-[#170409] text-[#fdfbf7] p-6 sm:p-8 space-y-6">
+                <div className="border-b border-[#e6c594]/30 pb-4">
+                  <span className="inline-block px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-bold uppercase tracking-wider mb-2">
+                    Action Required &bull; Video Submissions Only
+                  </span>
+                  <h3 className="text-xl font-black text-[#fdfbf7] tracking-tight uppercase">
+                    Make Google Drive Video Link Public
+                  </h3>
+                  <p className="text-xs text-[#e6d7c3] mt-1.5 leading-relaxed">
+                    Dear <strong>Arjun Sen</strong>, thank you for participating in <strong>{eventTitle}</strong> under the <strong>Puja Vlog</strong> domain (Registration Pass: <code className="text-[#e6c594] font-bold">HIT-NAV-4821</code>).
+                  </p>
+                </div>
+
+                {/* ALERT BOX */}
+                <div className="bg-rose-500/15 border-l-4 border-rose-500 p-4 space-y-1">
+                  <div className="text-rose-300 font-bold text-xs uppercase tracking-wide">
+                    Google Drive Link is Private / Restricted
+                  </div>
+                  <p className="text-xs text-rose-100/90 leading-relaxed">
+                    Our judging panel attempted to view your submitted video entry, but the Google Drive access permission is currently set to <strong>&quot;Restricted&quot;</strong>. Because of this, judges cannot evaluate your submission.
+                  </p>
+                </div>
+
+                {/* STEPS BOX */}
+                <div className="bg-[#240710] border border-[#e6c594]/30 p-4 sm:p-5 space-y-3">
+                  <h4 className="text-xs font-black text-[#e6c594] uppercase tracking-wider">
+                    Steps to Make Your Google Drive Link Public:
+                  </h4>
+                  <div className="space-y-2.5 text-xs text-[#fdfbf7]">
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[#800020] border border-[#e6c594] text-[#e6c594] font-black text-[10px] flex items-center justify-center shrink-0">1</span>
+                      <span>Open your <strong>Google Drive</strong> and locate your uploaded video file.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[#800020] border border-[#e6c594] text-[#e6c594] font-black text-[10px] flex items-center justify-center shrink-0">2</span>
+                      <span>Right-click on the video file (or tap the 3 dots on mobile) and select <strong>&quot;Share&quot; &rarr; &quot;Share&quot;</strong>.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[#800020] border border-[#e6c594] text-[#e6c594] font-black text-[10px] flex items-center justify-center shrink-0">3</span>
+                      <span>Under <strong>&quot;General access&quot;</strong>, click on <em>&quot;Restricted&quot;</em> and change it to <strong>&quot;Anyone with the link&quot;</strong>.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[#800020] border border-[#e6c594] text-[#e6c594] font-black text-[10px] flex items-center justify-center shrink-0">4</span>
+                      <span>Ensure the role on the right is set to <strong>&quot;Viewer&quot;</strong>, then click <strong>&quot;Copy link&quot;</strong>.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[#800020] border border-[#e6c594] text-[#e6c594] font-black text-[10px] flex items-center justify-center shrink-0">5</span>
+                      <span>Click the button below to paste and submit your updated, public video link.</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ACTION BUTTON */}
+                <div className="text-center py-2">
+                  <a
+                    href="#"
+                    onClick={(e) => e.preventDefault()}
+                    className="inline-block px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-black text-xs uppercase tracking-wider border border-amber-300 shadow-md"
+                  >
+                    Click Here to Update Your Video Link &rarr;
+                  </a>
+                  <p className="text-[10px] text-amber-300 font-mono mt-2 underline">
+                    https://hitianinside.in/submissions/update-drive-link?submissionId=...&token=...&utm_source=email_drive_update
+                  </p>
+                </div>
+
+                {/* ONE-TIME POLICY WARNING */}
+                <div className="bg-amber-500/10 border border-amber-500/30 p-3 text-center text-xs text-amber-200/90 leading-relaxed">
+                  <strong>One-Time Update Policy:</strong> For competition integrity, this secure link can only be used <strong>ONE TIME</strong>. Once submitted, the link will immediately expire. Please test your link in an incognito window before submitting!
+                </div>
+
+                <div className="text-center pt-2 border-t border-[#e6c594]/20 text-[11px] text-[#a69181]">
+                  <p>HITian Inside &bull; Haldia Institute of Technology</p>
+                  <p className="mt-0.5">Contact: event@hitianinside.in</p>
+                </div>
+              </div>
+            )}
+
+            {/* TEMPLATE 4: RE-UPLOAD REJECTION MAIL (PHOTO, ARTWORK, WRITING) */}
+            {activeTab === 'resubmission_request' && (
+              <div className="bg-[#170409] text-[#fdfbf7] p-6 sm:p-8 space-y-6">
+                <div className="border-b border-[#e6c594]/30 pb-4">
+                  <span className="inline-block px-2.5 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[11px] font-bold uppercase tracking-wider mb-2">
+                    Action Required &bull; Submission Re-upload
+                  </span>
+                  <h3 className="text-xl font-black text-[#fdfbf7] tracking-tight uppercase">
+                    Action Required: Re-upload Your Submission
+                  </h3>
+                  <p className="text-xs text-[#e6d7c3] mt-1.5 leading-relaxed">
+                    Dear <strong>Arjun Sen</strong>, thank you for participating in <strong>{eventTitle}</strong> under the <strong>Photography</strong> domain (Registration Pass: <code className="text-[#e6c594] font-bold">HIT-NAV-4821</code>).
+                  </p>
+                </div>
+
+                {/* REJECTION REASON BOX */}
+                <div className="bg-rose-500/15 border-l-4 border-rose-500 p-4 space-y-1">
+                  <div className="text-rose-300 font-bold text-xs uppercase tracking-wide">
+                    Reason Why Your Submission Was Rejected:
+                  </div>
+                  <p className="text-sm font-bold text-rose-100 leading-snug pt-1">
+                    &ldquo;Against the rule you cannot upload collage&rdquo;
+                  </p>
+                </div>
+
+                {/* GUIDELINES BOX */}
+                <div className="bg-[#240710] border border-[#e6c594]/30 p-4 sm:p-5 space-y-3">
+                  <h4 className="text-xs font-black text-[#e6c594] uppercase tracking-wider">
+                    Important Re-upload Guidelines:
+                  </h4>
+                  <div className="space-y-2.5 text-xs text-[#fdfbf7]">
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[#800020] border border-[#e6c594] text-[#e6c594] font-black text-[10px] flex items-center justify-center shrink-0">1</span>
+                      <span><strong>Photo Not Uploaded:</strong> Ensure you upload a clear, high-resolution original photograph or artwork image.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[#800020] border border-[#e6c594] text-[#e6c594] font-black text-[10px] flex items-center justify-center shrink-0">2</span>
+                      <span><strong>No Collages Allowed:</strong> Against competition rules, you cannot upload collages or multi-photo grids. Only single original submissions are accepted.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[#800020] border border-[#e6c594] text-[#e6c594] font-black text-[10px] flex items-center justify-center shrink-0">3</span>
+                      <span><strong>Avoid File Position Swaps:</strong> Ensure you are uploading your actual entry photo/file, NOT your UPI payment screenshot proof.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[#800020] border border-[#e6c594] text-[#e6c594] font-black text-[10px] flex items-center justify-center shrink-0">4</span>
+                      <span>Supported file formats include JPEG, PNG, WEBP, and PDF documents.</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ACTION BUTTON */}
+                <div className="text-center py-2">
+                  <a
+                    href="#"
+                    onClick={(e) => e.preventDefault()}
+                    className="inline-block px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-black text-xs uppercase tracking-wider border border-amber-300 shadow-md"
+                  >
+                    Click Here to Re-upload Your Submission &rarr;
+                  </a>
+                  <p className="text-[10px] text-amber-300 font-mono mt-2 underline">
+                    https://hitianinside.in/submissions/reupload?submissionId=...&token=...&utm_source=email_resubmission
+                  </p>
+                </div>
+
+                {/* ONE-TIME POLICY WARNING */}
+                <div className="bg-amber-500/10 border border-amber-500/30 p-3 text-center text-xs text-amber-200/90 leading-relaxed">
+                  <strong>One-Time Re-upload Policy:</strong> For competition integrity, this secure link can only be used <strong>ONE TIME</strong>. Once submitted, your replacement entry will be permanently locked and sent straight to our judges for final review.
+                </div>
+
+                <div className="text-center pt-2 border-t border-[#e6c594]/20 text-[11px] text-[#a69181]">
+                  <p>HITian Inside &bull; Haldia Institute of Technology</p>
+                  <p className="mt-0.5">Contact: event@hitianinside.in</p>
                 </div>
               </div>
             )}

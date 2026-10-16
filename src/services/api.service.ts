@@ -666,6 +666,34 @@ export async function updatePaymentStatusApi(
   return data;
 }
 
+export async function updatePostingExcelApi(
+  submissionId: string,
+  params: {
+    postingStatus?: 'QUALIFIED' | 'POSTED' | 'DISQUALIFIED' | 'MAIL_SENT' | null;
+    instagramPostUrl?: string | null;
+    isDriveNotPublic?: boolean;
+    isDriveNotPublicReason?: string | null;
+    moveToPostingExcel?: boolean;
+  }
+): Promise<ApiResponse<SubmissionItem>> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}/posting-excel`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || ''}`
+    },
+    body: JSON.stringify(params)
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update posting details');
+  clearApiCache('submissions');
+  return data;
+}
+
 export async function toggleCouponCollectedApi(
   submissionId: string,
   couponCollected: boolean
@@ -703,6 +731,169 @@ export async function deleteCertificateApi(
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to remove certificate');
+  clearApiCache('submissions');
+  return data;
+}
+
+export async function requestDriveLinkUpdateEmailApi(
+  submissionId: string
+): Promise<ApiResponse<SubmissionItem> & { updateUrl?: string }> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}/request-drive-update`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || ''}`
+    }
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to send Drive link update email');
+  clearApiCache('submissions');
+  return data;
+}
+
+export async function verifyDriveLinkUpdateTokenApi(params: {
+  submissionId?: string;
+  ticketId?: string;
+  token: string;
+  utm_source: string;
+}): Promise<ApiResponse<{
+  ticketId: string;
+  fullName: string;
+  eventTitle: string;
+  domainTitle?: string;
+  currentLink?: string;
+  driveLinkUpdated: boolean;
+  driveLinkUpdatedAt?: string;
+}>> {
+  const baseUrl = await getApiBaseUrl();
+  const query = new URLSearchParams();
+  if (params.submissionId) query.set('submissionId', params.submissionId);
+  if (params.ticketId) query.set('ticketId', params.ticketId);
+  query.set('token', params.token);
+  query.set('utm_source', params.utm_source);
+
+  const res = await fetch(`${baseUrl}/submissions/drive-update/verify?${query.toString()}`, {
+    cache: 'no-store'
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    const error: any = new Error(data.message || 'Failed to verify update link');
+    error.errorCode = data.errorCode;
+    error.status = res.status;
+    error.data = data;
+    throw error;
+  }
+  return data;
+}
+
+export async function submitDriveLinkUpdateApi(payload: {
+  submissionId?: string;
+  ticketId?: string;
+  token: string;
+  utm_source: string;
+  newDriveLink: string;
+}): Promise<ApiResponse<{ ticketId: string; updatedLink: string; updatedAt: string }>> {
+  const baseUrl = await getApiBaseUrl();
+
+  const res = await fetch(`${baseUrl}/submissions/drive-update/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    const error: any = new Error(data.message || 'Failed to submit updated link');
+    error.errorCode = data.errorCode;
+    error.status = res.status;
+    throw error;
+  }
+  clearApiCache('submissions');
+  return data;
+}
+
+export async function requestResubmissionEmailApi(
+  submissionId: string,
+  rejectionReason: string
+): Promise<ApiResponse<SubmissionItem> & { updateUrl?: string }> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}/request-resubmission`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || ''}`
+    },
+    body: JSON.stringify({ rejectionReason })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to send resubmission email');
+  clearApiCache('submissions');
+  return data;
+}
+
+export async function verifyResubmissionTokenApi(params: {
+  submissionId?: string;
+  ticketId?: string;
+  token: string;
+  utm_source: string;
+}): Promise<ApiResponse<{
+  ticketId: string;
+  fullName: string;
+  eventTitle: string;
+  domainTitle?: string;
+  rejectionReason?: string;
+  resubmissionCompleted: boolean;
+  resubmissionCompletedAt?: string;
+}>> {
+  const baseUrl = await getApiBaseUrl();
+  const query = new URLSearchParams();
+  if (params.submissionId) query.set('submissionId', params.submissionId);
+  if (params.ticketId) query.set('ticketId', params.ticketId);
+  query.set('token', params.token);
+  query.set('utm_source', params.utm_source);
+
+  const res = await fetch(`${baseUrl}/submissions/resubmission/verify?${query.toString()}`, {
+    cache: 'no-store'
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    const error: any = new Error(data.message || 'Failed to verify re-upload link');
+    error.errorCode = data.errorCode;
+    error.status = res.status;
+    error.data = data;
+    throw error;
+  }
+  return data;
+}
+
+export async function submitResubmissionFileApi(
+  formData: FormData
+): Promise<ApiResponse<{ ticketId: string; fileName: string; completedAt: string; fileUrl: string }>> {
+  const baseUrl = await getApiBaseUrl();
+
+  const res = await fetch(`${baseUrl}/submissions/resubmission/submit`, {
+    method: 'POST',
+    body: formData
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    const error: any = new Error(data.message || 'Failed to submit replacement file');
+    error.errorCode = data.errorCode;
+    error.status = res.status;
+    throw error;
+  }
   clearApiCache('submissions');
   return data;
 }

@@ -23,6 +23,7 @@ import {
 import { EventItem, EventStatus } from '../../types/event.types';
 import { SubmissionItem } from '../../types/submission.types';
 import EmailPreviewModal from '../../components/EmailPreviewModal';
+import MongoProgressBar from '../../components/MongoProgressBar';
 import { 
   Lock, 
   LogOut, 
@@ -60,7 +61,8 @@ import {
   Search,
   Sparkles,
   Building2,
-  GraduationCap
+  GraduationCap,
+  FileSpreadsheet
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -489,8 +491,19 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white relative">
       <AdminNavbar />
+
+      {/* Centered Modal Progress Bar with blurred backdrop */}
+      {loading && (
+        <MongoProgressBar 
+          asModal={true}
+          theme="light" 
+          message="Loading data from MongoDB..." 
+          subMessage="Fetching events, registrations & live analytics"
+          estimatedSeconds={3.5}
+        />
+      )}
 
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
@@ -782,9 +795,8 @@ export default function AdminDashboardPage() {
           </div>
 
           {loading ? (
-            <div className="py-16 text-center text-slate-400">
-              <div className="inline-block w-6 h-6 border-2 border-slate-900 border-t-transparent animate-spin mb-2" />
-              <p className="text-xs font-semibold">Loading event catalog...</p>
+            <div className="py-12 text-center text-slate-400">
+              <p className="text-xs font-semibold animate-pulse">Syncing events catalog...</p>
             </div>
           ) : filteredEventsDirectory.length === 0 ? (
             <div className="py-12 text-center text-slate-500 border border-dashed border-slate-300">
@@ -880,6 +892,17 @@ export default function AdminDashboardPage() {
                         <Users className="w-3.5 h-3.5" />
                         <span>View Submissions ({subsCount})</span>
                       </Link>
+
+                      {isNavroopam && (
+                        <Link
+                          href={`/admin/events/${eventId}/posting-excel`}
+                          className="px-3.5 py-2 text-xs font-bold inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition-colors"
+                          title="Navroopam Posting Excel Review & Confirmation Sheet"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          <span>Posting Excel</span>
+                        </Link>
+                      )}
 
                       <button
                         type="button"
