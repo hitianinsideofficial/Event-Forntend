@@ -898,5 +898,32 @@ export async function submitResubmissionFileApi(
   return data;
 }
 
+export interface BrevoMailStatsData {
+  credits: number;
+  totalLimit: number;
+  used: number;
+  dateKey: string;
+  resetsAt: string;
+  email: string;
+}
+
+export async function fetchBrevoMailStatsApi(): Promise<ApiResponse<BrevoMailStatsData>> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? localStorage.getItem('hi_admin_token') : null;
+
+  const res = await fetch(`${baseUrl}/admin/mail-stats`, {
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    },
+    cache: 'no-store'
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to fetch Brevo mail quota');
+  }
+  return data;
+}
+
 
 

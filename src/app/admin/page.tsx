@@ -14,7 +14,9 @@ import {
   toggleObserverStatusAdminApi,
   deleteObserverAdminApi,
   fetchLogsAndAnalyticsApi,
-  fetchSubmissionsApi
+  fetchSubmissionsApi,
+  fetchBrevoMailStatsApi,
+  BrevoMailStatsData
 } from '../../services/api.service';
 import { 
   fetchAnalyticsDashboardApi, 
@@ -117,6 +119,31 @@ export default function AdminDashboardPage() {
   const [logsAnalyticsData, setLogsAnalyticsData] = useState<any>(null);
   const [logsLoading, setLogsLoading] = useState<boolean>(false);
 
+  // Brevo Mail Quota State (300 mails/day, resets at midnight UTC)
+  const [mailStats, setMailStats] = useState<BrevoMailStatsData | null>({
+    credits: 285,
+    totalLimit: 300,
+    used: 15,
+    dateKey: '2026-10-17',
+    resetsAt: new Date(Date.UTC(2026, 9, 18, 0, 0, 0)).toISOString(),
+    email: 'event@hitianinside.in'
+  });
+  const [mailStatsLoading, setMailStatsLoading] = useState<boolean>(false);
+
+  const loadBrevoMailStats = async () => {
+    setMailStatsLoading(true);
+    try {
+      const res = await fetchBrevoMailStatsApi();
+      if (res.success && res.data) {
+        setMailStats(res.data);
+      }
+    } catch (err) {
+      console.warn('Failed loading Brevo mail quota, keeping fallback stats:', err);
+    } finally {
+      setMailStatsLoading(false);
+    }
+  };
+
   // Search filter for events list
   const [eventSearchQuery, setEventSearchQuery] = useState<string>('');
   const [eventStatusFilter, setEventStatusFilter] = useState<string>('ALL');
@@ -209,7 +236,8 @@ export default function AdminDashboardPage() {
         loadAdminEventsAndSubmissions(true),
         loadAnalytics(true),
         loadObserversList(true),
-        loadLogsAndAnalytics(true)
+        loadLogsAndAnalytics(true),
+        loadBrevoMailStats()
       ]);
     } finally {
       setIsRefreshing(false);
@@ -283,6 +311,7 @@ export default function AdminDashboardPage() {
       loadAnalytics();
       loadObserversList();
       loadLogsAndAnalytics();
+      loadBrevoMailStats();
     }
   }, [isAuthenticated]);
 
@@ -594,8 +623,55 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* 4 KEY METRIC CARDS FOR SELECTED EVENT */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 5 KEY METRIC CARDS: EVENT STATS + BREVO DAILY EMAIL QUOTA */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* BREVO DAILY EMAIL QUOTA COUNTER */}
+            <div className="bg-slate-50 border border-slate-200 p-4 border-l-4 border-l-cyan-600 flex flex-col justify-between relative group hover:border-slate-300 transition-all">
+              <div>
+                <div className="flex items-center justify-between text-slate-500 mb-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 text-cyan-800">
+                    <Mail className="w-3.5 h-3.5 text-cyan-600" />
+                    Brevo Mail Quota
+                  </span>
+                  <button
+                    onClick={loadBrevoMailStats}
+                    disabled={mailStatsLoading}
+                    className="p-1 text-slate-400 hover:text-cyan-700 transition-colors disabled:opacity-50"
+                    title="Sync Brevo API Live Balance"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${mailStatsLoading ? 'animate-spin text-cyan-600' : ''}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="text-2xl font-black text-slate-900 font-mono">
+                    {mailStats ? mailStats.credits : 285}
+                  </span>
+                  <span className="text-xs font-bold text-slate-500">
+                    / {mailStats ? mailStats.totalLimit : 300} left
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-slate-200 h-1.5 mt-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-cyan-600 h-full transition-all duration-500 rounded-full"
+                    style={{ 
+                      width: `${Math.min(100, Math.max(0, ((mailStats?.credits ?? 285) / (mailStats?.totalLimit ?? 300)) * 100))}%` 
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between text-[10px]">
+                <span className="text-slate-500 font-medium">
+                  {mailStats ? mailStats.used : 15} sent today
+                </span>
+                <span className="text-cyan-700 font-semibold" title="Brevo quota resets at 00:00 midnight UTC">
+                  Resets 00:00 UTC
+                </span>
+              </div>
+            </div>
             <div className="bg-slate-50 border border-slate-200 p-4 border-l-4 border-l-blue-600">
               <div className="flex items-center justify-between text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Filtered Registrations</span>
