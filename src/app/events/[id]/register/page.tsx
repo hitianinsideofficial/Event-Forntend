@@ -722,7 +722,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       if (isNavroopam) {
         combinedAnswers['Registration Fee'] = '₹9.00 INR';
         combinedAnswers['Transaction UID'] = navroopamUtr.trim();
-        combinedAnswers['Selected Payee'] = 'Ayush Raj (Ayushraj31599@oksbi)';
+        combinedAnswers['Selected Payee'] = 'Ayush Raj (9135444297@ibl)';
         combinedAnswers['Payment Status'] = 'PAID (₹9.00)';
       }
 
@@ -1894,35 +1894,65 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                         <div className="space-y-3">
                           <div className="space-y-1.5">
                             <span className="text-[11px] font-semibold text-[#a69181] block">Official UPI Payee</span>
-                            <div className="p-2.5 rounded-xl border border-[#e6c594] bg-[#800020]/60 text-white font-bold ring-1 ring-[#e6c594]/60 text-xs flex items-center justify-between">
+                            <div className="p-2.5 rounded-xl border border-[#e6c594] bg-[#800020]/60 text-white font-bold ring-1 ring-[#e6c594]/60 text-xs flex items-center justify-between gap-2">
                               <div>
                                 <span className="block text-white font-bold">Ayush Raj</span>
-                                <span className="text-[10px] text-[#e6c594] font-mono block">Ayushraj31599@oksbi</span>
+                                <span className="text-[11px] text-[#e6c594] font-mono block select-all tracking-wide">9135444297@ibl</span>
                               </div>
-                              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-sans font-bold">
-                                Verified
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard?.writeText('9135444297@ibl');
+                                    alert('UPI ID (9135444297@ibl) copied to clipboard!');
+                                  }}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[#e6c594] border border-[#e6c594]/40 font-mono transition-colors"
+                                  title="Copy UPI ID"
+                                >
+                                  Copy ID
+                                </button>
+                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-sans font-bold">
+                                  Verified
+                                </span>
+                              </div>
                             </div>
                           </div>
 
                           {/* QR Card with Semi-Opaque Blur Overlay until user adds file/link */}
-                          <div className="relative flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl max-w-[210px] mx-auto text-center shadow-xl overflow-hidden">
-                            <QRCodeSVG 
-                              value="upi://pay?pa=Ayushraj31599@oksbi&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
-                              size={135} 
-                              className={!(submissionFile || (selectedDomainObj.isDriveLinkRequired && driveReelUrl.trim())) ? 'blur-[5px] select-none opacity-40 transition-all' : 'transition-all'}
-                            />
-                            <span className="font-mono text-[11px] font-bold text-black mt-1.5 truncate max-w-full">
-                              Ayushraj31599@oksbi
-                            </span>
-                            <span className="text-[11px] font-black text-emerald-700 font-mono">
-                              Fee: ₹9.00 INR
-                            </span>
+                          <div className="relative flex flex-col items-center justify-center p-4 bg-gradient-to-b from-[#22070e] to-black rounded-2xl max-w-[240px] mx-auto text-center shadow-2xl overflow-hidden border border-[#e6c594]/40">
+                            {/* Custom Header Badge */}
+                            <div className="mb-2 px-2.5 py-0.5 rounded-full bg-[#5f259f]/40 border border-[#9b51e0]/40 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                              <span className="text-[10px] text-white font-medium">Scan with Any UPI App</span>
+                            </div>
+
+                            {/* Cropped QR Code Container */}
+                            <div className="p-2 bg-black rounded-xl border border-white/10 shadow-inner">
+                              <img 
+                                src="/phonepe_qr_cropped.png" 
+                                alt="PhonePe QR - Ayush Raj"
+                                className={`w-44 h-44 rounded-lg object-contain ${!(submissionFile || (selectedDomainObj.isDriveLinkRequired && driveReelUrl.trim())) ? 'blur-[5px] select-none opacity-40 transition-all' : 'transition-all'}`}
+                              />
+                            </div>
+
+                            {/* Custom Note / Payee Details */}
+                            <div className="mt-2.5 w-full space-y-1 text-center">
+                              <div className="flex items-center justify-between px-1">
+                                <span className="text-[11px] font-semibold text-white">Ayush Raj</span>
+                                <span className="text-[11px] font-black text-emerald-400 font-mono">
+                                  ₹9.00 INR
+                                </span>
+                              </div>
+                              <p className="text-[9.5px] text-[#e6c594]/80 leading-tight">
+                                Mention <span className="text-white font-mono font-bold">"Navroopam Registration"</span> in UPI payment note
+                              </p>
+                            </div>
+
                             <a 
-                              href="upi://pay?pa=Ayushraj31599@oksbi&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
-                              className="mt-1.5 text-[10px] px-2.5 py-1 bg-black text-white font-bold rounded-md inline-flex items-center gap-1 md:hidden"
+                              href="upi://pay?pa=9135444297@ibl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
+                              className="mt-2.5 text-[10px] w-full py-1.5 bg-[#5f259f] hover:bg-[#4d1d82] text-white font-bold rounded-lg inline-flex items-center justify-center gap-1 transition-colors shadow-md"
                             >
-                              <span>Open in UPI App ↗</span>
+                              <span>Pay via UPI / PhonePe App ↗</span>
                             </a>
 
                             {/* Opaque Overlay Layer when file/link is not yet uploaded */}
