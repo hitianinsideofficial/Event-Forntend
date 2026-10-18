@@ -1906,23 +1906,23 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                           </div>
 
                           {/* QR Card with Semi-Opaque Blur Overlay until user adds file/link */}
-                          <div className="relative flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl max-w-[210px] mx-auto text-center shadow-xl overflow-hidden">
-                            <QRCodeSVG 
-                              value="upi://pay?pa=Ayushraj31599@oksbi&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
-                              size={135} 
-                              className={!(submissionFile || (selectedDomainObj.isDriveLinkRequired && driveReelUrl.trim())) ? 'blur-[5px] select-none opacity-40 transition-all' : 'transition-all'}
+                          <div className="relative flex flex-col items-center justify-center p-3.5 bg-black rounded-2xl max-w-[220px] mx-auto text-center shadow-xl overflow-hidden border border-[#e6c594]/30">
+                            <img 
+                              src="/phonepe_qr.png" 
+                              alt="PhonePe QR - Ayush Raj"
+                              className={`w-full h-auto rounded-xl max-w-[190px] object-contain ${!(submissionFile || (selectedDomainObj.isDriveLinkRequired && driveReelUrl.trim())) ? 'blur-[5px] select-none opacity-40 transition-all' : 'transition-all'}`}
                             />
-                            <span className="font-mono text-[11px] font-bold text-black mt-1.5 truncate max-w-full">
-                              Ayushraj31599@oksbi
-                            </span>
-                            <span className="text-[11px] font-black text-emerald-700 font-mono">
-                              Fee: ₹9.00 INR
-                            </span>
+                            <div className="mt-2 flex items-center justify-between w-full px-1">
+                              <span className="text-[11px] font-mono text-[#a69181]">Ayush Raj</span>
+                              <span className="text-[11px] font-black text-emerald-400 font-mono">
+                                Fee: ₹9.00 INR
+                              </span>
+                            </div>
                             <a 
                               href="upi://pay?pa=Ayushraj31599@oksbi&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
-                              className="mt-1.5 text-[10px] px-2.5 py-1 bg-black text-white font-bold rounded-md inline-flex items-center gap-1 md:hidden"
+                              className="mt-2 text-[10px] w-full py-1.5 bg-[#5f259f] hover:bg-[#4d1d82] text-white font-bold rounded-lg inline-flex items-center justify-center gap-1 transition-colors"
                             >
-                              <span>Open in UPI App ↗</span>
+                              <span>Pay via UPI / PhonePe App ↗</span>
                             </a>
 
                             {/* Opaque Overlay Layer when file/link is not yet uploaded */}
