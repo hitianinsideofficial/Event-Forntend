@@ -1894,14 +1894,27 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                         <div className="space-y-3">
                           <div className="space-y-1.5">
                             <span className="text-[11px] font-semibold text-[#a69181] block">Official UPI Payee</span>
-                            <div className="p-2.5 rounded-xl border border-[#e6c594] bg-[#800020]/60 text-white font-bold ring-1 ring-[#e6c594]/60 text-xs flex items-center justify-between">
+                            <div className="p-2.5 rounded-xl border border-[#e6c594] bg-[#800020]/60 text-white font-bold ring-1 ring-[#e6c594]/60 text-xs flex items-center justify-between gap-2">
                               <div>
                                 <span className="block text-white font-bold">Ayush Raj</span>
-                                <span className="text-[10px] text-[#e6c594] font-mono block">9135444297@ibl</span>
+                                <span className="text-[11px] text-[#e6c594] font-mono block select-all tracking-wide">9135444297@ibl</span>
                               </div>
-                              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-sans font-bold">
-                                Verified
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard?.writeText('9135444297@ibl');
+                                    alert('UPI ID (9135444297@ibl) copied to clipboard!');
+                                  }}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[#e6c594] border border-[#e6c594]/40 font-mono transition-colors"
+                                  title="Copy UPI ID"
+                                >
+                                  Copy ID
+                                </button>
+                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-sans font-bold">
+                                  Verified
+                                </span>
+                              </div>
                             </div>
                           </div>
 
