@@ -722,7 +722,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       if (isNavroopam) {
         combinedAnswers['Registration Fee'] = '₹9.00 INR';
         combinedAnswers['Transaction UID'] = navroopamUtr.trim();
-        combinedAnswers['Selected Payee'] = 'Ayush Raj (Ayushraj31599@oksbi)';
+        combinedAnswers['Selected Payee'] = 'Ayush Raj (9135444297@ibl)';
         combinedAnswers['Payment Status'] = 'PAID (₹9.00)';
       }
 
@@ -1897,7 +1897,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                             <div className="p-2.5 rounded-xl border border-[#e6c594] bg-[#800020]/60 text-white font-bold ring-1 ring-[#e6c594]/60 text-xs flex items-center justify-between">
                               <div>
                                 <span className="block text-white font-bold">Ayush Raj</span>
-                                <span className="text-[10px] text-[#e6c594] font-mono block">Ayushraj31599@oksbi</span>
+                                <span className="text-[10px] text-[#e6c594] font-mono block">9135444297@ibl</span>
                               </div>
                               <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-sans font-bold">
                                 Verified
@@ -1919,7 +1919,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                               </span>
                             </div>
                             <a 
-                              href="upi://pay?pa=Ayushraj31599@oksbi&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
+                              href="upi://pay?pa=9135444297@ibl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
                               className="mt-2 text-[10px] w-full py-1.5 bg-[#5f259f] hover:bg-[#4d1d82] text-white font-bold rounded-lg inline-flex items-center justify-center gap-1 transition-colors"
                             >
                               <span>Pay via UPI / PhonePe App ↗</span>
