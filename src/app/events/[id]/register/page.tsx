@@ -1919,21 +1919,38 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                           </div>
 
                           {/* QR Card with Semi-Opaque Blur Overlay until user adds file/link */}
-                          <div className="relative flex flex-col items-center justify-center p-3.5 bg-black rounded-2xl max-w-[220px] mx-auto text-center shadow-xl overflow-hidden border border-[#e6c594]/30">
-                            <img 
-                              src="/phonepe_qr.png" 
-                              alt="PhonePe QR - Ayush Raj"
-                              className={`w-full h-auto rounded-xl max-w-[190px] object-contain ${!(submissionFile || (selectedDomainObj.isDriveLinkRequired && driveReelUrl.trim())) ? 'blur-[5px] select-none opacity-40 transition-all' : 'transition-all'}`}
-                            />
-                            <div className="mt-2 flex items-center justify-between w-full px-1">
-                              <span className="text-[11px] font-mono text-[#a69181]">Ayush Raj</span>
-                              <span className="text-[11px] font-black text-emerald-400 font-mono">
-                                Fee: ₹9.00 INR
-                              </span>
+                          <div className="relative flex flex-col items-center justify-center p-4 bg-gradient-to-b from-[#22070e] to-black rounded-2xl max-w-[240px] mx-auto text-center shadow-2xl overflow-hidden border border-[#e6c594]/40">
+                            {/* Custom Header Badge */}
+                            <div className="mb-2 px-2.5 py-0.5 rounded-full bg-[#5f259f]/40 border border-[#9b51e0]/40 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                              <span className="text-[10px] text-white font-medium">Scan with Any UPI App</span>
                             </div>
+
+                            {/* Cropped QR Code Container */}
+                            <div className="p-2 bg-black rounded-xl border border-white/10 shadow-inner">
+                              <img 
+                                src="/phonepe_qr_cropped.png" 
+                                alt="PhonePe QR - Ayush Raj"
+                                className={`w-44 h-44 rounded-lg object-contain ${!(submissionFile || (selectedDomainObj.isDriveLinkRequired && driveReelUrl.trim())) ? 'blur-[5px] select-none opacity-40 transition-all' : 'transition-all'}`}
+                              />
+                            </div>
+
+                            {/* Custom Note / Payee Details */}
+                            <div className="mt-2.5 w-full space-y-1 text-center">
+                              <div className="flex items-center justify-between px-1">
+                                <span className="text-[11px] font-semibold text-white">Ayush Raj</span>
+                                <span className="text-[11px] font-black text-emerald-400 font-mono">
+                                  ₹9.00 INR
+                                </span>
+                              </div>
+                              <p className="text-[9.5px] text-[#e6c594]/80 leading-tight">
+                                Mention <span className="text-white font-mono font-bold">"Navroopam Registration"</span> in UPI payment note
+                              </p>
+                            </div>
+
                             <a 
                               href="upi://pay?pa=9135444297@ibl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
-                              className="mt-2 text-[10px] w-full py-1.5 bg-[#5f259f] hover:bg-[#4d1d82] text-white font-bold rounded-lg inline-flex items-center justify-center gap-1 transition-colors"
+                              className="mt-2.5 text-[10px] w-full py-1.5 bg-[#5f259f] hover:bg-[#4d1d82] text-white font-bold rounded-lg inline-flex items-center justify-center gap-1 transition-colors shadow-md"
                             >
                               <span>Pay via UPI / PhonePe App ↗</span>
                             </a>
