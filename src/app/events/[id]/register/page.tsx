@@ -722,7 +722,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       if (isNavroopam) {
         combinedAnswers['Registration Fee'] = '₹9.00 INR';
         combinedAnswers['Transaction UID'] = navroopamUtr.trim();
-        combinedAnswers['Selected Payee'] = 'Ayush Raj (9135444297@ibl)';
+        combinedAnswers['Selected Payee'] = 'Srijita Bandyopadhyay (srijitab.2005@oksbi)';
         combinedAnswers['Payment Status'] = 'PAID (₹9.00)';
       }
 
@@ -1573,9 +1573,9 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
                   {/* Visual UPI Payment QR Code */}
                   <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 border-[#ff9933] max-w-xs mx-auto shadow-2xl">
-                    <QRCodeSVG value={`upi://pay?pa=hitianinside@upi&pn=HITian%20Inside&am=${totalPratidhwaniFee}&cu=INR&tn=Pratidhwani%20Registration`} size={160} />
+                    <QRCodeSVG value={`upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=${totalPratidhwaniFee}&cu=INR&tn=Pratidhwani%20Registration`} size={160} />
                     <span className="font-mono text-xs font-bold text-black mt-2">
-                      UPI ID: hitianinside@upi
+                      UPI ID: srijitab.2005@oksbi
                     </span>
                     <span className="text-[10px] text-gray-600 mt-0.5">Scan using GPay, PhonePe, Paytm, BHIM</span>
                   </div>
@@ -1896,15 +1896,15 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                             <span className="text-[11px] font-semibold text-[#a69181] block">Official UPI Payee</span>
                             <div className="p-2.5 rounded-xl border border-[#e6c594] bg-[#800020]/60 text-white font-bold ring-1 ring-[#e6c594]/60 text-xs flex items-center justify-between gap-2">
                               <div>
-                                <span className="block text-white font-bold">Ayush Raj</span>
-                                <span className="text-[11px] text-[#e6c594] font-mono block select-all tracking-wide">9135444297@ibl</span>
+                                <span className="block text-white font-bold">Srijita Bandyopadhyay</span>
+                                <span className="text-[11px] text-[#e6c594] font-mono block select-all tracking-wide">srijitab.2005@oksbi</span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    navigator.clipboard?.writeText('9135444297@ibl');
-                                    alert('UPI ID (9135444297@ibl) copied to clipboard!');
+                                    navigator.clipboard?.writeText('srijitab.2005@oksbi');
+                                    alert('UPI ID (srijitab.2005@oksbi) copied to clipboard!');
                                   }}
                                   className="text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[#e6c594] border border-[#e6c594]/40 font-mono transition-colors"
                                   title="Copy UPI ID"
@@ -1930,7 +1930,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                             <div className="p-2 bg-black rounded-xl border border-white/10 shadow-inner">
                               <img 
                                 src="/phonepe_qr_cropped.png" 
-                                alt="PhonePe QR - Ayush Raj"
+                                alt="UPI QR - Srijita Bandyopadhyay"
                                 className={`w-44 h-44 rounded-lg object-contain ${!(submissionFile || (selectedDomainObj.isDriveLinkRequired && driveReelUrl.trim())) ? 'blur-[5px] select-none opacity-40 transition-all' : 'transition-all'}`}
                               />
                             </div>
@@ -1938,7 +1938,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                             {/* Custom Note / Payee Details */}
                             <div className="mt-2.5 w-full space-y-1 text-center">
                               <div className="flex items-center justify-between px-1">
-                                <span className="text-[11px] font-semibold text-white">Ayush Raj</span>
+                                <span className="text-[11px] font-semibold text-white">Srijita Bandyopadhyay</span>
                                 <span className="text-[11px] font-black text-emerald-400 font-mono">
                                   ₹9.00 INR
                                 </span>
@@ -1949,10 +1949,10 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                             </div>
 
                             <a 
-                              href="upi://pay?pa=9135444297@ibl&pn=Ayush%20Raj&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
+                              href="upi://pay?pa=srijitab.2005@oksbi&pn=Srijita%20Bandyopadhyay&am=9.00&cu=INR&tn=NAVROOPAM%20Registration%20Fee"
                               className="mt-2.5 text-[10px] w-full py-1.5 bg-[#5f259f] hover:bg-[#4d1d82] text-white font-bold rounded-lg inline-flex items-center justify-center gap-1 transition-colors shadow-md"
                             >
-                              <span>Pay via UPI / PhonePe App ↗</span>
+                              <span>Pay via UPI / GPay / PhonePe App ↗</span>
                             </a>
 
                             {/* Opaque Overlay Layer when file/link is not yet uploaded */}
