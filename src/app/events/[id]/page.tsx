@@ -379,7 +379,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
                 <div>
                   <h3 className="text-sm font-bold text-[#ff9933]">2. Entry Fee & Payment Steps (RS. 50/- ONLY)</h3>
                   <p className="text-xs text-[#e6d7c3]/90 mt-1">
-                    Registration fee is <strong>RS. 50/- ONLY</strong>. Make payment using the UPI QR Code (`hitianinside@upi`), input your 12-digit Transaction UTR UID & UPI ID, and click Proceed to generate your official digital receipt pass.
+                    Registration fee is <strong>RS. 50/- ONLY</strong>. Make payment using the UPI QR Code (`srijitab.2005@oksbi`), input your 12-digit Transaction UTR UID & UPI ID, and click Proceed to generate your official digital receipt pass.
                   </p>
                 </div>
 
