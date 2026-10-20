@@ -378,13 +378,69 @@ export default function EventSubmissionsPage() {
     return matchesSearch && matchesDomain && matchesTheme && matchesPayment;
   });
 
-  // Summary Metrics
+  // Summary Metrics & QR / Payee Revenue Breakdown
   const paymentStats = {
     total: submissions.length,
     verified: submissions.filter(s => s.paymentStatus === 'VERIFIED' || s.paymentStatus === 'PAID').length,
     pending: submissions.filter(s => !s.paymentStatus || s.paymentStatus === 'PENDING').length,
     rejected: submissions.filter(s => s.paymentStatus === 'REJECTED').length,
   };
+
+  // Helper to extract fee number from string like "₹9.00 INR", "RS. 50/-", or "9"
+  const parseFeeAmount = (feeStr?: string): number => {
+    if (!feeStr) return 0;
+    const match = String(feeStr).match(/(\d+(?:\.\d+)?)/);
+    return match ? parseFloat(match[1]) : 0;
+  };
+
+  // QR / Payee Money Breakdown
+  const payeeBreakdown = React.useMemo(() => {
+    const stats: Record<string, { count: number; verifiedCount: number; pendingCount: number; verifiedAmount: number; totalAmount: number; name: string; upiId: string }> = {};
+
+    submissions.forEach(sub => {
+      const rawPayee = sub.answers?.['Selected Payee'] || sub.answers?.['Payee'] || (isNavroopam ? 'Ayush Raj (9135444297@ibl)' : 'HITian Inside (Default QR)');
+      const key = rawPayee.trim() || 'Unknown Payee';
+      
+      let payeeName = key;
+      let upiId = '';
+      const match = key.match(/^(.*?)\s*\((.*?)\)$/);
+      if (match) {
+        payeeName = match[1].trim();
+        upiId = match[2].trim();
+      }
+
+      if (!stats[key]) {
+        stats[key] = {
+          name: payeeName,
+          upiId: upiId,
+          count: 0,
+          verifiedCount: 0,
+          pendingCount: 0,
+          verifiedAmount: 0,
+          totalAmount: 0
+        };
+      }
+
+      const rawFee = sub.answers?.['Registration Fee'] || sub.answers?.['Payment Amount'] || (isNavroopam ? '9' : '50');
+      const amount = parseFeeAmount(rawFee);
+
+      stats[key].count += 1;
+      stats[key].totalAmount += amount;
+
+      const isVerified = sub.paymentStatus === 'VERIFIED' || sub.paymentStatus === 'PAID';
+      if (isVerified) {
+        stats[key].verifiedCount += 1;
+        stats[key].verifiedAmount += amount;
+      } else if (!sub.paymentStatus || sub.paymentStatus === 'PENDING') {
+        stats[key].pendingCount += 1;
+      }
+    });
+
+    return Object.entries(stats).map(([raw, data]) => ({ raw, ...data }));
+  }, [submissions, isNavroopam]);
+
+  const totalVerifiedRevenue = payeeBreakdown.reduce((sum, p) => sum + p.verifiedAmount, 0);
+  const totalPotentialRevenue = payeeBreakdown.reduce((sum, p) => sum + p.totalAmount, 0);
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white relative">
@@ -526,6 +582,101 @@ export default function EventSubmissionsPage() {
                 {checkInResult.message}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* QR CODE & PAYEE REVENUE BREAKDOWN */}
+        {/* ========================================================= */}
+        <div className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                <QrCode className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <span>QR Code & Payee Revenue Breakdown</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full font-mono">
+                    {payeeBreakdown.length} {payeeBreakdown.length === 1 ? 'QR / Payee' : 'QRs / Payees'}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Total money collected and pending verification split across each UPI QR code / payee.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-lg text-right">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Total Verified</span>
+                <span className="text-sm font-black text-emerald-700 font-mono">₹{totalVerifiedRevenue.toFixed(2)}</span>
+              </div>
+              <div className="w-[1px] h-7 bg-slate-200"></div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">All Entries</span>
+                <span className="text-sm font-black text-slate-800 font-mono">₹{totalPotentialRevenue.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {payeeBreakdown.map((payee, idx) => (
+              <div 
+                key={idx}
+                className="bg-slate-50 hover:bg-slate-100/70 transition-all border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-3 relative overflow-hidden"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Payee / QR Target
+                    </span>
+                    <h4 className="text-sm font-bold text-slate-900 truncate" title={payee.name}>
+                      {payee.name}
+                    </h4>
+                    {payee.upiId && (
+                      <span className="font-mono text-[11px] text-emerald-700 font-semibold block truncate select-all" title={payee.upiId}>
+                        {payee.upiId}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center shrink-0 text-slate-700 shadow-2xs">
+                    <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                  </div>
+                </div>
+
+                {/* Amount Split Cards */}
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
+                  <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                    <span className="text-[10px] font-bold text-emerald-800 uppercase block">Verified Received</span>
+                    <span className="text-base font-black text-emerald-700 font-mono block mt-0.5">
+                      ₹{payee.verifiedAmount.toFixed(2)}
+                    </span>
+                    <span className="text-[9.5px] text-emerald-600 font-medium">
+                      {payee.verifiedCount} {payee.verifiedCount === 1 ? 'payment' : 'payments'} verified
+                    </span>
+                  </div>
+
+                  <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase block">Total Expected</span>
+                    <span className="text-base font-black text-amber-700 font-mono block mt-0.5">
+                      ₹{payee.totalAmount.toFixed(2)}
+                    </span>
+                    <span className="text-[9.5px] text-amber-600 font-medium">
+                      {payee.count} total ({payee.pendingCount} pending)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 font-mono">
+                  <span>Entries routed: <strong className="text-slate-800">{payee.count}</strong></span>
+                  <span>
+                    Success rate: <strong className="text-slate-800">{payee.count > 0 ? Math.round((payee.verifiedCount / payee.count) * 100) : 0}%</strong>
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
