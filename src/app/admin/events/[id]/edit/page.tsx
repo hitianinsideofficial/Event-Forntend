@@ -573,7 +573,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                         name="paymentNote"
                         value={formData.paymentNote}
                         onChange={handleChange}
-                        placeholder="e.g. Navroopam Registration or Pratidhwani Entry"
+                        placeholder="e.g. Navroopam Registration or Event Entry"
                         className="w-full bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white transition-all font-semibold"
                       />
                       <span className="text-[10px] text-slate-400 mt-1 block">

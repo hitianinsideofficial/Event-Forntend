@@ -353,8 +353,7 @@ export default function AdminDashboardPage() {
     return allSubmissions.filter(sub => {
       const matchesId = sub.eventId === selectedAnalyticsEventId;
       const isNavroopamAlias = (selectedAnalyticsEventId.includes('nav') || selectedAnalyticsEventId === '6aca70825588e8009b8e8e83') && (sub.eventId === '6aca70825588e8009b8e8e83' || sub.eventId?.includes('nav') || sub.eventTitle?.toLowerCase().includes('nav'));
-      const isPratidhwaniAlias = (selectedAnalyticsEventId.includes('pratid')) && (sub.eventId?.includes('pratid') || sub.eventTitle?.toLowerCase().includes('pratid'));
-      return matchesId || isNavroopamAlias || isPratidhwaniAlias;
+      return matchesId || isNavroopamAlias;
     });
   }, [allSubmissions, selectedAnalyticsEventId]);
 

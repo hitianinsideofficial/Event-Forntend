@@ -12,29 +12,22 @@ export default function EventCard({ event }: EventCardProps) {
   const { id, _id, title, description, date, organizer, status, mode, theme, isFlagship, bannerUrl, coverUrl, hasAttendance } = event;
   const eventId = id || _id;
 
-  const isPratidhwani = Boolean(
-    eventId === 'pratidhawni' || 
-    eventId === 'pratidhwani' || 
-    title?.toLowerCase().includes('pratid')
-  );
   const isNavroopam = Boolean(
     eventId === '6aca70825588e8009b8e8e83' ||
     eventId?.toLowerCase().includes('nav') ||
     title?.toLowerCase().includes('navroopam') ||
     title?.toLowerCase().includes('navaroopam')
   );
-  const isTricolour = (isFlagship || theme === 'TRICOLOUR' || title.toLowerCase().includes('swaraj')) && !isPratidhwani && !isNavroopam;
+  const isTricolour = (isFlagship || theme === 'TRICOLOUR' || title.toLowerCase().includes('swaraj')) && !isNavroopam;
   const cardImage = coverUrl || bannerUrl;
 
   return (
     <div className={`glass-card flex flex-col justify-between h-full group relative overflow-hidden transition-all ${
       isNavroopam
         ? 'border-2 border-[#e6c594]/70 hover:border-[#e6c594] shadow-xl shadow-[#800020]/25 bg-gradient-to-b from-[#22060e] to-[#160307]'
-        : isPratidhwani
-          ? 'border-2 border-[#ff9933]/60 hover:border-[#ff9933] shadow-lg shadow-[#ff9933]/15'
-          : isTricolour 
-            ? 'border-2 border-[#ff9933]/50 hover:border-[#138808]/80 shadow-lg shadow-[#ff9933]/10' 
-            : 'border border-[#f7f1e5]/10 hover:border-[#e6c594]/50'
+        : isTricolour 
+          ? 'border-2 border-[#ff9933]/50 hover:border-[#138808]/80 shadow-lg shadow-[#ff9933]/10' 
+          : 'border border-[#f7f1e5]/10 hover:border-[#e6c594]/50'
     }`}>
       {/* 4:3 Aspect Ratio Card Cover Image */}
       {cardImage ? (
@@ -48,7 +41,7 @@ export default function EventCard({ event }: EventCardProps) {
         </div>
       ) : (
         <div className={`absolute -right-12 -top-12 w-28 h-28 rounded-full blur-xl transition-all ${
-          isNavroopam ? 'bg-[#e6c594]/30 group-hover:bg-[#800020]/60' : isPratidhwani ? 'bg-[#ff9933]/30 group-hover:bg-[#800020]/40' : isTricolour ? 'bg-[#ff9933]/30 group-hover:bg-[#138808]/40' : 'bg-[#800020]/20 group-hover:bg-[#800020]/40'
+          isNavroopam ? 'bg-[#e6c594]/30 group-hover:bg-[#800020]/60' : isTricolour ? 'bg-[#ff9933]/30 group-hover:bg-[#138808]/40' : 'bg-[#800020]/20 group-hover:bg-[#800020]/40'
         }`} />
       )}
 
@@ -56,17 +49,15 @@ export default function EventCard({ event }: EventCardProps) {
         <div>
           <div className="flex items-center justify-between mb-3 gap-2">
             <span className={`px-3 py-1 text-xs font-semibold rounded-full border truncate ${
-              isPratidhwani
-                ? 'bg-[#800020]/40 text-[#e6c594] border-[#ff9933]/40 font-mono text-[10px]'
-                : isTricolour 
-                  ? 'bg-gradient-to-r from-[#ff9933]/20 via-white/10 to-[#138808]/20 text-[#ff9933] border-[#ff9933]/40' 
-                  : 'bg-[#800020]/25 text-[#e6c594] border-[#e6c594]/30'
+              isTricolour 
+                ? 'bg-gradient-to-r from-[#ff9933]/20 via-white/10 to-[#138808]/20 text-[#ff9933] border-[#ff9933]/40' 
+                : 'bg-[#800020]/25 text-[#e6c594] border-[#e6c594]/30'
             }`}>
-              {isPratidhwani ? 'Tabloid, Media & Literary Club' : (organizer || 'HITian Inside')}
+              {organizer || 'HITian Inside'}
             </span>
             
             <span className="text-xs text-[#e6d7c3]/80 flex items-center gap-1 shrink-0 font-medium">
-              <Calendar className={`w-3.5 h-3.5 ${isTricolour || isPratidhwani ? 'text-[#ff9933]' : 'text-[#e6c594]'}`} />
+              <Calendar className={`w-3.5 h-3.5 ${isTricolour ? 'text-[#ff9933]' : 'text-[#e6c594]'}`} />
               {date}
             </span>
           </div>
@@ -92,21 +83,6 @@ export default function EventCard({ event }: EventCardProps) {
               <Flag className="w-3.5 h-3.5 text-[#ff9933] shrink-0" />
               <span className="text-[10px] font-black tracking-wider uppercase text-white font-mono">
                 🇮🇳 FLAGSHIP ONLINE EVENT
-              </span>
-            </div>
-          )}
-
-          {/* Flagship Trademark Banner for Pratidhwani */}
-          {isPratidhwani && (
-            <div className="mb-3 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#800020]/40 via-amber-500/10 to-[#c41e3a]/40 border border-[#ff9933]/50 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Flag className="w-3.5 h-3.5 text-[#ff9933] shrink-0" />
-                <span className="text-[10px] font-black tracking-wider uppercase text-[#ff9933] font-mono">
-                  OFFLINE FLAGSHIP EVENT
-                </span>
-              </div>
-              <span className="text-[9px] font-mono font-extrabold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
-                RS. 50/- ONLY
               </span>
             </div>
           )}

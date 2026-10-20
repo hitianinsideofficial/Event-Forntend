@@ -100,45 +100,6 @@ The Value Edition is about going beyond celebration and looking at the values th
     ]);
   };
 
-  const loadPratidhawniTemplate = () => {
-    setSelectedPreset('pratidhawni');
-    setFormData(prev => ({
-      ...prev,
-      title: 'PRATIDHWANI',
-      description: `PRATIDHWANI - ONE LINER ... ONE LINER..
-A unit of the Tabloid, Media and Literary Club (HITian Inside).
-
-1. What is Pratidhwani?
-Pratidhwani is the flagship offline celebration of Swaraj-e-Hind at HIT Haldia. It offers an interactive live stage for students to perform, express, paint, and speak on critical youth topics.
-
-2. Event Categories:
-- OPEN MIC: Poetry, Music, Stand-up Comedy, Storytelling
-- YOUTH PARLIAMENT: Parliamentary debate, policy & discussion
-- LIVE ART: Canvas painting, live sketching, and poster creation
-
-3. Registration Fee:
-RS. 50/- ONLY per participant. Includes official digital receipt pass with unique QR_UID ticket for event entrance scanning.
-
-4. Post-Registration WhatsApp Group:
-Upon payment confirmation, participants are instantly routed to the official WhatsApp Group for schedules and rules.`,
-      startDate: '2026-08-15',
-      endDate: '2026-08-15',
-      location: 'Main Campus Grounds & Student Activity Centre, HIT Haldia',
-      organizer: 'HITian Inside • Tabloid, Media & Literary Club',
-      status: 'UPCOMING',
-      mode: 'OFFLINE',
-      theme: 'TRICOLOUR',
-      isFlagship: true,
-      hasAttendance: true,
-      requireFileUpload: false
-    }));
-
-    setHighlights([
-      { title: 'OPEN MIC', description: 'Poetry • Music • Stand-up • Storytelling\nUnleash your voice live on stage.' },
-      { title: 'YOUTH PARLIAMENT', description: 'Debate • Policy • Parliamentary Discussion\nSpeak up and represent the leaders of tomorrow.' },
-      { title: 'LIVE ART', description: 'Painting • Sketching • Poster Art\nExpress freedom and creativity live on canvas.' }
-    ]);
-  };
 
   const resetToBlankTemplate = () => {
     setSelectedPreset('blank');
@@ -307,14 +268,12 @@ Upon payment confirmation, participants are instantly routed to the official Wha
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === 'swaraj') loadSwarajEHindTemplate();
-                else if (val === 'pratidhawni') loadPratidhawniTemplate();
                 else if (val === 'blank') resetToBlankTemplate();
               }}
               className="px-3 py-1.5 bg-white border border-slate-300 text-slate-900 text-xs font-bold outline-none focus:border-slate-900 shadow-sm cursor-pointer"
             >
               <option value="" disabled>✨ Load Event Preset Template...</option>
               <option value="swaraj">🇮🇳 SWARAJ-E-HIND 4.0 (Online Flagship)</option>
-              <option value="pratidhawni">🎭 Pratidhawni (Offline Flagship Paid)</option>
               <option value="blank">🧹 Blank Template (Clear Form)</option>
             </select>
           </div>
@@ -634,7 +593,7 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                       name="paymentNote"
                       value={formData.paymentNote}
                       onChange={handleChange}
-                      placeholder="e.g. Navroopam Registration or Pratidhwani Entry"
+                      placeholder="e.g. Navroopam Registration or Event Entry"
                       className="w-full bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white transition-all font-semibold"
                     />
                     <span className="text-[10px] text-slate-400 mt-1 block">
