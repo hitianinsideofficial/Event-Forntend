@@ -41,6 +41,7 @@ export interface EventItem {
   upiId?: string;
   payeeName?: string;
   registrationFee?: string | number;
+  paymentNote?: string;
   upiQrUrl?: string;
   highlights?: EventHighlight[];
   customFields?: CustomFormField[];
