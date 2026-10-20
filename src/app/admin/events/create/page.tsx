@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AdminNavbar from '../../../../components/AdminNavbar';
 import ImageCropModal from '../../../../components/ImageCropModal';
+import { QRCodeSVG } from 'qrcode.react';
 import { createEventApi } from '../../../../services/api.service';
 import { EventHighlight, EventStatus, EventMode, EventTheme } from '../../../../types/event.types';
-import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, Crop, Calendar, Flag } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, X, Lock, GripVertical, Image as ImageIcon, Crop, Calendar, Flag, QrCode, CreditCard } from 'lucide-react';
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -28,7 +29,11 @@ export default function CreateEventPage() {
     coverUrl: '',
     hasAttendance: true,
     requireFileUpload: false,
-    isHidden: false
+    isHidden: false,
+    upiId: '',
+    payeeName: '',
+    registrationFee: '',
+    upiQrUrl: ''
   });
 
   // Cropper Modal States
@@ -151,7 +156,11 @@ Upon payment confirmation, participants are instantly routed to the official Wha
       coverUrl: '',
       hasAttendance: true,
       requireFileUpload: false,
-      isHidden: false
+      isHidden: false,
+      upiId: '',
+      payeeName: '',
+      registrationFee: '',
+      upiQrUrl: ''
     });
     setHighlights([
       { title: 'Schedule Highlight', description: 'Interactive workshops & live keynotes' }
@@ -546,6 +555,110 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                 />
                 <span>🙈 Keep Hidden from Main Website Catalog</span>
               </label>
+            </div>
+
+            {/* UPI Payee & Dynamic QR Code Configuration */}
+            <div className="space-y-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <QrCode className="w-4 h-4 text-emerald-600" />
+                  <span>UPI Payee & Dynamic QR Code Configuration</span>
+                </h3>
+                <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2 py-0.5 rounded-full">
+                  Auto Generates QR
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                Configure the UPI ID and Payee name for this event. A live dynamic UPI QR code will be generated automatically for participants during registration!
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                      UPI ID (VPA)
+                    </label>
+                    <input 
+                      type="text"
+                      name="upiId"
+                      value={formData.upiId}
+                      onChange={handleChange}
+                      placeholder="e.g. 9135444297@ibl or hitianinside@upi"
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-900 font-mono outline-none focus:border-slate-900 focus:bg-white transition-all font-semibold"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Participants can scan or copy this UPI ID to pay.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                      Official Payee Name
+                    </label>
+                    <input 
+                      type="text"
+                      name="payeeName"
+                      value={formData.payeeName}
+                      onChange={handleChange}
+                      placeholder="e.g. Ayush Raj or Srijita Bandyopadhyay"
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white transition-all font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                      Registration Fee (Optional)
+                    </label>
+                    <input 
+                      type="text"
+                      name="registrationFee"
+                      value={formData.registrationFee}
+                      onChange={handleChange}
+                      placeholder="e.g. 9 or 50 (leave empty if free)"
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-900 font-mono outline-none focus:border-slate-900 focus:bg-white transition-all font-semibold"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Embedded into the UPI QR code so users don't need to manually enter the amount.
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live Dynamic QR Preview */}
+                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <CreditCard className="w-3.5 h-3.5 text-slate-500" />
+                    Live QR Preview
+                  </span>
+
+                  {formData.upiId.trim() ? (
+                    <div className="flex flex-col items-center p-3 bg-white border border-slate-300 rounded-lg shadow-sm">
+                      <QRCodeSVG 
+                        value={`upi://pay?pa=${encodeURIComponent(formData.upiId.trim())}&pn=${encodeURIComponent(formData.payeeName.trim() || formData.title || 'HITian Inside')}${formData.registrationFee.trim() ? `&am=${encodeURIComponent(formData.registrationFee.trim())}` : ''}&cu=INR&tn=${encodeURIComponent(`${formData.title || 'Event'} Registration`)}`}
+                        size={130}
+                      />
+                      <span className="font-mono text-[11px] font-bold text-slate-900 mt-2">
+                        {formData.upiId.trim()}
+                      </span>
+                      {formData.payeeName.trim() && (
+                        <span className="text-[10px] text-slate-500 font-semibold">
+                          {formData.payeeName.trim()}
+                        </span>
+                      )}
+                      {formData.registrationFee.trim() && (
+                        <span className="text-[10px] text-emerald-600 font-mono font-bold mt-0.5">
+                          ₹{formData.registrationFee.trim()} INR
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-300 rounded-lg text-slate-400">
+                      <QrCode className="w-10 h-10 mb-2 opacity-40" />
+                      <span className="text-xs font-semibold">Enter a UPI ID to preview QR</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Custom Highlights */}
