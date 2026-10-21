@@ -44,7 +44,8 @@ import {
   BookOpen,
   Film,
   MailWarning,
-  Mail
+  Mail,
+  Clipboard
 } from 'lucide-react';
 
 type PostingStatusType = 'QUALIFIED' | 'POSTED' | 'DISQUALIFIED' | 'MAIL_SENT' | null;
@@ -923,8 +924,8 @@ export default function NavroopamPostingExcelPage() {
                         {/* Instagram Link Paste & Save */}
                         <td className="p-3 align-top">
                           <div className="space-y-1">
-                            <div className="relative">
-                              <svg className="w-3.5 h-3.5 text-rose-500 absolute left-2 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <div className="relative flex items-center">
+                              <svg className="w-3.5 h-3.5 text-rose-500 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
                                 <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
                                 <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
@@ -937,8 +938,32 @@ export default function NavroopamPostingExcelPage() {
                                   const val = e.target.value;
                                   setInstagramUrls(prev => ({ ...prev, [sub.id]: val }));
                                 }}
-                                className="w-full pl-7 pr-2 py-1.5 text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 outline-none focus:border-rose-600 font-mono transition-colors"
+                                className="w-full pl-7 pr-14 py-1.5 text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 outline-none focus:border-rose-600 font-mono transition-colors"
                               />
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const text = await navigator.clipboard.readText();
+                                    if (text && text.trim()) {
+                                      const cleaned = text.trim();
+                                      setInstagramUrls(prev => ({ ...prev, [sub.id]: cleaned }));
+                                    } else {
+                                      alert('Clipboard is empty or does not contain a link.');
+                                    }
+                                  } catch (err) {
+                                    const manual = window.prompt('Paste your copied Instagram link here:');
+                                    if (manual && manual.trim()) {
+                                      setInstagramUrls(prev => ({ ...prev, [sub.id]: manual.trim() }));
+                                    }
+                                  }
+                                }}
+                                className="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors cursor-pointer rounded-xs"
+                                title="Paste link from clipboard"
+                              >
+                                <Clipboard className="w-2.5 h-2.5" />
+                                <span>Paste</span>
+                              </button>
                             </div>
 
                             {sub.instagramPostUrl && (
