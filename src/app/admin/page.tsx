@@ -403,7 +403,7 @@ export default function AdminDashboardPage() {
     let totalRevenue = 0;
 
     eventWiseFilteredSubmissions.forEach(sub => {
-      const status = sub.paymentStatus || (sub.answers?.['Payment Status']?.includes('PAID') ? 'PAID' : 'PENDING');
+      const status = sub.paymentStatus || 'PENDING';
       if (status === 'VERIFIED') verifiedCount++;
       else if (status === 'PAID') paidCount++;
       else if (status === 'REJECTED') rejectedCount++;

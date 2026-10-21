@@ -376,7 +376,7 @@ export default function EventSubmissionsPage() {
     const matchesDomain = selectedDomainFilter === 'ALL' || sub.answers?.['Selected Domain'] === selectedDomainFilter;
     const matchesTheme = selectedThemeFilter === 'ALL' || sub.answers?.['Selected Theme'] === selectedThemeFilter;
     
-    const computedStatus = sub.paymentStatus || (sub.answers?.['Payment Status']?.includes('PAID') ? 'PAID' : 'PENDING');
+    const computedStatus = sub.paymentStatus || 'PENDING';
     const matchesPayment = selectedPaymentFilter === 'ALL' || computedStatus === selectedPaymentFilter;
 
     return matchesSearch && matchesDomain && matchesTheme && matchesPayment;
@@ -840,7 +840,7 @@ export default function EventSubmissionsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
                   {paginatedSubmissions.map(sub => {
-                    const paymentStatus = sub.paymentStatus || (sub.answers?.['Payment Status']?.includes('PAID') ? 'PAID' : 'PENDING');
+                    const paymentStatus = sub.paymentStatus || 'PENDING';
                     const utr = sub.answers?.['Transaction UID'] || sub.answers?.['UTR Number'] || sub.answers?.['Transaction UID / Txn ID'] || '-';
                     const fee = sub.answers?.['Registration Fee'] || sub.answers?.['Payment Amount'] || (isNavroopam ? '₹9.00' : '-');
                     const payee = sub.answers?.['Selected Payee'] || '-';
@@ -1288,7 +1288,7 @@ export default function EventSubmissionsPage() {
                   ? (sub.files[0].localUrl || sub.files[0].driveLink || null)
                   : null;
                 const isImage = mediaUrl ? /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(mediaUrl) || mediaUrl.includes('cloudinary') || mediaUrl.includes('imagekit') : false;
-                const paymentStatus = sub.paymentStatus || (sub.answers?.['Payment Status']?.includes('PAID') ? 'PAID' : 'PENDING');
+                const paymentStatus = sub.paymentStatus || 'PENDING';
                 const utr = sub.answers?.['Transaction UID'] || sub.answers?.['UTR Number'] || '-';
 
                 return (
