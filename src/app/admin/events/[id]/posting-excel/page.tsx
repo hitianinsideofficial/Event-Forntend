@@ -193,8 +193,14 @@ export default function NavroopamPostingExcelPage() {
   const handleSaveRow = async (subId: string) => {
     setSavingId(subId);
     try {
-      const url = instagramUrls[subId] || '';
-      const status = postingStatuses[subId] || null;
+      const url = (instagramUrls[subId] !== undefined ? instagramUrls[subId] : '').trim();
+      let status = postingStatuses[subId] || null;
+
+      // Automatically change status to POSTED ('Green') when Instagram link is pasted and saved,
+      // exactly like how sending confirmation mail turns it to MAIL_SENT ('Blue')
+      if (url && (!status || status === 'QUALIFIED')) {
+        status = 'POSTED';
+      }
 
       const res = await updatePostingExcelApi(subId, {
         postingStatus: status,
@@ -202,13 +208,16 @@ export default function NavroopamPostingExcelPage() {
       });
 
       if (res.success && res.data) {
+        if (status) {
+          setPostingStatuses(prev => ({ ...prev, [subId]: status }));
+        }
         setSaveSuccessMap(prev => ({ ...prev, [subId]: true }));
         setTimeout(() => {
           setSaveSuccessMap(prev => ({ ...prev, [subId]: false }));
         }, 2500);
 
         // Update main state
-        setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, ...res.data } : s));
+        setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, ...res.data, postingStatus: status || res.data.postingStatus } : s));
       }
     } catch (err: any) {
       alert(err.message || 'Failed to save changes');
