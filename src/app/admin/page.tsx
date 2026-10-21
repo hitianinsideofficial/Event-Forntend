@@ -16,7 +16,8 @@ import {
   fetchLogsAndAnalyticsApi,
   fetchSubmissionsApi,
   fetchBrevoMailStatsApi,
-  BrevoMailStatsData
+  BrevoMailStatsData,
+  updateEventDetailsApi
 } from '../../services/api.service';
 import { 
   fetchAnalyticsDashboardApi, 
@@ -148,6 +149,13 @@ export default function AdminDashboardPage() {
   const [eventSearchQuery, setEventSearchQuery] = useState<string>('');
   const [eventStatusFilter, setEventStatusFilter] = useState<string>('ALL');
 
+  // Payee Edit State
+  const [payeeEvent, setPayeeEvent] = useState<EventItem | null>(null);
+  const [payeeNameInput, setPayeeNameInput] = useState<string>('');
+  const [upiIdInput, setUpiIdInput] = useState<string>('');
+  const [paymentNoteInput, setPaymentNoteInput] = useState<string>('');
+  const [isUpdatingPayee, setIsUpdatingPayee] = useState<boolean>(false);
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
@@ -243,6 +251,56 @@ export default function AdminDashboardPage() {
       ]);
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleOpenPayeeModal = (ev: EventItem) => {
+    setPayeeEvent(ev);
+    setPayeeNameInput(ev.payeeName || 'SANCHAYAN MAITI');
+    setUpiIdInput(ev.upiId || '9732741560@ybl');
+    setPaymentNoteInput(ev.paymentNote || 'Navroopam v7.0 Registration Fee');
+  };
+
+  const handleSavePayee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payeeEvent) return;
+
+    if (!payeeNameInput.trim() || !upiIdInput.trim()) {
+      alert('Payee Name and UPI ID are required.');
+      return;
+    }
+
+    const eventId = (payeeEvent as any)._id || payeeEvent.id;
+    setIsUpdatingPayee(true);
+    try {
+      const res = await updateEventDetailsApi(eventId, {
+        payeeName: payeeNameInput.trim(),
+        upiId: upiIdInput.trim(),
+        paymentNote: paymentNoteInput.trim()
+      });
+
+      if (res.success && res.data) {
+        alert('Active payee updated successfully! Live portal QR code updated.');
+        setEvents(prev => prev.map(ev => {
+          const currentId = (ev as any)._id || ev.id;
+          if (currentId === eventId) {
+            return {
+              ...ev,
+              payeeName: payeeNameInput.trim(),
+              upiId: upiIdInput.trim(),
+              paymentNote: paymentNoteInput.trim()
+            };
+          }
+          return ev;
+        }));
+        setPayeeEvent(null);
+      } else {
+        alert(res.message || 'Failed to update payee details');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update payee details');
+    } finally {
+      setIsUpdatingPayee(false);
     }
   };
 
@@ -991,6 +1049,16 @@ export default function AdminDashboardPage() {
                         <span>Email Previews</span>
                       </button>
 
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPayeeModal(ev)}
+                        className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title="Change active payee and UPI QR code"
+                      >
+                        <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Payee / QR</span>
+                      </button>
+
                       <Link 
                         href={`/admin/events/${eventId}/edit`}
                         className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
@@ -1154,6 +1222,116 @@ export default function AdminDashboardPage() {
           onClose={() => setPreviewEvent(null)}
           event={previewEvent}
         />
+
+        {/* CHANGE PAYEE / UPI MODAL */}
+        {payeeEvent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+            <div className="bg-white border border-slate-300 shadow-2xl max-w-md w-full p-6 space-y-4 relative">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                      Change Active Payee / UPI QR
+                    </h3>
+                    <p className="text-xs text-slate-500 font-semibold truncate max-w-[260px]">
+                      {payeeEvent.title}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPayeeEvent(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 bg-emerald-50 border border-emerald-200 p-3 space-y-1">
+                <p className="font-semibold text-emerald-900">
+                  Switching payee takes effect immediately on the live registration portal!
+                </p>
+                <p className="text-[11px] text-emerald-800">
+                  New registrants will scan the QR code and send payments to this updated name and UPI ID.
+                </p>
+              </div>
+
+              <form onSubmit={handleSavePayee} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Payee Name (as registered in Bank / UPI):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. SANCHAYAN MAITI or SAYAN ROY"
+                    value={payeeNameInput}
+                    onChange={(e) => setPayeeNameInput(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 focus:border-indigo-600 outline-none font-sans uppercase font-bold"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    UPI ID (VPA):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 9732741560@ybl or username@okhdfcbank"
+                    value={upiIdInput}
+                    onChange={(e) => setUpiIdInput(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 focus:border-indigo-600 outline-none font-mono font-bold text-emerald-800"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Payment Note (Shown in UPI payment description):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Navroopam v7.0 Registration Fee"
+                    value={paymentNoteInput}
+                    onChange={(e) => setPaymentNoteInput(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 focus:border-indigo-600 outline-none font-sans"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setPayeeEvent(null)}
+                    disabled={isUpdatingPayee}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingPayee}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {isUpdatingPayee ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Updating Payee...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save Payee & QR</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </main>
     </div>
