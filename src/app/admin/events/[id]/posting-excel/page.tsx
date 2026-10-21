@@ -1211,40 +1211,72 @@ export default function NavroopamPostingExcelPage() {
                 {previewSub && (
                   <button
                     type="button"
-                    disabled={sendingAckInPreview}
+                    disabled={sendingConfirmationId === previewSub.id}
                     onClick={async () => {
                       if (!previewSub) return;
-                      setSendingAckInPreview(true);
+                      const postUrl = (previewInstagramUrl || instagramUrls[previewSub.id] || previewSub.instagramPostUrl || '').trim();
+                      if (!postUrl) {
+                        alert('No Instagram post URL found for this submission. Please enter the Instagram link first.');
+                        return;
+                      }
+
+                      if (!window.confirm(`Send official confirmation email with Instagram link to "${previewSub.fullName}" (${previewSub.email})?\n\nInstagram URL:\n${postUrl}`)) {
+                        return;
+                      }
+
+                      setSendingConfirmationId(previewSub.id);
                       try {
-                        const res = await acknowledgeSubmissionApi(previewSub.id);
+                        // 1. Ensure DB status is saved
+                        await updatePostingExcelApi(previewSub.id, {
+                          postingStatus: 'MAIL_SENT',
+                          instagramPostUrl: postUrl
+                        });
+
+                        // 2. Dispatch confirmation email
+                        const res = await sendConfirmationEmailApi(previewSub.id, postUrl);
                         if (res.success) {
                           if (res.quota?.warningAlert) {
-                            alert(`${res.message || 'Acknowledgment email sent successfully!'}\n\n🚨 ${res.quota.alertMessage}`);
+                            alert(`${res.message || `Confirmation email sent successfully to ${previewSub.fullName}!`}\n\n🚨 ${res.quota.alertMessage}`);
                           } else {
-                            alert(res.message || 'Acknowledgment email sent successfully!');
+                            alert(res.message || `Confirmation email sent successfully to ${previewSub.fullName}!`);
                           }
-                          // Close preview screen automatically
+                          // Automatically close the preview screen
                           setPreviewMediaUrl(null);
                           setPreviewInstagramUrl(null);
                           setPreviewSub(null);
+
+                          // Update local states
+                          setPostingStatuses(prev => ({ ...prev, [previewSub.id]: 'MAIL_SENT' }));
+                          setSubmissions(prev => prev.map(s => {
+                            if (s.id === previewSub.id) {
+                              return {
+                                ...s,
+                                confirmationEmailSent: true,
+                                confirmationEmailSentAt: new Date().toISOString(),
+                                instagramPostUrl: postUrl,
+                                postingStatus: 'MAIL_SENT'
+                              };
+                            }
+                            return s;
+                          }));
                           await loadData();
                         }
                       } catch (err: any) {
-                        alert(err.message || 'Failed to send acknowledgment email');
+                        alert(err.message || 'Failed to send confirmation email');
                       } finally {
-                        setSendingAckInPreview(false);
+                        setSendingConfirmationId(null);
                       }
                     }}
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 disabled:opacity-50 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                    title={previewSub.acknowledged ? 'Resend Acknowledgment Email' : 'Send Acknowledgment Email'}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    title={previewSub.confirmationEmailSent ? 'Resend Confirmation Email with Instagram link' : 'Send Confirmation Email with Instagram link'}
                   >
-                    <Mail className="w-3.5 h-3.5" />
+                    <Send className="w-3.5 h-3.5" />
                     <span>
-                      {sendingAckInPreview 
-                        ? 'Sending Mail...' 
-                        : previewSub.acknowledged 
-                          ? 'Resend Ack Mail 🔄' 
-                          : 'Send Acknowledgement Mail'}
+                      {sendingConfirmationId === previewSub.id 
+                        ? 'Sending Confirmation Mail...' 
+                        : previewSub.confirmationEmailSent 
+                          ? 'Resend Confirmation Mail 🔄' 
+                          : 'Send Confirmation Mail'}
                     </span>
                   </button>
                 )}
