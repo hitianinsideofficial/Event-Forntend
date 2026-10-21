@@ -35,7 +35,8 @@ import {
   QrCode,
   CreditCard,
   MessageSquare,
-  Phone
+  Phone,
+  Copy
 } from 'lucide-react';
 
 const DEPT_CODES: Record<string, string> = {
@@ -1514,12 +1515,25 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                               </p>
                             </div>
 
-                            <a 
-                              href={`upi://pay?pa=${encodeURIComponent(activeUpiId)}&pn=${encodeURIComponent(activePayeeName)}&am=${encodeURIComponent(activeEventFee)}&cu=INR&tn=${encodeURIComponent(activePaymentNote)}`}
-                              className="mt-2.5 text-[10px] w-full py-1.5 bg-[#5f259f] hover:bg-[#4d1d82] text-white font-bold rounded-lg inline-flex items-center justify-center gap-1 transition-colors shadow-md"
-                            >
-                              <span>Pay via UPI / PhonePe App ↗</span>
-                            </a>
+                            {/* Take Screenshot or Copy UPI ID Instructions */}
+                            <div className="mt-2.5 w-full pt-2 border-t border-white/10 space-y-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard?.writeText(activeUpiId);
+                                  alert(`UPI ID copied: ${activeUpiId}\n\nOpen Google Pay, PhonePe, or Paytm and paste this UPI ID to pay ₹${activeEventFee}.`);
+                                }}
+                                className="w-full py-1.5 px-2 bg-gradient-to-r from-amber-600/30 to-amber-500/20 hover:from-amber-600/40 hover:to-amber-500/30 border border-[#e6c594]/60 text-[#fcedc7] hover:text-white text-[10px] font-bold rounded-lg inline-flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                                title="Click to copy UPI ID"
+                              >
+                                <Copy className="w-3 h-3 text-[#e6c594] shrink-0" />
+                                <span>Copy UPI ID ({activeUpiId})</span>
+                              </button>
+
+                              <p className="text-[9px] text-[#e6c594]/90 font-medium leading-tight">
+                                📸 <span className="text-white font-bold">Take a screenshot of this QR</span> & scan from your gallery, or copy the UPI ID above to complete payment.
+                              </p>
+                            </div>
 
                             {/* Opaque Overlay Layer when file/link is not yet uploaded */}
                             {!(submissionFile || (selectedDomainObj.isDriveLinkRequired && driveReelUrl.trim())) && (
