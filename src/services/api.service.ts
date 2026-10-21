@@ -647,7 +647,8 @@ export async function sendAppreciationEmailApi(
 
 export async function updatePaymentStatusApi(
   submissionId: string,
-  paymentStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'PAID'
+  paymentStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'PAID',
+  payeeName?: string
 ): Promise<ApiResponse<SubmissionItem>> {
   const baseUrl = await getApiBaseUrl();
   const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
@@ -658,11 +659,33 @@ export async function updatePaymentStatusApi(
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token || ''}`
     },
-    body: JSON.stringify({ paymentStatus })
+    body: JSON.stringify({ paymentStatus, payeeName })
   });
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to update payment verification status');
+  clearApiCache('submissions');
+  return data;
+}
+
+export async function updateSubmissionPayeeApi(
+  submissionId: string,
+  payeeName: string
+): Promise<ApiResponse<SubmissionItem>> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}/payment-status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || ''}`
+    },
+    body: JSON.stringify({ payeeName })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update payee assignment');
   clearApiCache('submissions');
   return data;
 }

@@ -16,7 +16,8 @@ import {
   requestResubmissionEmailApi,
   updatePostingExcelApi,
   updateSubmissionMediaApi,
-  updateEventDetailsApi
+  updateEventDetailsApi,
+  updateSubmissionPayeeApi
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
@@ -124,12 +125,17 @@ export default function EventSubmissionsPage() {
   const [replacementFile, setReplacementFile] = useState<File | null>(null);
   const [isReplacingMedia, setIsReplacingMedia] = useState<boolean>(false);
 
-  // Change Payee Modal
+  // Change Payee Modal (Event QR Target)
   const [isPayeeModalOpen, setIsPayeeModalOpen] = useState<boolean>(false);
   const [payeeNameInput, setPayeeNameInput] = useState<string>('');
   const [upiIdInput, setUpiIdInput] = useState<string>('');
   const [paymentNoteInput, setPaymentNoteInput] = useState<string>('');
   const [isUpdatingPayee, setIsUpdatingPayee] = useState<boolean>(false);
+
+  // Manual Participant Payee Update Modal
+  const [editPayeeSub, setEditPayeeSub] = useState<SubmissionItem | null>(null);
+  const [participantPayeeInput, setParticipantPayeeInput] = useState<string>('');
+  const [isUpdatingParticipantPayee, setIsUpdatingParticipantPayee] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -456,6 +462,54 @@ export default function EventSubmissionsPage() {
       alert(err.message || 'Failed to update payee');
     } finally {
       setIsUpdatingPayee(false);
+    }
+  };
+
+  // Open Participant Payee Re-assignment Modal
+  const handleOpenEditParticipantPayee = (sub: SubmissionItem) => {
+    setEditPayeeSub(sub);
+    const currentPayee = sub.answers?.['Selected Payee'] || sub.answers?.['Payee'] || (event?.payeeName ? `${event.payeeName} (${event.upiId || ''})` : '');
+    setParticipantPayeeInput(currentPayee);
+  };
+
+  // Save Participant Payee Re-assignment
+  const handleSaveParticipantPayee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editPayeeSub) return;
+    if (!participantPayeeInput.trim()) {
+      alert('Please specify the payee name or UPI ID.');
+      return;
+    }
+
+    setIsUpdatingParticipantPayee(true);
+    try {
+      const res = await updateSubmissionPayeeApi(editPayeeSub.id, participantPayeeInput.trim());
+      if (res.success && res.data) {
+        alert(`Payee updated successfully for ${editPayeeSub.fullName}! Revenue breakdown will now reflect this.`);
+        const updated = res.data;
+        setSubmissions(prev => prev.map(s => {
+          if (s.id === updated.id) {
+            return {
+              ...s,
+              ...updated,
+              answers: {
+                ...(s.answers || {}),
+                ...(updated.answers || {}),
+                'Selected Payee': participantPayeeInput.trim(),
+                'Payee': participantPayeeInput.trim()
+              }
+            };
+          }
+          return s;
+        }));
+        setEditPayeeSub(null);
+      } else {
+        alert(res.message || 'Failed to update payee');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update payee');
+    } finally {
+      setIsUpdatingParticipantPayee(false);
     }
   };
 
@@ -1054,11 +1108,20 @@ export default function EventSubmissionsPage() {
                           <div className="mt-0.5 font-mono text-[10px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 border border-slate-300 truncate" title={`UTR: ${utr}`}>
                             UTR: {utr}
                           </div>
-                          {payee !== '-' && (
-                            <div className="text-[9px] text-slate-500 mt-0.5 truncate max-w-[130px]" title={`Payee: ${payee}`}>
-                              Payee: {payee}
-                            </div>
-                          )}
+                          <div className="mt-1 flex items-center justify-between gap-1">
+                            <span className="text-[9px] text-slate-500 truncate max-w-[110px]" title={`Payee: ${payee}`}>
+                              Payee: <span className="font-semibold text-slate-700">{payee !== '-' ? payee : 'Not Set'}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditParticipantPayee(sub)}
+                              className="text-[9px] px-1 py-0.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-300 text-slate-600 font-bold inline-flex items-center gap-0.5 transition-colors cursor-pointer shrink-0"
+                              title="Update Payee / QR for this specific payment"
+                            >
+                              <Edit3 className="w-2.5 h-2.5 text-indigo-600" />
+                              <span>Edit</span>
+                            </button>
+                          </div>
 
                           {/* PAYMENT PROOF SCREENSHOT PREVIEW BUTTON */}
                           {(() => {
@@ -1568,6 +1631,20 @@ export default function EventSubmissionsPage() {
                           }`}>
                             {paymentStatus}
                           </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px] pt-1 border-t border-slate-200">
+                          <span className="text-slate-500 font-semibold truncate max-w-[120px]">
+                            Payee: <span className="text-slate-800 font-bold">{sub.answers?.['Selected Payee'] || sub.answers?.['Payee'] || (event?.payeeName ? event.payeeName : 'Default')}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditParticipantPayee(sub)}
+                            className="text-[9.5px] px-1.5 py-0.5 bg-white hover:bg-indigo-50 hover:text-indigo-700 border border-slate-300 font-bold text-slate-700 inline-flex items-center gap-0.5 transition-colors cursor-pointer"
+                            title="Edit Payee for this registration"
+                          >
+                            <Edit3 className="w-2.5 h-2.5 text-indigo-600" />
+                            <span>Edit Payee</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -2338,6 +2415,125 @@ export default function EventSubmissionsPage() {
                       <>
                         <Check className="w-3.5 h-3.5" />
                         <span>Save Payee & QR</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* MANUAL PARTICIPANT PAYEE RE-ASSIGNMENT MODAL */}
+        {/* ========================================================= */}
+        {editPayeeSub && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+            <div className="bg-white border border-slate-300 shadow-2xl max-w-md w-full p-6 space-y-4 relative">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                      Update Payment Payee / QR Target
+                    </h3>
+                    <p className="text-xs text-slate-500 font-mono">
+                      {editPayeeSub.fullName} • Ticket: {editPayeeSub.ticketId}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditPayeeSub(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 bg-amber-50 border border-amber-200 p-3 space-y-1">
+                <p className="font-semibold text-amber-900">
+                  Fix Payment Tracking for Old / Alternate QR Payments:
+                </p>
+                <p className="text-[11px] text-amber-800">
+                  If this student paid when an earlier QR was active, select or enter the exact payee account they paid to. The <strong>QR Code & Payee Revenue Breakdown</strong> will accurately credit this payment to that person.
+                </p>
+              </div>
+
+              <form onSubmit={handleSaveParticipantPayee} className="space-y-4">
+                {/* Quick Preset Buttons from Event Payees */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Quick Select Active / Known Payees:
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {/* Active Event Payee */}
+                    {event?.payeeName && (
+                      <button
+                        type="button"
+                        onClick={() => setParticipantPayeeInput(`${event.payeeName} (${event.upiId || ''})`)}
+                        className="px-2 py-1 text-[10.5px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-300 rounded transition-colors cursor-pointer text-left"
+                      >
+                        ⚡ Active: {event.payeeName}
+                      </button>
+                    )}
+
+                    {/* Payees found in breakdown */}
+                    {payeeBreakdown.map((p, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setParticipantPayeeInput(p.upiId ? `${p.name} (${p.upiId})` : p.name)}
+                        className="px-2 py-1 text-[10.5px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded transition-colors cursor-pointer text-left"
+                      >
+                        {p.name} {p.upiId ? `(${p.upiId})` : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Payee Name / UPI Target:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ayush Raj (9135444297@ibl) or SANCHAYAN MAITI (9732741560@ybl)"
+                    value={participantPayeeInput}
+                    onChange={(e) => setParticipantPayeeInput(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 focus:border-indigo-600 outline-none font-sans font-bold text-slate-900"
+                  />
+                  <p className="text-[10px] text-slate-500">
+                    Format: <code>Payee Name (UPI_ID)</code> or just <code>Payee Name</code>
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setEditPayeeSub(null)}
+                    disabled={isUpdatingParticipantPayee}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingParticipantPayee}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {isUpdatingParticipantPayee ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Updating Payee...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save Payee Assignment</span>
                       </>
                     )}
                   </button>
