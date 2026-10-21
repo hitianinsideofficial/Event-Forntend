@@ -402,6 +402,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const activeEventFee = event?.registrationFee !== undefined && String(event?.registrationFee).trim() !== '' 
     ? String(event.registrationFee).trim() 
     : (isNavroopam ? '9.00' : `${totalPratidhwaniFee}`);
+  const activePaymentNote = event?.paymentNote?.trim() || `${event?.title || (isNavroopam ? 'Navroopam' : 'Event')} Registration`;
 
   const isPratidhawni = Boolean(
     !isNavroopam && (
@@ -1936,7 +1937,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                             {/* Dynamic Generated QR Code Container */}
                             <div className={`p-2.5 bg-white rounded-xl shadow-inner flex items-center justify-center ${!(submissionFile || (selectedDomainObj.isDriveLinkRequired && driveReelUrl.trim())) ? 'blur-[5px] select-none opacity-40 transition-all' : 'transition-all'}`}>
                               <QRCodeSVG 
-                                value={`upi://pay?pa=${encodeURIComponent(activeUpiId)}&pn=${encodeURIComponent(activePayeeName)}&am=${encodeURIComponent(activeEventFee)}&cu=INR&tn=${encodeURIComponent(`${event?.title || 'Navroopam'} Registration`)}`}
+                                value={`upi://pay?pa=${encodeURIComponent(activeUpiId)}&pn=${encodeURIComponent(activePayeeName)}&am=${encodeURIComponent(activeEventFee)}&cu=INR&tn=${encodeURIComponent(activePaymentNote)}`}
                                 size={176}
                                 level="M"
                               />
@@ -1951,12 +1952,12 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                                 </span>
                               </div>
                               <p className="text-[9.5px] text-[#e6c594]/80 leading-tight">
-                                Mention <span className="text-white font-mono font-bold">"{event?.title || 'Navroopam'} Registration"</span> in UPI payment note
+                                Mention <span className="text-white font-mono font-bold">"{activePaymentNote}"</span> in UPI payment note
                               </p>
                             </div>
 
                             <a 
-                              href={`upi://pay?pa=${encodeURIComponent(activeUpiId)}&pn=${encodeURIComponent(activePayeeName)}&am=${encodeURIComponent(activeEventFee)}&cu=INR&tn=${encodeURIComponent(`${event?.title || 'Navroopam'} Registration`)}`}
+                              href={`upi://pay?pa=${encodeURIComponent(activeUpiId)}&pn=${encodeURIComponent(activePayeeName)}&am=${encodeURIComponent(activeEventFee)}&cu=INR&tn=${encodeURIComponent(activePaymentNote)}`}
                               className="mt-2.5 text-[10px] w-full py-1.5 bg-[#5f259f] hover:bg-[#4d1d82] text-white font-bold rounded-lg inline-flex items-center justify-center gap-1 transition-colors shadow-md"
                             >
                               <span>Pay via UPI / PhonePe App ↗</span>

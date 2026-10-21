@@ -33,6 +33,7 @@ export default function CreateEventPage() {
     upiId: '',
     payeeName: '',
     registrationFee: '',
+    paymentNote: '',
     upiQrUrl: ''
   });
 
@@ -160,6 +161,7 @@ Upon payment confirmation, participants are instantly routed to the official Wha
       upiId: '',
       payeeName: '',
       registrationFee: '',
+      paymentNote: '',
       upiQrUrl: ''
     });
     setHighlights([
@@ -622,6 +624,23 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                       Embedded into the UPI QR code so users don't need to manually enter the amount.
                     </span>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                      Custom Payment Message / Note
+                    </label>
+                    <input 
+                      type="text"
+                      name="paymentNote"
+                      value={formData.paymentNote}
+                      onChange={handleChange}
+                      placeholder="e.g. Navroopam Registration or Pratidhwani Entry"
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 text-xs text-slate-900 outline-none focus:border-slate-900 focus:bg-white transition-all font-semibold"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Displayed to participants as payment instructions and prefilled into UPI transaction note (`tn`).
+                    </span>
+                  </div>
                 </div>
 
                 {/* Live Dynamic QR Preview */}
@@ -634,7 +653,7 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                   {formData.upiId.trim() ? (
                     <div className="flex flex-col items-center p-3 bg-white border border-slate-300 rounded-lg shadow-sm">
                       <QRCodeSVG 
-                        value={`upi://pay?pa=${encodeURIComponent(formData.upiId.trim())}&pn=${encodeURIComponent(formData.payeeName.trim() || formData.title || 'HITian Inside')}${formData.registrationFee.trim() ? `&am=${encodeURIComponent(formData.registrationFee.trim())}` : ''}&cu=INR&tn=${encodeURIComponent(`${formData.title || 'Event'} Registration`)}`}
+                        value={`upi://pay?pa=${encodeURIComponent(formData.upiId.trim())}&pn=${encodeURIComponent(formData.payeeName.trim() || formData.title || 'HITian Inside')}${formData.registrationFee.trim() ? `&am=${encodeURIComponent(formData.registrationFee.trim())}` : ''}&cu=INR&tn=${encodeURIComponent(formData.paymentNote.trim() || `${formData.title || 'Event'} Registration`)}`}
                         size={130}
                       />
                       <span className="font-mono text-[11px] font-bold text-slate-900 mt-2">
@@ -648,6 +667,11 @@ Upon payment confirmation, participants are instantly routed to the official Wha
                       {formData.registrationFee.trim() && (
                         <span className="text-[10px] text-emerald-600 font-mono font-bold mt-0.5">
                           ₹{formData.registrationFee.trim()} INR
+                        </span>
+                      )}
+                      {formData.paymentNote.trim() && (
+                        <span className="text-[9.5px] text-indigo-600 font-medium mt-1">
+                          Note: "{formData.paymentNote.trim()}"
                         </span>
                       )}
                     </div>
