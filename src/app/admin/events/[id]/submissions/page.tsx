@@ -308,7 +308,16 @@ export default function EventSubmissionsPage() {
       await updatePostingExcelApi(sub.id, {
         moveToPostingExcel: newValue
       });
-      setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, moveToPostingExcel: newValue } : s));
+      setSubmissions(prev => prev.map(s => {
+        if (s.id === sub.id) {
+          return {
+            ...s,
+            moveToPostingExcel: newValue,
+            postingStatus: newValue && !s.postingStatus ? 'QUALIFIED' : s.postingStatus
+          };
+        }
+        return s;
+      }));
     } catch (err: any) {
       alert(err.message || 'Failed to update Move to Posting Excel status');
     } finally {

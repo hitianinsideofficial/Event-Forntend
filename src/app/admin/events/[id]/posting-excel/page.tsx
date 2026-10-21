@@ -106,8 +106,8 @@ export default function NavroopamPostingExcelPage() {
 
       subsData.forEach(sub => {
         initUrls[sub.id] = sub.instagramPostUrl || '';
-        // If confirmation email already sent, default posting status to MAIL_SENT if not set
-        initStatuses[sub.id] = sub.postingStatus || (sub.confirmationEmailSent ? 'MAIL_SENT' : null);
+        // Default posting status to QUALIFIED ('Yellow') if not set; if confirmation email was already sent, MAIL_SENT ('Blue')
+        initStatuses[sub.id] = sub.postingStatus || (sub.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
       });
 
       setInstagramUrls(initUrls);
@@ -144,7 +144,7 @@ export default function NavroopamPostingExcelPage() {
       const selectedDomain = s.answers?.['Selected Domain'];
       const matchesDomain = domainFilter === 'ALL' || selectedDomain === domainFilter;
 
-      const currentStatus = postingStatuses[s.id] || (s.confirmationEmailSent ? 'MAIL_SENT' : null);
+      const currentStatus = postingStatuses[s.id] || (s.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
       let matchesStatus = true;
       if (statusFilter === 'ALL') matchesStatus = true;
       else if (statusFilter === 'UNMARKED') matchesStatus = !currentStatus;
@@ -173,7 +173,7 @@ export default function NavroopamPostingExcelPage() {
     let mailSent = 0;
 
     acknowledgedSubmissions.forEach(s => {
-      const status = postingStatuses[s.id] || (s.confirmationEmailSent ? 'MAIL_SENT' : null);
+      const status = postingStatuses[s.id] || (s.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
       if (status === 'QUALIFIED') qualified++;
       else if (status === 'POSTED') posted++;
       else if (status === 'DISQUALIFIED') disqualified++;
@@ -581,7 +581,7 @@ export default function NavroopamPostingExcelPage() {
                     // Media URL for viewing
                     const mediaUrl = mediaFile ? (mediaFile.localUrl || mediaFile.driveLink || '') : '';
 
-                    const currentStatus = postingStatuses[sub.id] || (sub.confirmationEmailSent ? 'MAIL_SENT' : null);
+                    const currentStatus = postingStatuses[sub.id] || (sub.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
                     const currentInsta = instagramUrls[sub.id] !== undefined ? instagramUrls[sub.id] : (sub.instagramPostUrl || '');
                     const isSaving = savingId === sub.id;
                     const isSendingConf = sendingConfirmationId === sub.id;
