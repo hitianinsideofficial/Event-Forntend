@@ -594,6 +594,13 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                         <QRCodeSVG 
                           value={`upi://pay?pa=${encodeURIComponent(formData.upiId.trim())}&pn=${encodeURIComponent(formData.payeeName.trim() || formData.title || 'HITian Inside')}${formData.registrationFee.trim() ? `&am=${encodeURIComponent(formData.registrationFee.trim())}` : ''}&cu=INR&tn=${encodeURIComponent(formData.paymentNote.trim() || `${formData.title || 'Event'} Registration`)}`}
                           size={130}
+                          level="H"
+                          imageSettings={{
+                            src: '/hitianinsidelogo.png',
+                            height: 28,
+                            width: 28,
+                            excavate: true,
+                          }}
                         />
                         <span className="font-mono text-[11px] font-bold text-slate-900 mt-2">
                           {formData.upiId.trim()}

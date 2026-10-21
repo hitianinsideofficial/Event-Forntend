@@ -865,7 +865,17 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
 
                   {/* QR Code Pass */}
                   <div className={`flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 ${isNavroopam ? 'border-[#e6c594]' : 'border-[#ff9933]/50'}`}>
-                    <QRCodeSVG value={ticket.ticketId} size={140} />
+                    <QRCodeSVG 
+                      value={ticket.ticketId} 
+                      size={140} 
+                      level="H"
+                      imageSettings={{
+                        src: '/hitianinsidelogo.png',
+                        height: 32,
+                        width: 32,
+                        excavate: true,
+                      }}
+                    />
                     <span className="font-mono text-[10px] font-bold text-black mt-2">
                       {ticket.ticketId}
                     </span>
@@ -1481,7 +1491,13 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                               <QRCodeSVG 
                                 value={`upi://pay?pa=${encodeURIComponent(activeUpiId)}&pn=${encodeURIComponent(activePayeeName)}&am=${encodeURIComponent(activeEventFee)}&cu=INR&tn=${encodeURIComponent(activePaymentNote)}`}
                                 size={176}
-                                level="M"
+                                level="H"
+                                imageSettings={{
+                                  src: '/hitianinsidelogo.png',
+                                  height: 38,
+                                  width: 38,
+                                  excavate: true,
+                                }}
                               />
                             </div>
 
