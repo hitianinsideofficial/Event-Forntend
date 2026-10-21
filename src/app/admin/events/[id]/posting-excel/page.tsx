@@ -12,7 +12,8 @@ import {
   updatePostingExcelApi,
   sendConfirmationEmailApi,
   requestDriveLinkUpdateEmailApi,
-  requestResubmissionEmailApi
+  requestResubmissionEmailApi,
+  acknowledgeSubmissionApi
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
@@ -84,6 +85,8 @@ export default function NavroopamPostingExcelPage() {
   const [previewMediaUrl, setPreviewMediaUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('');
   const [previewInstagramUrl, setPreviewInstagramUrl] = useState<string | null>(null);
+  const [previewSub, setPreviewSub] = useState<SubmissionItem | null>(null);
+  const [sendingAckInPreview, setSendingAckInPreview] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -776,6 +779,7 @@ export default function NavroopamPostingExcelPage() {
                                   setPreviewMediaUrl(mediaUrl);
                                   setPreviewTitle(`${sub.fullName} - Photography: ${domain}`);
                                   setPreviewInstagramUrl(currentInsta && currentInsta.trim() ? currentInsta.trim() : null);
+                                  setPreviewSub(sub);
                                 }}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] transition-colors cursor-pointer"
                               >
@@ -801,6 +805,7 @@ export default function NavroopamPostingExcelPage() {
                                   setPreviewMediaUrl(mediaUrl);
                                   setPreviewTitle(`${sub.fullName} - Artwork: ${domain}`);
                                   setPreviewInstagramUrl(currentInsta && currentInsta.trim() ? currentInsta.trim() : null);
+                                  setPreviewSub(sub);
                                 }}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[11px] transition-colors cursor-pointer"
                               >
@@ -1197,15 +1202,56 @@ export default function NavroopamPostingExcelPage() {
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-              <div className="text-[11px] text-slate-500">
-                {previewInstagramUrl ? '💡 Compare the original submission on the left with the published Instagram post on the right.' : ''}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
+              <div className="flex items-center gap-2">
+                {previewSub && (
+                  <button
+                    type="button"
+                    disabled={sendingAckInPreview}
+                    onClick={async () => {
+                      if (!previewSub) return;
+                      setSendingAckInPreview(true);
+                      try {
+                        const res = await acknowledgeSubmissionApi(previewSub.id);
+                        if (res.success) {
+                          alert(res.message || 'Acknowledgment email sent successfully!');
+                          // Close preview screen automatically
+                          setPreviewMediaUrl(null);
+                          setPreviewInstagramUrl(null);
+                          setPreviewSub(null);
+                          await loadData();
+                        }
+                      } catch (err: any) {
+                        alert(err.message || 'Failed to send acknowledgment email');
+                      } finally {
+                        setSendingAckInPreview(false);
+                      }
+                    }}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 disabled:opacity-50 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    title={previewSub.acknowledged ? 'Resend Acknowledgment Email' : 'Send Acknowledgment Email'}
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>
+                      {sendingAckInPreview 
+                        ? 'Sending Mail...' 
+                        : previewSub.acknowledged 
+                          ? 'Resend Ack Mail 🔄' 
+                          : 'Send Acknowledgement Mail'}
+                    </span>
+                  </button>
+                )}
+
+                <span className="text-[11px] text-slate-500 hidden sm:inline">
+                  {previewInstagramUrl ? '💡 Compare original submission with live Instagram post.' : ''}
+                </span>
               </div>
+
               <button
                 type="button"
                 onClick={() => {
                   setPreviewMediaUrl(null);
                   setPreviewInstagramUrl(null);
+                  setPreviewSub(null);
                 }}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer"
               >
