@@ -11,7 +11,8 @@ import {
   fetchSubmissionsApi, 
   updatePostingExcelApi,
   sendConfirmationEmailApi,
-  requestDriveLinkUpdateEmailApi
+  requestDriveLinkUpdateEmailApi,
+  requestResubmissionEmailApi
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
@@ -72,6 +73,12 @@ export default function NavroopamPostingExcelPage() {
   const [sendingDriveEmailId, setSendingDriveEmailId] = useState<string | null>(null);
   const [saveSuccessMap, setSaveSuccessMap] = useState<Record<string, boolean>>({});
   const [isEmailPreviewOpen, setIsEmailPreviewOpen] = useState<boolean>(false);
+
+  // Disqualification Modal State
+  const [disqualificationModalSub, setDisqualificationModalSub] = useState<SubmissionItem | null>(null);
+  const [disqualificationReasonOption, setDisqualificationReasonOption] = useState<string>('Photo is not uploaded');
+  const [customDisqualificationReason, setCustomDisqualificationReason] = useState<string>('');
+  const [sendingDisqualificationId, setSendingDisqualificationId] = useState<string | null>(null);
 
   // Media preview modal
   const [previewMediaUrl, setPreviewMediaUrl] = useState<string | null>(null);
@@ -193,8 +200,14 @@ export default function NavroopamPostingExcelPage() {
   const handleSaveRow = async (subId: string) => {
     setSavingId(subId);
     try {
-      const url = instagramUrls[subId] || '';
-      const status = postingStatuses[subId] || null;
+      const url = (instagramUrls[subId] !== undefined ? instagramUrls[subId] : '').trim();
+      let status = postingStatuses[subId] || null;
+
+      // Automatically change status to POSTED ('Green') when Instagram link is pasted and saved,
+      // exactly like how sending confirmation mail turns it to MAIL_SENT ('Blue')
+      if (url && (!status || status === 'QUALIFIED')) {
+        status = 'POSTED';
+      }
 
       const res = await updatePostingExcelApi(subId, {
         postingStatus: status,
@@ -202,13 +215,16 @@ export default function NavroopamPostingExcelPage() {
       });
 
       if (res.success && res.data) {
+        if (status) {
+          setPostingStatuses(prev => ({ ...prev, [subId]: status }));
+        }
         setSaveSuccessMap(prev => ({ ...prev, [subId]: true }));
         setTimeout(() => {
           setSaveSuccessMap(prev => ({ ...prev, [subId]: false }));
         }, 2500);
 
         // Update main state
-        setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, ...res.data } : s));
+        setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, ...res.data, postingStatus: status || res.data.postingStatus } : s));
       }
     } catch (err: any) {
       alert(err.message || 'Failed to save changes');
@@ -259,6 +275,60 @@ export default function NavroopamPostingExcelPage() {
       alert(err.message || 'Failed to send confirmation email');
     } finally {
       setSendingConfirmationId(null);
+    }
+  };
+
+  // Handle Opening Disqualification Modal
+  const handleOpenDisqualificationModal = (sub: SubmissionItem) => {
+    setDisqualificationModalSub(sub);
+    setDisqualificationReasonOption('Photo is not uploaded');
+    setCustomDisqualificationReason('');
+  };
+
+  // Handle Confirming and Sending Disqualification Email
+  const handleConfirmSendDisqualificationEmail = async () => {
+    if (!disqualificationModalSub) return;
+
+    let finalReason = disqualificationReasonOption;
+    if (disqualificationReasonOption === 'OTHER') {
+      finalReason = customDisqualificationReason.trim();
+      if (!finalReason) {
+        alert('Please specify the custom disqualification reason.');
+        return;
+      }
+    }
+
+    setSendingDisqualificationId(disqualificationModalSub.id);
+    try {
+      // First ensure postingStatus is saved as DISQUALIFIED in DB
+      await updatePostingExcelApi(disqualificationModalSub.id, {
+        postingStatus: 'DISQUALIFIED'
+      });
+
+      // Send the official disqualification / re-upload instruction email
+      const res = await requestResubmissionEmailApi(disqualificationModalSub.id, finalReason);
+      if (res.success) {
+        alert(res.message || `Disqualification notification email sent successfully to ${disqualificationModalSub.fullName}!`);
+        setPostingStatuses(prev => ({ ...prev, [disqualificationModalSub.id]: 'DISQUALIFIED' }));
+        setSubmissions(prev => prev.map(s => {
+          if (s.id === disqualificationModalSub.id) {
+            return {
+              ...s,
+              postingStatus: 'DISQUALIFIED',
+              resubmissionRequested: true,
+              resubmissionRequestedAt: new Date().toISOString(),
+              resubmissionReason: finalReason,
+              resubmissionCompleted: false
+            };
+          }
+          return s;
+        }));
+        setDisqualificationModalSub(null);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to send disqualification email');
+    } finally {
+      setSendingDisqualificationId(null);
     }
   };
 
@@ -908,33 +978,56 @@ export default function NavroopamPostingExcelPage() {
                               )}
                             </button>
 
-                            {/* Send Confirmation Email Button using the saved link */}
-                            <button
-                              type="button"
-                              onClick={() => handleSendConfirmationEmail(sub)}
-                              disabled={isSendingConf || !currentInsta.trim()}
-                              className={`px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1 shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                                sub.confirmationEmailSent
-                                  ? 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
-                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-                              }`}
-                              title={
-                                !currentInsta.trim() 
-                                  ? 'Paste and save an Instagram link first to send the final confirmation email' 
-                                  : sub.confirmationEmailSent 
-                                  ? 'Resend final confirmation email' 
-                                  : 'Send confirmation email with Instagram link'
-                              }
-                            >
-                              <Send className="w-3 h-3" />
-                              <span>
-                                {isSendingConf 
-                                  ? 'Sending...' 
-                                  : sub.confirmationEmailSent 
-                                  ? 'Resend Mail' 
-                                  : 'Send Confirmation'}
-                              </span>
-                            </button>
+                            {/* Action Button: Disqualification Email OR Confirmation Email */}
+                            {currentStatus === 'DISQUALIFIED' ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDisqualificationModal(sub)}
+                                disabled={sendingDisqualificationId === sub.id}
+                                className={`px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1 shadow-xs transition-colors cursor-pointer disabled:opacity-50 ${
+                                  sub.resubmissionRequested
+                                    ? 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
+                                    : 'bg-rose-600 hover:bg-rose-700 text-white'
+                                }`}
+                                title="Open disqualification dialogue and select reason to notify participant"
+                              >
+                                <XCircle className="w-3 h-3" />
+                                <span>
+                                  {sendingDisqualificationId === sub.id 
+                                    ? 'Sending...' 
+                                    : sub.resubmissionRequested 
+                                    ? 'Resend Disqual' 
+                                    : 'Send Disqualification'}
+                                </span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleSendConfirmationEmail(sub)}
+                                disabled={isSendingConf || !currentInsta.trim()}
+                                className={`px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1 shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                                  sub.confirmationEmailSent
+                                    ? 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                }`}
+                                title={
+                                  !currentInsta.trim() 
+                                    ? 'Paste and save an Instagram link first to send the final confirmation email' 
+                                    : sub.confirmationEmailSent 
+                                    ? 'Resend final confirmation email' 
+                                    : 'Send confirmation email with Instagram link'
+                                }
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>
+                                  {isSendingConf 
+                                    ? 'Sending...' 
+                                    : sub.confirmationEmailSent 
+                                    ? 'Resend Mail' 
+                                    : 'Send Confirmation'}
+                                </span>
+                              </button>
+                            )}
                           </div>
                         </td>
 
@@ -1002,6 +1095,179 @@ export default function NavroopamPostingExcelPage() {
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold"
               >
                 Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disqualification Reason Modal Dialog */}
+      {disqualificationModalSub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white border border-slate-300 shadow-2xl max-w-lg w-full p-6 space-y-4 relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700">
+                  <XCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                    Send Disqualification Notice
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono">
+                    {disqualificationModalSub.fullName} &bull; Ticket: {disqualificationModalSub.ticketId}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDisqualificationModalSub(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Participant Quick Info */}
+            <div className="bg-slate-50 border border-slate-200 p-3 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Participant Name:</span>
+                <span className="font-bold text-slate-900">{disqualificationModalSub.fullName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Domain:</span>
+                <span className="font-semibold text-rose-800">
+                  {disqualificationModalSub.answers?.['Selected Domain'] || 'Contest Entry'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Email:</span>
+                <span className="font-mono text-slate-700">{disqualificationModalSub.email}</span>
+              </div>
+            </div>
+
+            {/* Radio Options for Disqualification Reason */}
+            <div className="space-y-2.5">
+              <label className="text-xs font-black text-slate-900 uppercase tracking-wider block">
+                Select Reason for Disqualification:
+              </label>
+
+              <div className="space-y-2 text-xs">
+                {/* Option 1 */}
+                <label className={`flex items-start gap-2.5 p-3 border cursor-pointer transition-colors ${
+                  disqualificationReasonOption === 'Photo is not uploaded' 
+                    ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold' 
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
+                  <input 
+                    type="radio" 
+                    name="disqualReason"
+                    value="Photo is not uploaded"
+                    checked={disqualificationReasonOption === 'Photo is not uploaded'}
+                    onChange={() => setDisqualificationReasonOption('Photo is not uploaded')}
+                    className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                  />
+                  <div>
+                    <span>1. Photo is not uploaded</span>
+                    <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                      The participant did not attach an original photo/artwork file in their registration form.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Option 2 */}
+                <label className={`flex items-start gap-2.5 p-3 border cursor-pointer transition-colors ${
+                  disqualificationReasonOption === 'Against the rule you cannot upload collage' 
+                    ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold' 
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
+                  <input 
+                    type="radio" 
+                    name="disqualReason"
+                    value="Against the rule you cannot upload collage"
+                    checked={disqualificationReasonOption === 'Against the rule you cannot upload collage'}
+                    onChange={() => setDisqualificationReasonOption('Against the rule you cannot upload collage')}
+                    className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                  />
+                  <div>
+                    <span>2. Against the rule you cannot upload collage</span>
+                    <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                      The contest rules forbid collage pictures or split photos. Single original shots only.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Option 3 */}
+                <label className={`flex items-start gap-2.5 p-3 border cursor-pointer transition-colors ${
+                  disqualificationReasonOption === 'You have submitted the payment ss instead of your photo (swapped position of submission and payment ss.)' 
+                    ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold' 
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
+                  <input 
+                    type="radio" 
+                    name="disqualReason"
+                    value="You have submitted the payment ss instead of your photo (swapped position of submission and payment ss.)"
+                    checked={disqualificationReasonOption === 'You have submitted the payment ss instead of your photo (swapped position of submission and payment ss.)'}
+                    onChange={() => setDisqualificationReasonOption('You have submitted the payment ss instead of your photo (swapped position of submission and payment ss.)')}
+                    className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                  />
+                  <div>
+                    <span>3. Payment screenshot uploaded instead of photo</span>
+                    <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                      Swapped position: The participant uploaded their UPI payment proof into the contest media slot.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Option 4: Custom */}
+                <label className={`flex items-start gap-2.5 p-3 border cursor-pointer transition-colors ${
+                  disqualificationReasonOption === 'OTHER' 
+                    ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold' 
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
+                  <input 
+                    type="radio" 
+                    name="disqualReason"
+                    value="OTHER"
+                    checked={disqualificationReasonOption === 'OTHER'}
+                    onChange={() => setDisqualificationReasonOption('OTHER')}
+                    className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                  />
+                  <div className="w-full">
+                    <span>4. Custom Disqualification Reason</span>
+                    {disqualificationReasonOption === 'OTHER' && (
+                      <input 
+                        type="text"
+                        required
+                        placeholder="Type custom disqualification reason..."
+                        value={customDisqualificationReason}
+                        onChange={(e) => setCustomDisqualificationReason(e.target.value)}
+                        className="mt-2 w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 outline-none focus:border-rose-600 font-sans"
+                      />
+                    )}
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setDisqualificationModalSub(null)}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSendDisqualificationEmail}
+                disabled={sendingDisqualificationId === disqualificationModalSub.id}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>
+                  {sendingDisqualificationId === disqualificationModalSub.id ? 'Sending Email...' : 'Send Disqualification Email'}
+                </span>
               </button>
             </div>
           </div>
