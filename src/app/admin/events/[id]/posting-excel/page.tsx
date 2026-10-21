@@ -1235,12 +1235,7 @@ export default function NavroopamPostingExcelPage() {
                         // 2. Dispatch confirmation email
                         const res = await sendConfirmationEmailApi(previewSub.id, postUrl);
                         if (res.success) {
-                          if (res.quota?.warningAlert) {
-                            alert(`${res.message || `Confirmation email sent successfully to ${previewSub.fullName}!`}\n\n🚨 ${res.quota.alertMessage}`);
-                          } else {
-                            alert(res.message || `Confirmation email sent successfully to ${previewSub.fullName}!`);
-                          }
-                          // Automatically close the preview screen
+                          // Automatically close the preview screen immediately without alert
                           setPreviewMediaUrl(null);
                           setPreviewInstagramUrl(null);
                           setPreviewSub(null);
