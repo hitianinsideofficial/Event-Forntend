@@ -364,25 +364,6 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const [file, setFile] = useState<File | null>(null);
   const [ticket, setTicket] = useState<SubmissionItem | null>(null);
 
-  // Pratidhawni Specific State (Offline Paid Event with 1, 2, or 3 Multi-Select Categories)
-  const [pratidhawniCategories, setPratidhawniCategories] = useState<string[]>(['OPEN MIC']);
-  const [transactionUid, setTransactionUid] = useState<string>('');
-  const [upiId, setUpiId] = useState<string>('');
-  const PRATIDHAWNI_WHATSAPP_LINK = 'https://chat.whatsapp.com/HITianInsidePratidhawni2026';
-
-  const togglePratidhwaniCategory = (catId: string) => {
-    setPratidhawniCategories(prev => {
-      if (prev.includes(catId)) {
-        if (prev.length === 1) return prev; // Keep at least 1 category selected
-        return prev.filter(c => c !== catId);
-      } else {
-        return [...prev, catId];
-      }
-    });
-  };
-
-  const totalPratidhwaniFee = (pratidhawniCategories.length || 1) * 50;
-
   // Navroopam Payment & QR Toggler State
   const [selectedPayee, setSelectedPayee] = useState<'srijita' | 'ayush'>('srijita');
   const [navroopamUtr, setNavroopamUtr] = useState<string>('');
@@ -401,21 +382,11 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
   const activePayeeName = event?.payeeName?.trim() || (isNavroopam ? 'Ayush Raj' : (event?.title || 'HITian Inside'));
   const activeEventFee = event?.registrationFee !== undefined && String(event?.registrationFee).trim() !== '' 
     ? String(event.registrationFee).trim() 
-    : (isNavroopam ? '9.00' : `${totalPratidhwaniFee}`);
+    : (isNavroopam ? '9.00' : '0');
   const activePaymentNote = event?.paymentNote?.trim() || `${event?.title || (isNavroopam ? 'Navroopam' : 'Event')} Registration`;
 
-  const isPratidhawni = Boolean(
-    !isNavroopam && (
-      eventId === 'pratidhawni' || 
-      eventId === 'pratidhwani' || 
-      event?.id === 'pratidhawni' || 
-      event?.id === 'pratidhwani' || 
-      event?.title?.toLowerCase()?.includes('pratid')
-    )
-  );
-
   const isSwarajEHind = Boolean(
-    !isPratidhawni && !isNavroopam && (
+    !isNavroopam && (
       event?.isFlagship || 
       event?.theme === 'TRICOLOUR' || 
       event?.title?.toLowerCase()?.includes('swaraj') ||
@@ -495,19 +466,6 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       return;
     }
 
-    if (isPratidhawni) {
-      if (!selectedDept || !selectedYear || !rollSuffix) {
-        setError('Please select your Department, Academic Year, and enter your Roll Number.');
-        return;
-      }
-      if (!pratidhawniCategories || pratidhawniCategories.length === 0) {
-        setError('Please select at least 1 event option (Open Mic, Youth Parliament, or Live Art).');
-        return;
-      }
-      setActiveStep(2);
-      return;
-    }
-
     if (isNavroopam || isSwarajEHind) {
       if (!selectedDept || !selectedYear || !rollSuffix) {
         setError('Please select your Department, Academic Year, and enter your Roll Number.');
@@ -564,62 +522,6 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
       setActiveStep(2);
     } else {
       handleFinalSubmission(e);
-    }
-  };
-
-  const handlePratidhawniPaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (!transactionUid.trim()) {
-      setError('Please input your Transaction UID after making the payment.');
-      return;
-    }
-
-    if (!upiId.trim()) {
-      setError('Please input your UPI ID used for making the payment.');
-      return;
-    }
-
-    if (!paymentProofFile) {
-      setError('Please upload your Payment Screenshot Proof (Mandatory for fee verification).');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const combinedAnswers: Record<string, any> = {
-        'Department': selectedDept,
-        'Academic Year': selectedYear,
-        'College Roll Number': fullRollNumber,
-        'Enrolled Event Options': pratidhawniCategories.join(', '),
-        'Total Enrolled Events': pratidhawniCategories.length,
-        'Payment Amount': `RS. ${totalPratidhwaniFee}/- ONLY`,
-        'Transaction UID': transactionUid.trim(),
-        'UPI ID': upiId.trim(),
-        'Payment Status': 'PAID'
-      };
-
-      const formPayload = new FormData();
-      formPayload.append('eventId', eventId || 'pratidhawni');
-      formPayload.append('fullName', fullName);
-      formPayload.append('email', email);
-      formPayload.append('phone', phone);
-      formPayload.append('answers', JSON.stringify(combinedAnswers));
-
-      if (paymentProofFile) {
-        formPayload.append('paymentProof', paymentProofFile);
-      }
-
-      const res = await submitRegistrationApi(formPayload);
-
-      if (res.success && res.data) {
-        setTicket(res.data);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Payment submission failed. Please try again.');
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -839,175 +741,6 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         </Link>
 
         {ticket ? (
-          isPratidhawni ? (
-            /* PRATIDHAWNI DIGITAL RECEIPT & POST-PAYMENT CONFIRMATION */
-            <div className="space-y-6 max-w-4xl mx-auto">
-              {/* Step 4 Confirmation Banner */}
-              <div className="no-print glass-panel p-6 text-center border-2 border-emerald-500/40 rounded-2xl bg-emerald-950/20 shadow-2xl">
-                <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-3 animate-bounce">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-2">
-                  Thanks for enrolling! 🎉
-                </h1>
-                <p className="text-xs sm:text-sm text-[#e6c594]">
-                  Your registration for <strong className="text-white">Pratidhawni 2026</strong> is confirmed. Below is your official digital receipt & event pass.
-                </p>
-              </div>
-
-              {/* DIGITAL RECEIPT PASS CARD (PRINTABLE) */}
-              <div className="print-ticket-container bg-[#1c060b] border-2 border-[#ff9933] rounded-3xl p-6 sm:p-8 text-left space-y-6 shadow-2xl shadow-[#ff9933]/15 relative overflow-hidden">
-                {/* Header Bar with Top Right Corner QR_UID */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-[#ff9933] uppercase tracking-widest font-mono">🇮🇳 HITian inside</span>
-                      <span className="text-xs text-[#a69181]">• A unit of the Tabloid, Media and Literary Club</span>
-                    </div>
-                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-[#ff9933] mt-1 drop-shadow-md">
-                      PRATIDHWANI
-                    </h2>
-                    <p className="text-xs text-[#e6c594] font-medium mt-0.5 tracking-widest uppercase font-mono">ONE LINER ... ONE LINER..</p>
-                  </div>
-
-                  {/* Top Right Corner Unique QR_UID Code */}
-                  <div className="flex flex-col items-center p-3 bg-white rounded-2xl border-2 border-[#ff9933] shadow-lg shrink-0 self-end sm:self-auto">
-                    <QRCodeSVG value={ticket.ticketId} size={110} />
-                    <span className="font-mono text-[9px] font-black text-black mt-1 uppercase tracking-wider">
-                      QR_UID: {ticket.ticketId}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Unique Participation ID Banner */}
-                <div className="p-3 rounded-xl bg-[#ff9933]/15 border border-[#ff9933]/30 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[#a69181]">Unique Participation ID:</span>
-                  <span className="font-mono font-extrabold text-[#ff9933] text-sm sm:text-base tracking-wider">{ticket.ticketId}</span>
-                </div>
-
-                {/* Three Specific Receipt Sections */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Section 1: NAME and Details */}
-                  <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-2 text-xs">
-                    <h3 className="text-xs font-extrabold text-[#ff9933] uppercase tracking-wider pb-2 border-b border-white/10 flex items-center gap-1.5">
-                      <FileCheck className="w-3.5 h-3.5" />
-                      <span>1. NAME & Details</span>
-                    </h3>
-                    <div className="space-y-1.5 pt-1">
-                      <div>
-                        <span className="text-[10px] text-[#a69181] block font-medium">NAME</span>
-                        <span className="font-bold text-white text-sm block">{ticket.fullName}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-[#a69181] block font-medium">Department</span>
-                        <span className="font-semibold text-white block">{ticket.answers?.['Department'] || selectedDept}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-[#a69181] block font-medium">Roll Number</span>
-                        <span className="font-mono font-bold text-[#ff9933] block">{ticket.answers?.['College Roll Number'] || fullRollNumber}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-[#a69181] block font-medium">Email Address</span>
-                        <span className="font-mono text-white block truncate">{ticket.email}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-[#a69181] block font-medium">Mobile Number</span>
-                        <span className="font-mono text-white block">{ticket.phone}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Section 2: Events Enrolled */}
-                  <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-2 text-xs">
-                    <h3 className="text-xs font-extrabold text-cyan-400 uppercase tracking-wider pb-2 border-b border-white/10 flex items-center gap-1.5">
-                      <Mic className="w-3.5 h-3.5" />
-                      <span>2. Events Enrolled ({ticket.answers?.['Total Enrolled Events'] || pratidhawniCategories.length})</span>
-                    </h3>
-                    <div className="space-y-2 pt-1">
-                      <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
-                        <span className="text-[10px] uppercase font-bold text-cyan-400 block mb-0.5">Enrolled Categories</span>
-                        <span className="text-sm font-extrabold block text-white font-mono leading-relaxed">
-                          {ticket.answers?.['Enrolled Event Options'] || ticket.answers?.['Enrolled Event Option'] || pratidhawniCategories.join(', ')}
-                        </span>
-                      </div>
-                      <div className="pt-2 text-[11px] text-[#a69181] space-y-1">
-                        <p>📍 <strong>Venue:</strong> Main Campus Grounds & SAC, HIT Haldia</p>
-                        <p>📅 <strong>Date:</strong> August 15, 2026</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Section 3: Payment Status */}
-                  <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-2 text-xs">
-                    <h3 className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider pb-2 border-b border-white/10 flex items-center gap-1.5">
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>3. Payment Status</span>
-                    </h3>
-                    <div className="space-y-2 pt-1">
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300">
-                        <span className="text-xs font-extrabold">STATUS: PAID</span>
-                        <span className="font-mono font-black text-sm text-emerald-300">
-                          {ticket.answers?.['Payment Amount'] || `RS. ${totalPratidhwaniFee}/- ONLY`}
-                        </span>
-                      </div>
-                      <div className="space-y-1.5 pt-1 text-[11px]">
-                        <div>
-                          <span className="text-[10px] text-[#a69181] block font-medium">Transaction UID</span>
-                          <span className="font-mono font-bold text-white block truncate">{ticket.answers?.['Transaction UID'] || transactionUid || '-'}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-[#a69181] block font-medium">UPI ID</span>
-                          <span className="font-mono font-semibold text-white block truncate">{ticket.answers?.['UPI ID'] || upiId || '-'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ticket Footer with Poster Social Links */}
-                <div className="pt-4 border-t border-white/10 space-y-2.5">
-                  <div className="flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#a69181] gap-2">
-                    <span>Show this receipt & QR_UID at venue entrance for attendance verification.</span>
-                    <span>Issued by <strong>HITian Inside • Tabloid, Media & Literary Club</strong></span>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-3 text-[10px] text-[#e6c594] pt-2 border-t border-white/5 font-mono">
-                    <span>📘 @HITian.Inside</span>
-                    <span>•</span>
-                    <span>📷 @hitianinside</span>
-                    <span>•</span>
-                    <span>💼 hitian-inside</span>
-                    <span>•</span>
-                    <span>🔴 HITian INSIDE</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Post-Payment Parallel Actions */}
-              <div className="no-print flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                <a 
-                  href={PRATIDHAWNI_WHATSAPP_LINK}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition-all shadow-xl shadow-emerald-600/30 inline-flex items-center justify-center gap-2"
-                >
-                  <MessageSquare className="w-4 h-4 fill-white" />
-                  <span>Join Official Pratidhawni WhatsApp Group 💬</span>
-                </a>
-
-                <button 
-                  onClick={() => window.print()} 
-                  className="w-full sm:w-auto btn-secondary text-xs py-3 px-6 inline-flex items-center justify-center gap-1.5"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Print Digital Receipt</span>
-                </button>
-
-                <Link href="/" className="w-full sm:w-auto btn-secondary text-xs py-3 px-6 text-center">
-                  Back to Events Catalog
-                </Link>
-              </div>
-            </div>
-          ) : (
             /* STANDARD / SWARAJ REGISTRATION CONFIRMED TICKET SCREEN */
             <div className="space-y-6">
               <div className="no-print glass-panel p-6 text-center border-2 border-emerald-500/40">
@@ -1177,8 +910,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                 </Link>
               </div>
             </div>
-          )
-        ) : (
+          ) : (
           /* REGISTRATION WIZARD */
           <div className="space-y-6">
             {/* Header Banner */}
@@ -1196,19 +928,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
             <div className="p-4 sm:p-8 lg:p-10 border border-[#f7f1e5]/10 rounded-2xl sm:rounded-3xl glass-panel shadow-2xl">
               <div className="mb-5 sm:mb-8 pb-4 sm:pb-6 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                {isPratidhawni ? (
-                  <div>
-                    <span className="text-[11px] font-bold text-[#ff9933] uppercase tracking-wider block font-mono">
-                      🇮🇳 HITian inside • A unit of the Tabloid, Media and Literary Club
-                    </span>
-                    <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-[#ff9933] mt-0.5 drop-shadow-md">
-                      PRATIDHWANI
-                    </h1>
-                    <span className="text-xs text-[#e6c594] font-semibold tracking-widest uppercase block mt-0.5 font-mono">
-                      ONE LINER ... ONE LINER..
-                    </span>
-                  </div>
-                ) : isNavroopam ? (
+                {isNavroopam ? (
                   <div>
                     <span className="text-[11px] font-black text-[#e6c594] uppercase tracking-wider block font-mono">
                       🔱 HITian Inside • Tabloid, Media & Literary Club
@@ -1226,18 +946,6 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                   </h1>
                 )}
               </div>
-
-              {isPratidhawni && (
-                <div className="flex items-center gap-1.5 sm:gap-2 self-stretch sm:self-auto justify-between sm:justify-start">
-                  <span className={`px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold ${activeStep === 1 ? 'bg-[#ff9933] text-black' : 'bg-white/10 text-white'}`}>
-                    1. Registration Form
-                  </span>
-                  <span className="text-xs text-[#a69181]">→</span>
-                  <span className={`px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold ${activeStep === 2 ? 'bg-emerald-500 text-black font-black' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}>
-                    2. Payment (RS. 50/- ONLY)
-                  </span>
-                </div>
-              )}
 
               {isNavroopam && (
                 <div className="flex items-center gap-1.5 sm:gap-2 self-stretch sm:self-auto justify-between sm:justify-start">
@@ -1473,74 +1181,6 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                     )}
                   </div>
 
-                  {/* Pratidhawni Specific Multi-Select Event Options Selection */}
-                  {isPratidhawni && (
-                    <div className="space-y-3 pt-3 border-t border-white/10">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
-                        <label className="form-label text-xs font-bold text-white mb-0">
-                          Select Event Category(ies) to Enroll *
-                        </label>
-                        <span className="text-[#ff9933] text-[11px] font-mono font-bold">
-                          Select 1, 2 or all 3 Events (₹50 per event)
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {[
-                          { id: 'OPEN MIC', title: 'OPEN MIC', desc: 'Poetry, Music, Stand-up & Stories', icon: Mic },
-                          { id: 'YOUTH PARLIAMENT', title: 'YOUTH PARLIAMENT', desc: 'Debate & Parliamentary Discussion', icon: Users },
-                          { id: 'LIVE ART', title: 'LIVE ART', desc: 'Painting, Live Sketching & Posters', icon: Palette }
-                        ].map(opt => {
-                          const IconComp = opt.icon;
-                          const isSelected = pratidhawniCategories.includes(opt.id);
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => togglePratidhwaniCategory(opt.id)}
-                              className={`p-4 rounded-2xl border text-left transition-all relative ${
-                                isSelected 
-                                  ? 'bg-[#ff9933]/20 border-[#ff9933] shadow-lg shadow-[#ff9933]/15 ring-2 ring-[#ff9933]' 
-                                  : 'bg-white/5 border-white/10 hover:border-white/20 opacity-75'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-2">
-                                  <IconComp className={`w-4 h-4 ${isSelected ? 'text-[#ff9933]' : 'text-[#a69181]'}`} />
-                                  <span className={`text-sm font-black ${isSelected ? 'text-white' : 'text-white/80'}`}>{opt.title}</span>
-                                </div>
-                                
-                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                                  isSelected ? 'bg-[#ff9933] border-[#ff9933] text-black font-bold' : 'border-white/30 bg-black/40'
-                                }`}>
-                                  {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                                </div>
-                              </div>
-                              
-                              <p className="text-[11px] text-[#a69181] leading-snug">{opt.desc}</p>
-                              
-                              <div className="mt-2 pt-1 border-t border-white/5 flex items-center justify-between text-[10px]">
-                                <span className="text-[#e6c594] font-mono">Fee: ₹50</span>
-                                {isSelected && <span className="text-emerald-400 font-bold">✓ Selected</span>}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Real-time Dynamic Fee Summary Banner */}
-                      <div className="p-3.5 rounded-xl bg-[#ff9933]/15 border border-[#ff9933]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs mt-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[#a69181]">Selected Events:</span>
-                          <span className="font-bold text-white font-mono">{pratidhawniCategories.join(', ')} ({pratidhawniCategories.length} Event{pratidhawniCategories.length > 1 ? 's' : ''})</span>
-                        </div>
-                        <div className="text-left sm:text-right">
-                          <span className="text-[10px] text-[#a69181] block uppercase font-medium">Total Calculated Fee:</span>
-                          <span className="text-base font-black text-[#ff9933] font-mono">RS. {totalPratidhwaniFee}/- ONLY</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="pt-4 border-t border-white/10 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
@@ -1556,105 +1196,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                         : 'btn-tricolour text-sm py-3 sm:py-2.5 px-6 inline-flex items-center justify-center gap-2 font-extrabold w-full sm:w-auto shadow-lg'
                     }
                   >
-                    <span>{isPratidhawni ? `SUBMIT & PROCEED TO PAYMENT (RS. ${totalPratidhwaniFee}/-) →` : isNavroopam ? 'Proceed to Domain & Payment (₹9.00) →' : 'Proceed to Domain Selection →'}</span>
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* STEP 2: PRATIDHAWNI PAYMENT PROCESSING PORTAL */}
-            {activeStep === 2 && isPratidhawni && (
-              <form onSubmit={handlePratidhawniPaymentSubmit} className="space-y-6 animate-fadeIn">
-                <div className="p-6 rounded-2xl bg-[#180509] border border-[#ff9933]/40 text-center space-y-4 shadow-xl">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ff9933]/20 text-[#ff9933] border border-[#ff9933]/30 text-xs font-mono font-bold">
-                    <CreditCard className="w-3.5 h-3.5" />
-                    <span>Step 2: Payment Processing</span>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-1">
-                    <span className="text-xs text-[#a69181] block font-medium">
-                      Enrolled Events ({pratidhawniCategories.length}): <strong className="text-white font-mono">{pratidhawniCategories.join(', ')}</strong>
-                    </span>
-                    <span className="text-xs text-[#a69181] block font-medium">Total Registration Fee to be Paid:</span>
-                    <span className="text-3xl font-black text-emerald-400 font-mono mt-0.5 block">RS. {totalPratidhwaniFee}/- ONLY</span>
-                  </div>
-
-                  {/* Visual UPI Payment QR Code */}
-                  <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border-2 border-[#ff9933] max-w-xs mx-auto shadow-2xl">
-                    <QRCodeSVG value={`upi://pay?pa=${encodeURIComponent(activeUpiId)}&pn=${encodeURIComponent(activePayeeName)}&am=${totalPratidhwaniFee}&cu=INR&tn=${encodeURIComponent(`${event?.title || 'Event'} Registration`)}`} size={160} />
-                    <span className="font-mono text-xs font-bold text-black mt-2">
-                      UPI ID: {activeUpiId}
-                    </span>
-                    <span className="text-[10px] text-gray-600 mt-0.5">Payee: {activePayeeName} • Scan using GPay, PhonePe, Paytm, BHIM</span>
-                  </div>
-                </div>
-
-                <div className="space-y-4 bg-[#180509] p-5 rounded-2xl border border-white/10">
-                  <h4 className="text-xs font-bold text-[#ff9933] uppercase tracking-wider">Submit Payment Verification Details</h4>
-
-                  <div className="form-group">
-                    <label className="form-label flex items-center justify-between text-xs text-white font-semibold mb-1">
-                      <span>Transaction UID (UTR / Txn ID) *</span>
-                      <span className="text-[10px] text-[#a69181]">12-digit number</span>
-                    </label>
-                    <input 
-                      type="text"
-                      value={transactionUid}
-                      onChange={e => setTransactionUid(e.target.value)}
-                      placeholder="Enter Transaction UID after payment (e.g. 423819028491)"
-                      className="form-input text-xs font-mono uppercase"
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label flex items-center justify-between text-xs text-white font-semibold mb-1">
-                      <span>Your UPI ID *</span>
-                      <span className="text-[10px] text-[#a69181]">e.g. name@upi</span>
-                    </label>
-                    <input 
-                      type="text"
-                      value={upiId}
-                      onChange={e => setUpiId(e.target.value)}
-                      placeholder="Enter your UPI ID (e.g. rahul@okicici)"
-                      className="form-input text-xs font-mono"
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group mb-0">
-                    <label className="form-label text-xs text-white font-bold flex items-center justify-between">
-                      <span>Payment Screenshot Proof * (Mandatory)</span>
-                      <span className="text-[10px] text-amber-300 font-mono">Max 4.0 MB</span>
-                    </label>
-                    <input 
-                      type="file" 
-                      accept="image/*,.pdf"
-                      onChange={e => {
-                        const f = e.target.files?.[0] || null;
-                        setPaymentProofFile(f);
-                      }}
-                      className="text-xs text-[#a69181] file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#ff9933] file:text-black hover:file:bg-[#e68a00]"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
-                  <button 
-                    type="button" 
-                    onClick={() => setActiveStep(1)} 
-                    className="btn-secondary text-xs py-3 sm:py-2.5 px-5 text-center justify-center"
-                  >
-                    ← Back to Step 1
-                  </button>
-
-                  <button 
-                    type="submit" 
-                    disabled={submitting}
-                    className="btn-tricolour flex-1 py-3 sm:py-2.5 text-xs sm:text-sm font-extrabold justify-center inline-flex items-center gap-2 shadow-lg"
-                  >
-                    <span>{submitting ? 'Verifying & Generating Receipt...' : 'PROCEED & GENERATE RECEIPT →'}</span>
+                    <span>{isNavroopam ? 'Proceed to Domain & Payment (₹9.00) →' : 'Proceed to Domain Selection →'}</span>
                   </button>
                 </div>
               </form>

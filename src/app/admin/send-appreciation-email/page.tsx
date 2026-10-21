@@ -975,7 +975,7 @@ export default function SendAppreciationEmailPage() {
                           </div>
 
                           <h1 className="text-2xl sm:text-3xl font-black tracking-tight m-0 drop-shadow-md text-white">
-                            {selectedEvent?.title || 'PRATIDHWANI'}
+                            {selectedEvent?.title || 'Event'}
                           </h1>
                           <p className="text-xs text-[#f2e2cf] mt-1 mb-0 font-medium">
                             Participation & Appreciation Notification

@@ -173,16 +173,18 @@ export default function AdminDashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   const loadAdminEventsAndSubmissions = async (forceRefresh: boolean = false) => {
-    // Only show full loading spinner if we don't have any cached events yet
+    // Only show full loading spinner if we don't have events in state yet
     if (events.length === 0) {
       setLoading(true);
     }
     try {
-      const [eventsList, subsList] = await Promise.all([
-        fetchEvents(true, true, forceRefresh),
-        fetchSubmissionsApi(undefined, forceRefresh)
-      ]);
+      // 1. Fetch events first so dashboard renders immediately
+      const eventsList = await fetchEvents(true, true, forceRefresh);
       setEvents(eventsList);
+      setLoading(false); // Release the blocking modal immediately
+
+      // 2. Fetch submissions in background/parallel (with in-memory cache)
+      const subsList = await fetchSubmissionsApi(undefined, forceRefresh);
       setAllSubmissions(subsList);
     } catch (err) {
       console.error('Failed loading admin events & submissions:', err);
@@ -353,8 +355,7 @@ export default function AdminDashboardPage() {
     return allSubmissions.filter(sub => {
       const matchesId = sub.eventId === selectedAnalyticsEventId;
       const isNavroopamAlias = (selectedAnalyticsEventId.includes('nav') || selectedAnalyticsEventId === '6aca70825588e8009b8e8e83') && (sub.eventId === '6aca70825588e8009b8e8e83' || sub.eventId?.includes('nav') || sub.eventTitle?.toLowerCase().includes('nav'));
-      const isPratidhwaniAlias = (selectedAnalyticsEventId.includes('pratid')) && (sub.eventId?.includes('pratid') || sub.eventTitle?.toLowerCase().includes('pratid'));
-      return matchesId || isNavroopamAlias || isPratidhwaniAlias;
+      return matchesId || isNavroopamAlias;
     });
   }, [allSubmissions, selectedAnalyticsEventId]);
 
