@@ -86,7 +86,7 @@ export default function ObserverPortalPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      setApiOrigin(isLocal ? 'http://localhost:5000' : 'https://hitianinside-event-backend.vercel.app');
+      setApiOrigin(isLocal ? 'http://localhost:5000' : 'https://event-backend-29dm.onrender.com');
     }
   }, []);
 

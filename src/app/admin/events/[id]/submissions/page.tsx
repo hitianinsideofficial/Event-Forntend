@@ -55,7 +55,9 @@ import {
   FileSpreadsheet,
   MailWarning,
   Upload,
-  AlertTriangle
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import MongoProgressBar from '../../../../../components/MongoProgressBar';
 
@@ -86,6 +88,10 @@ export default function EventSubmissionsPage() {
   const [selectedDomainFilter, setSelectedDomainFilter] = useState<string>('ALL');
   const [selectedThemeFilter, setSelectedThemeFilter] = useState<string>('ALL');
   const [selectedPaymentFilter, setSelectedPaymentFilter] = useState<string>('ALL');
+
+  // Pagination Settings
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(20);
 
   // Preview Modal for Proof / Submission File
   const [previewMediaUrl, setPreviewMediaUrl] = useState<string | null>(null);
@@ -140,8 +146,6 @@ export default function EventSubmissionsPage() {
       loadData(false);
     }
   }, [isAuthenticated, eventId]);
-
-  if (!isAuthenticated) return null;
 
   const isNavroopam = eventId === '6aca70825588e8009b8e8e83' || eventId?.includes('nav') || event?.title?.toLowerCase().includes('nav');
 
@@ -378,6 +382,13 @@ export default function EventSubmissionsPage() {
     return matchesSearch && matchesDomain && matchesTheme && matchesPayment;
   });
 
+  // Calculate Pagination Slices
+  const totalPages = Math.max(1, Math.ceil(filteredSubmissions.length / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredSubmissions.length);
+  const paginatedSubmissions = filteredSubmissions.slice(startIndex, endIndex);
+
   // Summary Metrics & QR / Payee Revenue Breakdown
   const paymentStats = {
     total: submissions.length,
@@ -441,6 +452,10 @@ export default function EventSubmissionsPage() {
 
   const totalVerifiedRevenue = payeeBreakdown.reduce((sum, p) => sum + p.verifiedAmount, 0);
   const totalPotentialRevenue = payeeBreakdown.reduce((sum, p) => sum + p.totalAmount, 0);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white relative">
@@ -743,28 +758,51 @@ export default function EventSubmissionsPage() {
               </select>
             </div>
 
-            {/* VIEW MODE SWITCHER */}
-            <div className="flex items-center gap-1 border border-slate-300 p-0.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors ${
-                  viewMode === 'table' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <List className="w-3.5 h-3.5" />
-                <span>Table View</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('cards')}
-                className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors ${
-                  viewMode === 'cards' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Grid className="w-3.5 h-3.5" />
-                <span>Card / Gallery View</span>
-              </button>
+            {/* VIEW MODE & ENTRIES PER PAGE CONTROLS */}
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              {/* Entries Per Page Selector */}
+              <div className="flex items-center gap-1.5 text-xs text-slate-700">
+                <span className="font-bold text-[11px] uppercase tracking-wider text-slate-500">Show:</span>
+                <select
+                  value={pageSize}
+                  onChange={e => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-2.5 py-1.5 text-xs font-bold bg-slate-50 border border-slate-300 text-slate-900 outline-none focus:border-slate-900 cursor-pointer"
+                  title="Select number of entries to display per page"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                  <option value={filteredSubmissions.length || 500}>All ({filteredSubmissions.length})</option>
+                </select>
+              </div>
+
+              {/* View Mode Switcher */}
+              <div className="flex items-center gap-1 border border-slate-300 p-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                    viewMode === 'table' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Table</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('cards')}
+                  className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                    viewMode === 'cards' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Grid className="w-3.5 h-3.5" />
+                  <span>Cards</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -801,7 +839,7 @@ export default function EventSubmissionsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {filteredSubmissions.map(sub => {
+                  {paginatedSubmissions.map(sub => {
                     const paymentStatus = sub.paymentStatus || (sub.answers?.['Payment Status']?.includes('PAID') ? 'PAID' : 'PENDING');
                     const utr = sub.answers?.['Transaction UID'] || sub.answers?.['UTR Number'] || sub.answers?.['Transaction UID / Txn ID'] || '-';
                     const fee = sub.answers?.['Registration Fee'] || sub.answers?.['Payment Amount'] || (isNavroopam ? '₹9.00' : '-');
@@ -1245,7 +1283,7 @@ export default function EventSubmissionsPage() {
           ) : (
             /* CARD / GALLERY VIEW */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredSubmissions.map(sub => {
+              {paginatedSubmissions.map(sub => {
                 const mediaUrl = sub.files && sub.files.length > 0
                   ? (sub.files[0].localUrl || sub.files[0].driveLink || null)
                   : null;
@@ -1406,6 +1444,65 @@ export default function EventSubmissionsPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* PAGINATION FOOTER BAR */}
+          {!loading && filteredSubmissions.length > 0 && (
+            <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="text-slate-600 font-medium">
+                Showing <strong className="text-slate-900">{startIndex + 1}</strong> to <strong className="text-slate-900">{endIndex}</strong> of{' '}
+                <strong className="text-slate-900">{filteredSubmissions.length}</strong> entries
+                {filteredSubmissions.length < submissions.length && (
+                  <span className="text-slate-500 text-[11px] ml-1">(filtered from {submissions.length} total)</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safeCurrentPage === 1}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="First Page"
+                >
+                  « First
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={safeCurrentPage === 1}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Prev</span>
+                </button>
+
+                <div className="px-3 py-1.5 bg-slate-900 text-white font-mono font-bold text-xs">
+                  {safeCurrentPage} / {totalPages}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safeCurrentPage === totalPages}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Next Page"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safeCurrentPage === totalPages}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Last Page"
+                >
+                  Last »
+                </button>
+              </div>
             </div>
           )}
         </section>
