@@ -695,6 +695,40 @@ export async function updatePostingExcelApi(
   return data;
 }
 
+export async function updateSubmissionMediaApi(
+  submissionId: string,
+  payload: { mediaLink?: string; mediaFile?: File }
+): Promise<ApiResponse<SubmissionItem>> {
+  const baseUrl = await getApiBaseUrl();
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('adminToken') : null;
+
+  let body: BodyInit;
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${token || ''}`
+  };
+
+  if (payload.mediaFile) {
+    const formData = new FormData();
+    formData.append('mediaFile', payload.mediaFile);
+    if (payload.mediaLink) formData.append('mediaLink', payload.mediaLink);
+    body = formData;
+  } else {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify({ mediaLink: payload.mediaLink });
+  }
+
+  const res = await fetch(`${baseUrl}/submissions/${submissionId}/media`, {
+    method: 'PUT',
+    headers,
+    body
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update submission media');
+  clearApiCache('submissions');
+  return data;
+}
+
 export async function toggleCouponCollectedApi(
   submissionId: string,
   couponCollected: boolean

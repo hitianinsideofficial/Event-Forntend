@@ -14,7 +14,9 @@ import {
   updatePaymentStatusApi,
   requestDriveLinkUpdateEmailApi,
   requestResubmissionEmailApi,
-  updatePostingExcelApi
+  updatePostingExcelApi,
+  updateSubmissionMediaApi,
+  updateEventDetailsApi
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
@@ -57,7 +59,10 @@ import {
   Upload,
   AlertTriangle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UploadCloud,
+  Edit3,
+  Link2
 } from 'lucide-react';
 import MongoProgressBar from '../../../../../components/MongoProgressBar';
 
@@ -111,6 +116,20 @@ export default function EventSubmissionsPage() {
   const [customReasonText, setCustomReasonText] = useState<string>('');
   const [sendingResubmissionId, setSendingResubmissionId] = useState<string | null>(null);
   const [updatingMoveId, setUpdatingMoveId] = useState<string | null>(null);
+
+  // Manual Media Replacement Modal (Photo/Video/Drive Link)
+  const [editMediaSub, setEditMediaSub] = useState<SubmissionItem | null>(null);
+  const [mediaInputType, setMediaInputType] = useState<'link' | 'file'>('link');
+  const [mediaLinkInput, setMediaLinkInput] = useState<string>('');
+  const [replacementFile, setReplacementFile] = useState<File | null>(null);
+  const [isReplacingMedia, setIsReplacingMedia] = useState<boolean>(false);
+
+  // Change Payee Modal
+  const [isPayeeModalOpen, setIsPayeeModalOpen] = useState<boolean>(false);
+  const [payeeNameInput, setPayeeNameInput] = useState<string>('');
+  const [upiIdInput, setUpiIdInput] = useState<string>('');
+  const [paymentNoteInput, setPaymentNoteInput] = useState<string>('');
+  const [isUpdatingPayee, setIsUpdatingPayee] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -289,7 +308,16 @@ export default function EventSubmissionsPage() {
       await updatePostingExcelApi(sub.id, {
         moveToPostingExcel: newValue
       });
-      setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, moveToPostingExcel: newValue } : s));
+      setSubmissions(prev => prev.map(s => {
+        if (s.id === sub.id) {
+          return {
+            ...s,
+            moveToPostingExcel: newValue,
+            postingStatus: newValue && !s.postingStatus ? 'QUALIFIED' : s.postingStatus
+          };
+        }
+        return s;
+      }));
     } catch (err: any) {
       alert(err.message || 'Failed to update Move to Posting Excel status');
     } finally {
@@ -340,6 +368,94 @@ export default function EventSubmissionsPage() {
       alert(err.message || 'Failed to send resubmission email');
     } finally {
       setSendingResubmissionId(null);
+    }
+  };
+
+  // Open Media Replacement Modal
+  const handleOpenReplaceMedia = (sub: SubmissionItem) => {
+    setEditMediaSub(sub);
+    const existingDriveLink = sub.answers?.['Google Drive Video Reel Link'] || sub.files?.[0]?.driveLink || '';
+    setMediaLinkInput(existingDriveLink);
+    setReplacementFile(null);
+    setMediaInputType(existingDriveLink ? 'link' : 'file');
+  };
+
+  // Save Media Replacement
+  const handleSaveMediaReplacement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editMediaSub) return;
+
+    if (mediaInputType === 'link' && !mediaLinkInput.trim()) {
+      alert('Please enter a valid media or Google Drive link.');
+      return;
+    }
+    if (mediaInputType === 'file' && !replacementFile) {
+      alert('Please select a photo or video file to upload.');
+      return;
+    }
+
+    setIsReplacingMedia(true);
+    try {
+      const res = await updateSubmissionMediaApi(editMediaSub.id, {
+        mediaLink: mediaInputType === 'link' ? mediaLinkInput.trim() : undefined,
+        mediaFile: mediaInputType === 'file' && replacementFile ? replacementFile : undefined
+      });
+
+      if (res.success && res.data) {
+        alert(res.message || 'Media successfully replaced!');
+        const updatedSub = res.data;
+        setSubmissions(prev => prev.map(s => s.id === updatedSub.id ? updatedSub : s));
+        setEditMediaSub(null);
+        setReplacementFile(null);
+        setMediaLinkInput('');
+      } else {
+        alert(res.message || 'Failed to update media');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to replace media');
+    } finally {
+      setIsReplacingMedia(false);
+    }
+  };
+
+  // Open Change Payee Modal
+  const handleOpenPayeeModal = () => {
+    setPayeeNameInput(event?.payeeName || 'SANCHAYAN MAITI');
+    setUpiIdInput(event?.upiId || '9732741560@ybl');
+    setPaymentNoteInput(event?.paymentNote || 'Navroopam v7.0 Registration Fee');
+    setIsPayeeModalOpen(true);
+  };
+
+  // Save Payee Changes
+  const handleSavePayee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventId) return;
+
+    if (!payeeNameInput.trim() || !upiIdInput.trim()) {
+      alert('Payee Name and UPI ID are required.');
+      return;
+    }
+
+    setIsUpdatingPayee(true);
+    try {
+      const res = await updateEventDetailsApi(eventId, {
+        payeeName: payeeNameInput.trim(),
+        upiId: upiIdInput.trim(),
+        paymentNote: paymentNoteInput.trim()
+      });
+
+      if (res.success && res.data) {
+        alert('Active payee updated successfully! New registrants will now see this UPI ID and QR code.');
+        setEvent(res.data);
+        setIsPayeeModalOpen(false);
+        await loadData(true);
+      } else {
+        alert(res.message || 'Failed to update payee details');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update payee');
+    } finally {
+      setIsUpdatingPayee(false);
     }
   };
 
@@ -622,15 +738,27 @@ export default function EventSubmissionsPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-lg text-right">
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Total Verified</span>
-                <span className="text-sm font-black text-emerald-700 font-mono">₹{totalVerifiedRevenue.toFixed(2)}</span>
-              </div>
-              <div className="w-[1px] h-7 bg-slate-200"></div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">All Entries</span>
-                <span className="text-sm font-black text-slate-800 font-mono">₹{totalPotentialRevenue.toFixed(2)}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleOpenPayeeModal}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                title="Change active payee name, UPI ID and payment note"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Change Payee / UPI</span>
+              </button>
+
+              <div className="flex items-center gap-4 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-lg text-right">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Total Verified</span>
+                  <span className="text-sm font-black text-emerald-700 font-mono">₹{totalVerifiedRevenue.toFixed(2)}</span>
+                </div>
+                <div className="w-[1px] h-7 bg-slate-200"></div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">All Entries</span>
+                  <span className="text-sm font-black text-slate-800 font-mono">₹{totalPotentialRevenue.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -858,14 +986,28 @@ export default function EventSubmissionsPage() {
                     return (
                       <tr key={sub.id} className="hover:bg-slate-50/80 transition-colors">
                         
-                        {/* TICKET ID */}
+                        {/* TICKET ID & SUBMISSION TIMESTAMP */}
                         <td className="px-2 py-2 align-top font-mono font-bold text-slate-900">
                           <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 block text-center text-[11px] truncate">
                             {sub.ticketId}
                           </span>
-                          <span className="text-[9px] text-slate-400 font-sans block mt-0.5 text-center">
-                            {new Date(sub.createdAt).toLocaleDateString()}
-                          </span>
+                          <div className="text-center mt-1">
+                            <span className="text-[10px] text-slate-700 font-sans font-bold block leading-tight">
+                              {new Date(sub.createdAt).toLocaleDateString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </span>
+                            <span className="text-[9.5px] text-slate-500 font-mono block leading-tight mt-0.5">
+                              {new Date(sub.createdAt).toLocaleTimeString('en-IN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true
+                              })}
+                            </span>
+                          </div>
                         </td>
 
                         {/* PARTICIPANT DETAILS */}
@@ -1062,6 +1204,16 @@ export default function EventSubmissionsPage() {
                                     )}
                                   </button>
                                 )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenReplaceMedia(sub)}
+                                  className="w-full inline-flex items-center justify-center gap-1 px-1.5 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[9px] font-bold transition-colors cursor-pointer"
+                                  title="Admin: Manually update Google Drive URL or replace file"
+                                >
+                                  <Edit3 className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
+                                  <span>Edit / Replace Link</span>
+                                </button>
                               </div>
                             </div>
                           ) : mediaFile ? (
@@ -1134,7 +1286,7 @@ export default function EventSubmissionsPage() {
                               </a>
 
                               {/* RE-SUBMISSION ACTION FOR NON-VIDEO */}
-                              <div className="pt-0.5 border-t border-slate-100">
+                              <div className="pt-0.5 border-t border-slate-100 flex flex-col gap-1">
                                 {sub.resubmissionCompleted ? (
                                   <span className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.5 font-bold">
                                     <Check className="w-2.5 h-2.5" />
@@ -1151,21 +1303,42 @@ export default function EventSubmissionsPage() {
                                     <span>{sub.resubmissionRequested ? 'Resend Re-up' : 'Request Re-up'}</span>
                                   </button>
                                 )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenReplaceMedia(sub)}
+                                  className="w-full inline-flex items-center justify-center gap-1 px-1.5 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[9px] font-bold transition-colors cursor-pointer"
+                                  title="Admin: Manually replace photo/video or update Drive link"
+                                >
+                                  <UploadCloud className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
+                                  <span>Replace Media</span>
+                                </button>
                               </div>
                             </div>
                           ) : (
                             <div className="space-y-1">
                               <span className="text-[10px] text-slate-400 italic block">No media</span>
-                              {!driveLink && (
+                              <div className="flex flex-col gap-1">
+                                {!driveLink && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenResubmissionModal(sub)}
+                                    className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 text-[9px] font-bold transition-colors cursor-pointer"
+                                  >
+                                    <Upload className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                                    <span>Request Upload</span>
+                                  </button>
+                                )}
                                 <button
                                   type="button"
-                                  onClick={() => handleOpenResubmissionModal(sub)}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 text-[9px] font-bold transition-colors cursor-pointer"
+                                  onClick={() => handleOpenReplaceMedia(sub)}
+                                  className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[9px] font-bold transition-colors cursor-pointer"
+                                  title="Admin: Manually add/replace photo/video or Drive link"
                                 >
-                                  <Upload className="w-2.5 h-2.5 text-rose-600 shrink-0" />
-                                  <span>Request Upload</span>
+                                  <UploadCloud className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
+                                  <span>Add Media</span>
                                 </button>
-                              )}
+                              </div>
                             </div>
                           )}
 
@@ -1342,6 +1515,17 @@ export default function EventSubmissionsPage() {
                       <span className="absolute top-2 left-2 px-2 py-0.5 bg-slate-900 text-white text-[9px] font-bold uppercase tracking-wider">
                         {sub.answers?.['Selected Domain'] || 'General'}
                       </span>
+
+                      {/* Replace Media Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenReplaceMedia(sub)}
+                        className="absolute top-2 right-2 px-2 py-1 bg-white/95 hover:bg-white text-indigo-700 shadow-sm border border-slate-300 text-[9px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Admin: Replace media file or update Drive link"
+                      >
+                        <UploadCloud className="w-3 h-3 text-indigo-600" />
+                        <span>Replace Media</span>
+                      </button>
                     </div>
 
                     {/* Participant Details */}
@@ -1351,6 +1535,23 @@ export default function EventSubmissionsPage() {
                         <span className="font-mono text-[10px] font-bold text-slate-600">{sub.ticketId}</span>
                       </div>
                       <div className="text-slate-600 text-[11px]">{sub.email} • {sub.phone}</div>
+                      <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500 font-mono pt-0.5">
+                        <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span>
+                          {new Date(sub.createdAt).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}{' '}
+                          •{' '}
+                          {new Date(sub.createdAt).toLocaleTimeString('en-IN', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: true
+                          })}
+                        </span>
+                      </div>
                       <div className="text-indigo-700 font-bold text-[11px]">
                         Roll: {sub.answers?.['College Roll Number'] || 'N/A'} ({sub.answers?.['Department'] || ''})
                       </div>
@@ -1894,6 +2095,254 @@ export default function EventSubmissionsPage() {
                   <span>{sendingResubmissionId === resubmissionModalSub.id ? 'Sending Email...' : 'Send Re-upload Request'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* MANUAL MEDIA REPLACEMENT MODAL (PHOTO / VIDEO / DRIVE LINK) */}
+        {/* ========================================================= */}
+        {editMediaSub && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+            <div className="bg-white border border-slate-300 shadow-2xl max-w-lg w-full p-6 space-y-4 relative">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700">
+                    <UploadCloud className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                      Replace Media / Update Link
+                    </h3>
+                    <p className="text-xs text-slate-500 font-mono">
+                      {editMediaSub.fullName} • Ticket: {editMediaSub.ticketId}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditMediaSub(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 p-3 space-y-1">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-700">Selected Domain:</span>
+                  <span className="font-bold text-slate-900">{editMediaSub.answers?.['Selected Domain'] || 'General'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-700">Current File / Link:</span>
+                  <span className="truncate max-w-[240px] font-mono text-[11px] text-blue-700">
+                    {editMediaSub.answers?.['Google Drive Video Reel Link'] || editMediaSub.files?.[0]?.originalName || 'None'}
+                  </span>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveMediaReplacement} className="space-y-4">
+                {/* Method Selector */}
+                <div className="flex border border-slate-200 rounded-md overflow-hidden p-0.5 bg-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setMediaInputType('link')}
+                    className={`flex-1 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      mediaInputType === 'link' 
+                        ? 'bg-white text-indigo-700 shadow-2xs' 
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Google Drive / Media Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaInputType('file')}
+                    className={`flex-1 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      mediaInputType === 'file' 
+                        ? 'bg-white text-indigo-700 shadow-2xs' 
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Upload Photo / Video File
+                  </button>
+                </div>
+
+                {mediaInputType === 'link' ? (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Google Drive URL or Public Media Link:
+                    </label>
+                    <input
+                      type="url"
+                      required={mediaInputType === 'link'}
+                      placeholder="https://drive.google.com/file/d/... or https://..."
+                      value={mediaLinkInput}
+                      onChange={(e) => setMediaLinkInput(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-none font-mono"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      This updates both the entry answers and the media file records so all download and preview buttons point directly to the updated link.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Select Replacement Photo or Video:
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      required={mediaInputType === 'file'}
+                      onChange={(e) => setReplacementFile(e.target.files?.[0] || null)}
+                      className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-300 cursor-pointer"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      The file will be uploaded to Cloudinary/ImageKit with server storage fallback. The participant payment screenshot remains untouched.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setEditMediaSub(null)}
+                    disabled={isReplacingMedia}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isReplacingMedia}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {isReplacingMedia ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Updating Media...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save Media Replacement</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* CHANGE PAYEE / UPI MODAL */}
+        {/* ========================================================= */}
+        {isPayeeModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+            <div className="bg-white border border-slate-300 shadow-2xl max-w-md w-full p-6 space-y-4 relative">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                      Change Active Payee / UPI QR
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {event?.title || 'Current Event'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPayeeModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 bg-emerald-50 border border-emerald-200 p-3 space-y-1">
+                <p className="font-semibold text-emerald-900">
+                  Switching payee takes effect immediately on the live registration portal!
+                </p>
+                <p className="text-[11px] text-emerald-800">
+                  New registrants will scan the QR code and send payments to this updated name and UPI ID. Past submission records will keep their respective payee tags.
+                </p>
+              </div>
+
+              <form onSubmit={handleSavePayee} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Payee Name (as registered in Bank / UPI):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. SANCHAYAN MAITI or SAYAN ROY"
+                    value={payeeNameInput}
+                    onChange={(e) => setPayeeNameInput(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 focus:border-indigo-600 outline-none font-sans uppercase font-bold"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    UPI ID (VPA):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 9732741560@ybl or username@okhdfcbank"
+                    value={upiIdInput}
+                    onChange={(e) => setUpiIdInput(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 focus:border-indigo-600 outline-none font-mono font-bold text-emerald-800"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Payment Note (Shown in UPI payment description):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Navroopam v7.0 Registration Fee"
+                    value={paymentNoteInput}
+                    onChange={(e) => setPaymentNoteInput(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 focus:border-indigo-600 outline-none font-sans"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsPayeeModalOpen(false)}
+                    disabled={isUpdatingPayee}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingPayee}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {isUpdatingPayee ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Updating Payee...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save Payee & QR</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

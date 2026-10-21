@@ -106,8 +106,8 @@ export default function NavroopamPostingExcelPage() {
 
       subsData.forEach(sub => {
         initUrls[sub.id] = sub.instagramPostUrl || '';
-        // If confirmation email already sent, default posting status to MAIL_SENT if not set
-        initStatuses[sub.id] = sub.postingStatus || (sub.confirmationEmailSent ? 'MAIL_SENT' : null);
+        // Default posting status to QUALIFIED ('Yellow') if not set; if confirmation email was already sent, MAIL_SENT ('Blue')
+        initStatuses[sub.id] = sub.postingStatus || (sub.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
       });
 
       setInstagramUrls(initUrls);
@@ -144,7 +144,7 @@ export default function NavroopamPostingExcelPage() {
       const selectedDomain = s.answers?.['Selected Domain'];
       const matchesDomain = domainFilter === 'ALL' || selectedDomain === domainFilter;
 
-      const currentStatus = postingStatuses[s.id] || (s.confirmationEmailSent ? 'MAIL_SENT' : null);
+      const currentStatus = postingStatuses[s.id] || (s.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
       let matchesStatus = true;
       if (statusFilter === 'ALL') matchesStatus = true;
       else if (statusFilter === 'UNMARKED') matchesStatus = !currentStatus;
@@ -173,7 +173,7 @@ export default function NavroopamPostingExcelPage() {
     let mailSent = 0;
 
     acknowledgedSubmissions.forEach(s => {
-      const status = postingStatuses[s.id] || (s.confirmationEmailSent ? 'MAIL_SENT' : null);
+      const status = postingStatuses[s.id] || (s.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
       if (status === 'QUALIFIED') qualified++;
       else if (status === 'POSTED') posted++;
       else if (status === 'DISQUALIFIED') disqualified++;
@@ -581,7 +581,7 @@ export default function NavroopamPostingExcelPage() {
                     // Media URL for viewing
                     const mediaUrl = mediaFile ? (mediaFile.localUrl || mediaFile.driveLink || '') : '';
 
-                    const currentStatus = postingStatuses[sub.id] || (sub.confirmationEmailSent ? 'MAIL_SENT' : null);
+                    const currentStatus = postingStatuses[sub.id] || (sub.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
                     const currentInsta = instagramUrls[sub.id] !== undefined ? instagramUrls[sub.id] : (sub.instagramPostUrl || '');
                     const isSaving = savingId === sub.id;
                     const isSendingConf = sendingConfirmationId === sub.id;
@@ -606,6 +606,11 @@ export default function NavroopamPostingExcelPage() {
                         <td className="p-3 align-top min-w-[170px]">
                           <span className="font-mono font-bold text-slate-900 bg-slate-100 border border-slate-300 px-1.5 py-0.5 text-[11px] block w-fit">
                             {sub.ticketId}
+                          </span>
+                          <span className="text-[9.5px] text-slate-500 font-mono block mt-1 leading-tight">
+                            📅 {new Date(sub.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            <br />
+                            ⏰ {new Date(sub.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
                           </span>
                           <p className="font-bold text-slate-900 text-xs mt-1.5 leading-snug">
                             {sub.fullName}
