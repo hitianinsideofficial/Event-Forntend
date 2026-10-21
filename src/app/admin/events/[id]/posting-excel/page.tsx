@@ -1141,8 +1141,6 @@ export default function NavroopamPostingExcelPage() {
                               src={embedUrl}
                               title="Instagram Post Preview"
                               className="w-full h-[62vh] min-h-[420px] border border-slate-200 rounded-xs shadow-xs"
-                              allowTransparency={true}
-                              frameBorder="0"
                               scrolling="no"
                               allow="encrypted-media"
                             />
