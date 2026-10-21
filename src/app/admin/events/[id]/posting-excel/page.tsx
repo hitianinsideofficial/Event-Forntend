@@ -607,6 +607,11 @@ export default function NavroopamPostingExcelPage() {
                           <span className="font-mono font-bold text-slate-900 bg-slate-100 border border-slate-300 px-1.5 py-0.5 text-[11px] block w-fit">
                             {sub.ticketId}
                           </span>
+                          <span className="text-[9.5px] text-slate-500 font-mono block mt-1 leading-tight">
+                            📅 {new Date(sub.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            <br />
+                            ⏰ {new Date(sub.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                          </span>
                           <p className="font-bold text-slate-900 text-xs mt-1.5 leading-snug">
                             {sub.fullName}
                           </p>
