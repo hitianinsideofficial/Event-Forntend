@@ -633,7 +633,7 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
         combinedAnswers['Registration Fee'] = `₹${activeEventFee} INR`;
         combinedAnswers['Transaction UID'] = navroopamUtr.trim();
         combinedAnswers['Selected Payee'] = `${activePayeeName} (${activeUpiId})`;
-        combinedAnswers['Payment Status'] = `PAID (₹${activeEventFee})`;
+        combinedAnswers['Payment Status'] = `PENDING VERIFICATION (₹${activeEventFee})`;
       }
 
       const formPayload = new FormData();
