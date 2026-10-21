@@ -320,6 +320,7 @@ export async function submitRegistrationApi(
     if (onProgress && typeof window !== 'undefined') {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        xhr.timeout = 180000; // 3 minutes timeout for mobile network uploads
         xhr.open('POST', `${baseUrl}/submissions`);
 
         xhr.upload.onprogress = (event) => {
