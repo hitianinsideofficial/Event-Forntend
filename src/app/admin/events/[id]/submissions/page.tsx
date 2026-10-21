@@ -102,6 +102,7 @@ export default function EventSubmissionsPage() {
   // Preview Modal for Proof / Submission File
   const [previewMediaUrl, setPreviewMediaUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('');
+  const [previewSubmission, setPreviewSubmission] = useState<SubmissionItem | null>(null);
 
   // Email Templates Preview Modal
   const [isEmailPreviewOpen, setIsEmailPreviewOpen] = useState<boolean>(false);
@@ -1157,6 +1158,7 @@ export default function EventSubmissionsPage() {
                                   onClick={() => {
                                     setPreviewMediaUrl(proofUrl);
                                     setPreviewTitle(`Payment Screenshot - ${sub.fullName} (UTR: ${utr})`);
+                                    setPreviewSubmission(sub);
                                   }}
                                   className="w-full px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 text-[10px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
                                   title="Click to preview payment screenshot proof"
@@ -1287,6 +1289,7 @@ export default function EventSubmissionsPage() {
                                   onClick={() => {
                                     setPreviewMediaUrl(mediaFile.localUrl || mediaFile.driveLink || '');
                                     setPreviewTitle(`${sub.fullName} - ${mediaFile.originalName}`);
+                                    setPreviewSubmission(sub);
                                   }}
                                   className="flex-1 px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-[10px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
                                 >
@@ -1539,6 +1542,7 @@ export default function EventSubmissionsPage() {
                           onClick={() => {
                             setPreviewMediaUrl(mediaUrl);
                             setPreviewTitle(sub.fullName);
+                            setPreviewSubmission(sub);
                           }}
                         />
                       ) : sub.answers?.['Google Drive Video Reel Link'] ? (
@@ -1797,8 +1801,11 @@ export default function EventSubmissionsPage() {
                   <h3 className="text-sm font-bold text-slate-900 truncate">{previewTitle}</h3>
                 </div>
                 <button 
-                  onClick={() => setPreviewMediaUrl(null)}
-                  className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold uppercase transition-colors hover:bg-slate-800"
+                  onClick={() => {
+                    setPreviewMediaUrl(null);
+                    setPreviewSubmission(null);
+                  }}
+                  className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold uppercase transition-colors hover:bg-slate-800 cursor-pointer"
                 >
                   ✕ Close
                 </button>
@@ -1822,80 +1829,127 @@ export default function EventSubmissionsPage() {
               </div>
 
               {/* MODAL FOOTER BUTTONS */}
-              <div className="p-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2 bg-white">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    // Safe browser download that works for both remote HTTPS and data URIs
-                    try {
-                      if (previewMediaUrl.startsWith('data:')) {
-                        const arr = previewMediaUrl.split(',');
-                        const mimeMatch = arr[0].match(/:(.*?);/);
-                        const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-                        const bstr = atob(arr[1]);
-                        let n = bstr.length;
-                        const u8arr = new Uint8Array(n);
-                        while (n--) {
-                          u8arr[n] = bstr.charCodeAt(n);
-                        }
-                        const blob = new Blob([u8arr], { type: mime });
-                        const blobUrl = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = blobUrl;
-                        a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-                      } else {
-                        const a = document.createElement('a');
-                        a.href = previewMediaUrl;
-                        a.target = '_blank';
-                        a.rel = 'noreferrer';
-                        a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                      }
-                    } catch (err) {
-                      window.open(previewMediaUrl, '_blank');
-                    }
-                  }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download File</span>
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    // For data URIs, convert to object URL so Chrome doesn't block with about:blank#blocked
-                    if (previewMediaUrl.startsWith('data:')) {
+              <div className="p-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-white">
+                {/* Left Side: Verify / Status Controls if previewing a submission */}
+                <div className="flex items-center gap-2">
+                  {previewSubmission && (
+                    <>
+                      {previewSubmission.paymentStatus === 'VERIFIED' || previewSubmission.paymentStatus === 'PAID' ? (
+                        <div className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-black uppercase">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span>Payment Verified</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={updatingPaymentId === previewSubmission.id}
+                          onClick={async () => {
+                            await handleUpdatePayment(previewSubmission.id, 'VERIFIED');
+                            setPreviewSubmission(prev => prev ? { ...prev, paymentStatus: 'VERIFIED', paymentVerifiedAt: new Date().toISOString() } : null);
+                          }}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold uppercase inline-flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>{updatingPaymentId === previewSubmission.id ? 'Verifying...' : '✓ Verify Payment'}</span>
+                        </button>
+                      )}
+
+                      {previewSubmission.paymentStatus !== 'REJECTED' && (
+                        <button
+                          type="button"
+                          disabled={updatingPaymentId === previewSubmission.id}
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to mark this payment as REJECTED?')) {
+                              await handleUpdatePayment(previewSubmission.id, 'REJECTED');
+                              setPreviewSubmission(prev => prev ? { ...prev, paymentStatus: 'REJECTED' } : null);
+                            }
+                          }}
+                          className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-bold uppercase inline-flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Reject</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Right Side: Download & Open in New Tab */}
+                <div className="flex items-center gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      // Safe browser download that works for both remote HTTPS and data URIs
                       try {
-                        const arr = previewMediaUrl.split(',');
-                        const mimeMatch = arr[0].match(/:(.*?);/);
-                        const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
-                        const bstr = atob(arr[1]);
-                        let n = bstr.length;
-                        const u8arr = new Uint8Array(n);
-                        while (n--) {
-                          u8arr[n] = bstr.charCodeAt(n);
+                        if (previewMediaUrl.startsWith('data:')) {
+                          const arr = previewMediaUrl.split(',');
+                          const mimeMatch = arr[0].match(/:(.*?);/);
+                          const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+                          const bstr = atob(arr[1]);
+                          let n = bstr.length;
+                          const u8arr = new Uint8Array(n);
+                          while (n--) {
+                            u8arr[n] = bstr.charCodeAt(n);
+                          }
+                          const blob = new Blob([u8arr], { type: mime });
+                          const blobUrl = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = blobUrl;
+                          a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                        } else {
+                          const a = document.createElement('a');
+                          a.href = previewMediaUrl;
+                          a.target = '_blank';
+                          a.rel = 'noreferrer';
+                          a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
                         }
-                        const blob = new Blob([u8arr], { type: mime });
-                        const blobUrl = URL.createObjectURL(blob);
-                        window.open(blobUrl, '_blank');
-                      } catch (e) {
+                      } catch (err) {
                         window.open(previewMediaUrl, '_blank');
                       }
-                    } else {
-                      window.open(previewMediaUrl, '_blank');
-                    }
-                  }}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Open in New Tab</span>
-                </button>
+                    }}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Download File</span>
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      // For data URIs, convert to object URL so Chrome doesn't block with about:blank#blocked
+                      if (previewMediaUrl.startsWith('data:')) {
+                        try {
+                          const arr = previewMediaUrl.split(',');
+                          const mimeMatch = arr[0].match(/:(.*?);/);
+                          const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+                          const bstr = atob(arr[1]);
+                          let n = bstr.length;
+                          const u8arr = new Uint8Array(n);
+                          while (n--) {
+                            u8arr[n] = bstr.charCodeAt(n);
+                          }
+                          const blob = new Blob([u8arr], { type: mime });
+                          const blobUrl = URL.createObjectURL(blob);
+                          window.open(blobUrl, '_blank');
+                        } catch (e) {
+                          window.open(previewMediaUrl, '_blank');
+                        }
+                      } else {
+                        window.open(previewMediaUrl, '_blank');
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open in New Tab</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
