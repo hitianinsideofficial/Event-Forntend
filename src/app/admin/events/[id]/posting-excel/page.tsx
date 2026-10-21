@@ -260,7 +260,11 @@ export default function NavroopamPostingExcelPage() {
       // Dispatch confirmation email
       const res = await sendConfirmationEmailApi(sub.id, postUrl);
       if (res.success) {
-        alert(res.message || `Confirmation email sent successfully to ${sub.fullName}!`);
+        if (res.quota?.warningAlert) {
+          alert(`${res.message || `Confirmation email sent successfully to ${sub.fullName}!`}\n\n🚨 ${res.quota.alertMessage}`);
+        } else {
+          alert(res.message || `Confirmation email sent successfully to ${sub.fullName}!`);
+        }
         setPostingStatuses(prev => ({ ...prev, [sub.id]: 'MAIL_SENT' }));
         setSubmissions(prev => prev.map(s => {
           if (s.id === sub.id) {
@@ -1214,7 +1218,11 @@ export default function NavroopamPostingExcelPage() {
                       try {
                         const res = await acknowledgeSubmissionApi(previewSub.id);
                         if (res.success) {
-                          alert(res.message || 'Acknowledgment email sent successfully!');
+                          if (res.quota?.warningAlert) {
+                            alert(`${res.message || 'Acknowledgment email sent successfully!'}\n\n🚨 ${res.quota.alertMessage}`);
+                          } else {
+                            alert(res.message || 'Acknowledgment email sent successfully!');
+                          }
                           // Close preview screen automatically
                           setPreviewMediaUrl(null);
                           setPreviewInstagramUrl(null);

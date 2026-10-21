@@ -206,7 +206,11 @@ export default function EventSubmissionsPage() {
     try {
       const res = await acknowledgeSubmissionApi(subId);
       if (res.success) {
-        alert(res.message);
+        if (res.quota?.warningAlert) {
+          alert(`${res.message}\n\n🚨 ${res.quota.alertMessage}`);
+        } else {
+          alert(res.message);
+        }
         await loadData();
       }
     } catch (err: any) {
@@ -245,6 +249,7 @@ export default function EventSubmissionsPage() {
     const total = selectedAckIds.length;
     let successCount = 0;
     let failedCount = 0;
+    let lastQuotaWarning: string | null = null;
 
     for (let i = 0; i < total; i++) {
       const subId = selectedAckIds[i];
@@ -257,6 +262,9 @@ export default function EventSubmissionsPage() {
         const res = await acknowledgeSubmissionApi(subId);
         if (res.success) {
           successCount++;
+          if (res.quota?.warningAlert && res.quota.alertMessage) {
+            lastQuotaWarning = res.quota.alertMessage;
+          }
           // Update local state smoothly
           setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, acknowledged: true, acknowledgedAt: new Date().toISOString() } : s));
         } else {
@@ -278,6 +286,10 @@ export default function EventSubmissionsPage() {
     setIsProcessingQueue(false);
     setSelectedAckIds([]);
     await loadData();
+
+    if (lastQuotaWarning) {
+      alert(`Queue complete! (${successCount} sent, ${failedCount} failed)\n\n🚨 ${lastQuotaWarning}`);
+    }
   };
 
   const handleOpenConfirmationModal = (sub: SubmissionItem) => {
@@ -302,7 +314,11 @@ export default function EventSubmissionsPage() {
     try {
       const res = await sendConfirmationEmailApi(confirmationModalSub.id, instagramInput.trim());
       if (res.success) {
-        alert(res.message);
+        if (res.quota?.warningAlert) {
+          alert(`${res.message}\n\n🚨 ${res.quota.alertMessage}`);
+        } else {
+          alert(res.message);
+        }
         setConfirmationModalSub(null);
         setInstagramInput('');
         await loadData();
