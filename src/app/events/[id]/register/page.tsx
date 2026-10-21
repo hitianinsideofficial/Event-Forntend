@@ -1561,14 +1561,27 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
                           <div className="form-group mb-0">
                             <label className="form-label text-xs text-white font-semibold flex items-center justify-between mb-1">
                               <span>Payment Screenshot Proof *</span>
-                              <span className="text-[10px] text-[#a69181]">Max 4 MB</span>
+                              <span className="text-[10px] text-[#a69181]">Auto-optimized</span>
                             </label>
                             <input 
                               type="file" 
                               accept="image/*,.pdf"
-                              onChange={e => {
+                              onChange={async e => {
                                 const f = e.target.files?.[0] || null;
-                                setPaymentProofFile(f);
+                                if (!f) {
+                                  setPaymentProofFile(null);
+                                  return;
+                                }
+                                if (f.type.startsWith('image/')) {
+                                  try {
+                                    const compressed = await compressImageFile(f);
+                                    setPaymentProofFile(compressed);
+                                  } catch (err) {
+                                    setPaymentProofFile(f);
+                                  }
+                                } else {
+                                  setPaymentProofFile(f);
+                                }
                               }}
                               className="text-xs text-[#a69181] file:mr-2.5 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#800020] file:text-[#e6c594] hover:file:bg-[#9a0028] cursor-pointer"
                               required
