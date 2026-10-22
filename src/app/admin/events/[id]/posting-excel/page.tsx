@@ -89,6 +89,14 @@ export default function NavroopamPostingExcelPage() {
   const [previewSub, setPreviewSub] = useState<SubmissionItem | null>(null);
   const [sendingAckInPreview, setSendingAckInPreview] = useState<boolean>(false);
 
+  // Bulk Confirmation Email Queue State
+  const [selectedConfIds, setSelectedConfIds] = useState<string[]>([]);
+  const [isBulkConfModalOpen, setIsBulkConfModalOpen] = useState<boolean>(false);
+  const [isProcessingConfQueue, setIsProcessingConfQueue] = useState<boolean>(false);
+  const [confQueueProgress, setConfQueueProgress] = useState<{ current: number; total: number; currentName: string }>({ current: 0, total: 0, currentName: '' });
+  const [confQueueResults, setConfQueueResults] = useState<{ success: number; failed: number }>({ success: 0, failed: 0 });
+  const [confQuotaWarning, setConfQuotaWarning] = useState<string | null>(null);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = sessionStorage.getItem('adminToken');
@@ -200,6 +208,124 @@ export default function NavroopamPostingExcelPage() {
       mailSent
     };
   }, [acknowledgedSubmissions, postingStatuses]);
+
+  // Helper to identify Creative Writing domain (which is not posted to Instagram)
+  const isCreativeWritingDomain = (sub: SubmissionItem) => {
+    const domain = (sub.answers?.['Selected Domain'] || '').toLowerCase();
+    return domain.includes('writing') || domain.includes('inkquilab') || domain.includes('essay');
+  };
+
+  // Eligibility check for confirmation email:
+  // 1. NOT creative writing
+  // 2. Has an Instagram link (either typed locally or already saved in DB)
+  // 3. Status is POSTED or link exists
+  // 4. Confirmation email not yet sent (or can be resent)
+  const isEligibleForConfirmation = (sub: SubmissionItem, checkUnsentOnly: boolean = false) => {
+    if (isCreativeWritingDomain(sub)) return false;
+    const postUrl = (instagramUrls[sub.id] !== undefined ? instagramUrls[sub.id] : (sub.instagramPostUrl || '')).trim();
+    const currentStatus = postingStatuses[sub.id] || (sub.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
+    const isPosted = currentStatus === 'POSTED' || Boolean(postUrl);
+    if (!isPosted || !postUrl) return false;
+    if (checkUnsentOnly) {
+      return !sub.confirmationEmailSent;
+    }
+    return true;
+  };
+
+  // Toggle single selection for bulk confirmation
+  const handleToggleConfSelection = (subId: string) => {
+    setSelectedConfIds(prev =>
+      prev.includes(subId) ? prev.filter(id => id !== subId) : [...prev, subId]
+    );
+  };
+
+  // Select all eligible posted submissions
+  const handleSelectAllConf = (onlyUnsent: boolean = true) => {
+    const eligibleIds = filteredSubmissions
+      .filter(s => isEligibleForConfirmation(s, onlyUnsent))
+      .map(s => s.id);
+    setSelectedConfIds(eligibleIds);
+  };
+
+  const handleClearConfSelection = () => {
+    setSelectedConfIds([]);
+  };
+
+  // Run the sequential dispatch queue for all selected confirmation emails
+  const handleStartBulkConfQueue = async () => {
+    if (selectedConfIds.length === 0) return;
+    setIsProcessingConfQueue(true);
+    setConfQueueResults({ success: 0, failed: 0 });
+    setConfQuotaWarning(null);
+
+    const total = selectedConfIds.length;
+    let successCount = 0;
+    let failedCount = 0;
+    let lastQuotaWarning: string | null = null;
+
+    for (let i = 0; i < total; i++) {
+      const subId = selectedConfIds[i];
+      const targetSub = submissions.find(s => s.id === subId);
+      const name = targetSub ? targetSub.fullName : subId;
+      const postUrl = (instagramUrls[subId] !== undefined ? instagramUrls[subId] : (targetSub?.instagramPostUrl || '')).trim();
+
+      setConfQueueProgress({ current: i + 1, total, currentName: name });
+
+      try {
+        if (!postUrl) {
+          failedCount++;
+          continue;
+        }
+
+        // 1. First ensure DB has the clean link and status saved
+        await updatePostingExcelApi(subId, {
+          postingStatus: 'MAIL_SENT',
+          instagramPostUrl: postUrl
+        });
+
+        // 2. Dispatch confirmation email with Instagram URL
+        const res = await sendConfirmationEmailApi(subId, postUrl);
+        if (res.success) {
+          successCount++;
+          if (res.quota?.warningAlert && res.quota.alertMessage) {
+            lastQuotaWarning = res.quota.alertMessage;
+            setConfQuotaWarning(res.quota.alertMessage);
+          }
+          // Update local status smoothly
+          setPostingStatuses(prev => ({ ...prev, [subId]: 'MAIL_SENT' }));
+          setSubmissions(prev => prev.map(s => {
+            if (s.id === subId) {
+              return {
+                ...s,
+                confirmationEmailSent: true,
+                confirmationEmailSentAt: new Date().toISOString(),
+                instagramPostUrl: postUrl,
+                postingStatus: 'MAIL_SENT'
+              };
+            }
+            return s;
+          }));
+        } else {
+          failedCount++;
+        }
+      } catch (err) {
+        console.error(`Error sending confirmation email to ${name}:`, err);
+        failedCount++;
+      }
+
+      setConfQueueResults({ success: successCount, failed: failedCount });
+
+      // Polite delay (700ms) between dispatches to prevent rate-limiting Brevo
+      if (i < total - 1) {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      }
+    }
+
+    setIsProcessingConfQueue(false);
+    if (lastQuotaWarning) {
+      alert(`Bulk confirmation email queue completed!\n\n${successCount} sent, ${failedCount} failed.\n\n🚨 ${lastQuotaWarning}`);
+    }
+  };
 
   // Handle Saving single entry row
   const handleSaveRow = async (subId: string) => {
@@ -601,6 +727,54 @@ export default function NavroopamPostingExcelPage() {
           </div>
         </div>
 
+        {/* BULK CONFIRMATION EMAIL SELECTION BAR */}
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-blue-500/10 border border-blue-300 rounded-sm">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-bold text-blue-950 flex items-center gap-1.5">
+              <MailCheck className="w-4 h-4 text-blue-700" />
+              <span>Bulk Confirmation Dispatch:</span>
+            </span>
+            <span className="px-2 py-0.5 bg-blue-200 text-blue-900 rounded font-black font-mono text-xs">
+              {selectedConfIds.length} selected
+            </span>
+            <button
+              type="button"
+              onClick={() => handleSelectAllConf(true)}
+              className="px-2 py-1 bg-white hover:bg-blue-100 text-blue-900 border border-blue-300 text-[11px] font-bold rounded cursor-pointer transition-colors"
+              title="Select all posted entries where confirmation email is not yet sent"
+            >
+              Select All Posted Unsent ({filteredSubmissions.filter(s => isEligibleForConfirmation(s, true)).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectAllConf(false)}
+              className="px-2 py-1 bg-white hover:bg-blue-100 text-slate-700 border border-slate-300 text-[11px] font-bold rounded cursor-pointer transition-colors"
+              title="Select all posted entries with Instagram link"
+            >
+              Select All Posted ({filteredSubmissions.filter(s => isEligibleForConfirmation(s, false)).length})
+            </button>
+            {selectedConfIds.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearConfSelection}
+                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-[11px] font-bold rounded cursor-pointer transition-colors"
+              >
+                Clear Selection
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            disabled={selectedConfIds.length === 0}
+            onClick={() => setIsBulkConfModalOpen(true)}
+            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Launch Confirmation Queue ({selectedConfIds.length})</span>
+          </button>
+        </div>
+
         {/* EXCEL SHEET TABLE CONTAINER */}
         <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
           {loading ? (
@@ -622,6 +796,24 @@ export default function NavroopamPostingExcelPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-900 text-white font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                    <th className="p-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredSubmissions.filter(s => isEligibleForConfirmation(s, true)).length > 0 &&
+                          filteredSubmissions.filter(s => isEligibleForConfirmation(s, true)).every(s => selectedConfIds.includes(s.id))
+                        }
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            handleSelectAllConf(true);
+                          } else {
+                            handleClearConfSelection();
+                          }
+                        }}
+                        className="rounded cursor-pointer accent-blue-600"
+                        title="Select/Deselect all posted unsent entries on this page"
+                      />
+                    </th>
                     <th className="p-3 w-10 text-center">#</th>
                     <th className="p-3 whitespace-nowrap">Ticket & Participant</th>
                     <th className="p-3 whitespace-nowrap">Domain & Roll No</th>
@@ -673,9 +865,40 @@ export default function NavroopamPostingExcelPage() {
                     else if (currentStatus === 'DISQUALIFIED') rowBgClass = 'bg-rose-50/30 hover:bg-rose-50/60 border-l-4 border-l-rose-600';
                     else if (currentStatus === 'MAIL_SENT') rowBgClass = 'bg-blue-50/30 hover:bg-blue-50/60 border-l-4 border-l-blue-600';
 
+                    // Check if eligible for confirmation email
+                    const isConfEligible = isEligibleForConfirmation(sub, true);
+                    const isSelectedInQueue = selectedConfIds.includes(sub.id);
+
                     return (
                       <tr key={sub.id} className={`transition-colors ${rowBgClass}`}>
                         
+                        {/* Bulk Selection Checkbox */}
+                        <td className="p-3 text-center align-top">
+                          {isWriting ? (
+                            <span 
+                              className="text-slate-300 font-mono text-[10px] cursor-not-allowed select-none" 
+                              title="Creative Writing is not posted to Instagram"
+                            >
+                              —
+                            </span>
+                          ) : (
+                            <input
+                              type="checkbox"
+                              checked={isSelectedInQueue}
+                              onChange={() => handleToggleConfSelection(sub.id)}
+                              disabled={!isEligibleForConfirmation(sub, false)}
+                              className="rounded cursor-pointer accent-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                              title={
+                                !currentInsta.trim()
+                                  ? 'Enter & save an Instagram link first to select for confirmation queue'
+                                  : sub.confirmationEmailSent
+                                  ? 'Confirmation already sent (Click to select for resending)'
+                                  : 'Select for bulk confirmation email'
+                              }
+                            />
+                          )}
+                        </td>
+
                         {/* Index */}
                         <td className="p-3 text-center text-slate-400 font-mono text-[11px] align-top">
                           {idx + 1}
@@ -886,137 +1109,176 @@ export default function NavroopamPostingExcelPage() {
 
                         {/* Posting Status Selection (Yellow, Green, Red, Blue) */}
                         <td className="p-3 align-top">
-                          <div className="space-y-1">
-                            <select
-                              value={currentStatus || ''}
-                              onChange={e => {
-                                const val = (e.target.value || null) as PostingStatusType;
-                                setPostingStatuses(prev => ({ ...prev, [sub.id]: val }));
-                              }}
-                              className={`w-full px-2.5 py-1.5 text-xs font-bold border outline-none cursor-pointer ${
-                                currentStatus === 'QUALIFIED'
-                                  ? 'bg-amber-100 text-amber-900 border-amber-400'
-                                  : currentStatus === 'POSTED'
-                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
-                                  : currentStatus === 'DISQUALIFIED'
-                                  ? 'bg-rose-100 text-rose-900 border-rose-400'
-                                  : currentStatus === 'MAIL_SENT'
-                                  ? 'bg-blue-100 text-blue-900 border-blue-400'
-                                  : 'bg-white text-slate-700 border-slate-300'
-                              }`}
-                            >
-                              <option value="">⚪ Select Status</option>
-                              <option value="QUALIFIED">🟡 Yellow - Qualified</option>
-                              <option value="POSTED">🟢 Green - Posted</option>
-                              <option value="DISQUALIFIED">🔴 Red - Disqualified</option>
-                              <option value="MAIL_SENT">🔵 Blue - Mail sent</option>
-                            </select>
-
-                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                              {currentStatus === 'QUALIFIED' && <span className="text-amber-700 font-semibold">Marked for publishing</span>}
-                              {currentStatus === 'POSTED' && <span className="text-emerald-700 font-semibold">Published on Instagram</span>}
-                              {currentStatus === 'DISQUALIFIED' && <span className="text-rose-700 font-semibold">Entry rejected</span>}
-                              {currentStatus === 'MAIL_SENT' && <span className="text-blue-700 font-semibold">Confirmation mail dispatched</span>}
+                          {isWriting ? (
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 text-slate-600 border border-slate-300 text-xs font-bold rounded-xs cursor-not-allowed select-none">
+                                <BookOpen className="w-3.5 h-3.5 text-slate-500" />
+                                <span>N/A (Creative Writing)</span>
+                              </span>
+                              <p className="text-[10px] text-slate-500 italic">
+                                Writing entries are evaluated offline and not posted on Instagram.
+                              </p>
                             </div>
-                          </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <select
+                                value={currentStatus || ''}
+                                onChange={e => {
+                                  const val = (e.target.value || null) as PostingStatusType;
+                                  setPostingStatuses(prev => ({ ...prev, [sub.id]: val }));
+                                }}
+                                className={`w-full px-2.5 py-1.5 text-xs font-bold border outline-none cursor-pointer ${
+                                  currentStatus === 'QUALIFIED'
+                                    ? 'bg-amber-100 text-amber-900 border-amber-400'
+                                    : currentStatus === 'POSTED'
+                                    ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
+                                    : currentStatus === 'DISQUALIFIED'
+                                    ? 'bg-rose-100 text-rose-900 border-rose-400'
+                                    : currentStatus === 'MAIL_SENT'
+                                    ? 'bg-blue-100 text-blue-900 border-blue-400'
+                                    : 'bg-white text-slate-700 border-slate-300'
+                                }`}
+                              >
+                                <option value="">⚪ Select Status</option>
+                                <option value="QUALIFIED">🟡 Yellow - Qualified</option>
+                                <option value="POSTED">🟢 Green - Posted</option>
+                                <option value="DISQUALIFIED">🔴 Red - Disqualified</option>
+                                <option value="MAIL_SENT">🔵 Blue - Mail sent</option>
+                              </select>
+
+                              <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                {currentStatus === 'QUALIFIED' && <span className="text-amber-700 font-semibold">Marked for publishing</span>}
+                                {currentStatus === 'POSTED' && <span className="text-emerald-700 font-semibold">Published on Instagram</span>}
+                                {currentStatus === 'DISQUALIFIED' && <span className="text-rose-700 font-semibold">Entry rejected</span>}
+                                {currentStatus === 'MAIL_SENT' && <span className="text-blue-700 font-semibold">Confirmation mail dispatched</span>}
+                              </div>
+                            </div>
+                          )}
                         </td>
 
                         {/* Instagram Link Paste & Save */}
                         <td className="p-3 align-top">
-                          <div className="space-y-1">
-                            <div className="relative flex items-center">
-                              <svg className="w-3.5 h-3.5 text-rose-500 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
-                              </svg>
-                              <input 
-                                type="url"
-                                placeholder="Paste Instagram post URL..."
-                                value={currentInsta}
-                                onChange={e => {
-                                  const val = e.target.value;
-                                  setInstagramUrls(prev => ({ ...prev, [sub.id]: val }));
-                                }}
-                                className="w-full pl-7 pr-14 py-1.5 text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 outline-none focus:border-rose-600 font-mono transition-colors"
-                              />
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  try {
-                                    const text = await navigator.clipboard.readText();
-                                    if (text && text.trim()) {
-                                      const cleaned = text.trim();
-                                      setInstagramUrls(prev => ({ ...prev, [sub.id]: cleaned }));
-                                    } else {
-                                      alert('Clipboard is empty or does not contain a link.');
-                                    }
-                                  } catch (err) {
-                                    const manual = window.prompt('Paste your copied Instagram link here:');
-                                    if (manual && manual.trim()) {
-                                      setInstagramUrls(prev => ({ ...prev, [sub.id]: manual.trim() }));
-                                    }
-                                  }
-                                }}
-                                className="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors cursor-pointer rounded-xs"
-                                title="Paste link from clipboard"
-                              >
-                                <Clipboard className="w-2.5 h-2.5" />
-                                <span>Paste</span>
-                              </button>
-                            </div>
-
-                            {sub.instagramPostUrl && (
-                              <div className="flex items-center justify-between text-[10px]">
-                                <a 
-                                  href={sub.instagramPostUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-rose-600 hover:text-rose-800 font-semibold inline-flex items-center gap-1 underline truncate max-w-[200px]"
-                                >
-                                  <span>View live IG post</span>
-                                  <ExternalLink className="w-2.5 h-2.5" />
-                                </a>
-                                <span className="text-slate-400">Saved in DB</span>
+                          {isWriting ? (
+                            <div className="space-y-1">
+                              <div className="relative flex items-center">
+                                <input 
+                                  type="text"
+                                  disabled
+                                  placeholder="Not posted to Instagram"
+                                  value=""
+                                  className="w-full pl-2 pr-2 py-1.5 text-xs bg-slate-100 border border-slate-200 text-slate-400 italic outline-none cursor-not-allowed select-none"
+                                />
                               </div>
-                            )}
-                          </div>
+                              <p className="text-[10px] text-slate-400">
+                                Instagram link not applicable
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="relative flex items-center">
+                                <svg className="w-3.5 h-3.5 text-rose-500 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+                                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                                  <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+                                </svg>
+                                <input 
+                                  type="url"
+                                  placeholder="Paste Instagram post URL..."
+                                  value={currentInsta}
+                                  onChange={e => {
+                                    const val = e.target.value;
+                                    setInstagramUrls(prev => ({ ...prev, [sub.id]: val }));
+                                  }}
+                                  className="w-full pl-7 pr-14 py-1.5 text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 outline-none focus:border-rose-600 font-mono transition-colors"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      const text = await navigator.clipboard.readText();
+                                      if (text && text.trim()) {
+                                        const cleaned = text.trim();
+                                        setInstagramUrls(prev => ({ ...prev, [sub.id]: cleaned }));
+                                      } else {
+                                        alert('Clipboard is empty or does not contain a link.');
+                                      }
+                                    } catch (err) {
+                                      const manual = window.prompt('Paste your copied Instagram link here:');
+                                      if (manual && manual.trim()) {
+                                        setInstagramUrls(prev => ({ ...prev, [sub.id]: manual.trim() }));
+                                      }
+                                    }
+                                  }}
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors cursor-pointer rounded-xs"
+                                  title="Paste link from clipboard"
+                                >
+                                  <Clipboard className="w-2.5 h-2.5" />
+                                  <span>Paste</span>
+                                </button>
+                              </div>
+
+                              {sub.instagramPostUrl && (
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <a 
+                                    href={sub.instagramPostUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-rose-600 hover:text-rose-800 font-semibold inline-flex items-center gap-1 underline truncate max-w-[200px]"
+                                  >
+                                    <span>View live IG post</span>
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                  <span className="text-slate-400">Saved in DB</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         {/* Action buttons: Save & Send Confirmation Email */}
                         <td className="p-3 align-top text-right">
                           <div className="flex flex-col items-end gap-1.5">
                             {/* Save Link and Status Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleSaveRow(sub.id)}
-                              disabled={isSaving}
-                              className={`px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1 border transition-colors cursor-pointer ${
-                                isSavedSuccess 
-                                  ? 'bg-emerald-600 text-white border-emerald-600' 
-                                  : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'
-                              }`}
-                            >
-                              {isSaving ? (
-                                <>
-                                  <RefreshCw className="w-3 h-3 animate-spin" />
-                                  <span>Saving...</span>
-                                </>
-                              ) : isSavedSuccess ? (
-                                <>
-                                  <Check className="w-3 h-3" />
-                                  <span>Saved!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Save className="w-3 h-3 text-slate-500" />
-                                  <span>Save</span>
-                                </>
-                              )}
-                            </button>
+                            {!isWriting && (
+                              <button
+                                type="button"
+                                onClick={() => handleSaveRow(sub.id)}
+                                disabled={isSaving}
+                                className={`px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1 border transition-colors cursor-pointer ${
+                                  isSavedSuccess 
+                                    ? 'bg-emerald-600 text-white border-emerald-600' 
+                                    : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'
+                                }`}
+                              >
+                                {isSaving ? (
+                                  <>
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                    <span>Saving...</span>
+                                  </>
+                                ) : isSavedSuccess ? (
+                                  <>
+                                    <Check className="w-3 h-3" />
+                                    <span>Saved!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Save className="w-3 h-3 text-slate-500" />
+                                    <span>Save</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
 
                             {/* Action Button: Disqualification Email OR Confirmation Email */}
-                            {currentStatus === 'DISQUALIFIED' ? (
+                            {isWriting ? (
+                              <span 
+                                className="px-2.5 py-1 text-[11px] font-bold text-slate-400 bg-slate-100 border border-slate-200 rounded-xs inline-flex items-center gap-1 cursor-not-allowed select-none"
+                                title="Creative Writing entries do not require Instagram confirmation email"
+                              >
+                                <Check className="w-3 h-3 text-slate-400" />
+                                <span>No IG Mail</span>
+                              </span>
+                            ) : currentStatus === 'DISQUALIFIED' ? (
                               <button
                                 type="button"
                                 onClick={() => handleOpenDisqualificationModal(sub)}
@@ -1233,7 +1495,7 @@ export default function NavroopamPostingExcelPage() {
 
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
               <div className="flex items-center gap-2">
-                {previewSub && (
+                {previewSub && !isCreativeWritingDomain(previewSub) && (
                   <button
                     type="button"
                     disabled={sendingConfirmationId === previewSub.id}
@@ -1491,6 +1753,180 @@ export default function NavroopamPostingExcelPage() {
                 </span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* BULK CONFIRMATION EMAIL QUEUE MODAL */}
+      {isBulkConfModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-slate-300 w-full max-w-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-md bg-blue-100 border border-blue-300 flex items-center justify-center text-blue-800">
+                  <MailCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">
+                    Send Multiple Confirmation Emails
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Sequential Instagram confirmation email dispatch with live tracker
+                  </p>
+                </div>
+              </div>
+              {!isProcessingConfQueue && (
+                <button
+                  onClick={() => setIsBulkConfModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-900 transition-colors cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* QUEUE STATUS & LIST */}
+            {isProcessingConfQueue ? (
+              <div className="space-y-4 py-4">
+                <div className="text-center space-y-2">
+                  <div className="inline-block p-3 rounded-full bg-blue-50 border border-blue-200 text-blue-600 animate-spin">
+                    <RefreshCw className="w-7 h-7" />
+                  </div>
+                  <h4 className="font-bold text-sm text-slate-900">
+                    Dispatching confirmation email to {confQueueProgress.currentName}...
+                  </h4>
+                  <p className="text-xs text-slate-500 font-mono">
+                    Queue Progress: {confQueueProgress.current} of {confQueueProgress.total} completed
+                  </p>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+                  <div 
+                    className="bg-blue-600 h-full transition-all duration-300"
+                    style={{ width: `${Math.round((confQueueProgress.current / confQueueProgress.total) * 100)}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-slate-600 font-mono px-1">
+                  <span className="text-emerald-700 font-bold">✓ {confQueueResults.success} sent</span>
+                  <span className="text-rose-600 font-bold">{confQueueResults.failed} failed</span>
+                  <span className="text-slate-500 font-bold">{Math.round((confQueueProgress.current / confQueueProgress.total) * 100)}%</span>
+                </div>
+
+                {confQuotaWarning && (
+                  <div className="p-3 bg-amber-50 border border-amber-300 rounded text-xs text-amber-900 font-bold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>🚨 {confQuotaWarning}</span>
+                  </div>
+                )}
+
+                <p className="text-[11px] text-slate-500 text-center italic">
+                  Please keep this window open while the queue completes. Emails are dispatched sequentially with delay to avoid Brevo API rate limits.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-3 bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-start gap-2">
+                  <MailCheck className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">
+                      You have selected {selectedConfIds.length} participant{selectedConfIds.length === 1 ? '' : 's'} for Instagram confirmation emails.
+                    </p>
+                    <p className="text-[11.5px] text-blue-800 mt-0.5">
+                      Once you click &quot;Start Confirmation Queue&quot;, emails containing their live Instagram post link and entry certificate announcement will be sent one by one.
+                    </p>
+                  </div>
+                </div>
+
+                {/* List of Selected Participants Preview */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-700">Selected Queue Recipients:</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAllConf(true)}
+                        className="text-blue-800 hover:underline font-bold text-[11px]"
+                      >
+                        Select All Posted (Unsent)
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={handleClearConfSelection}
+                        className="text-rose-600 hover:underline font-bold text-[11px]"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 bg-slate-50/50">
+                    {selectedConfIds.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs">
+                        No participants selected yet. Check the checkboxes in the table or click &quot;Select All Posted (Unsent)&quot;.
+                      </div>
+                    ) : (
+                      selectedConfIds.map((id) => {
+                        const sub = submissions.find(s => s.id === id);
+                        if (!sub) return null;
+                        const postUrl = (instagramUrls[sub.id] || sub.instagramPostUrl || '').trim();
+                        return (
+                          <div key={id} className="p-2.5 flex items-center justify-between text-xs hover:bg-white transition-colors">
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-200 px-1 py-0.5">
+                                {sub.ticketId}
+                              </span>
+                              <span className="font-bold text-slate-900 truncate">{sub.fullName}</span>
+                              <span className="text-slate-500 text-[11px] truncate">({sub.email})</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {sub.confirmationEmailSent ? (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-800 font-bold border border-blue-300">
+                                  Already Sent (Will Resend)
+                                </span>
+                              ) : (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                                  Pending Dispatch
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleConfSelection(sub.id)}
+                                className="text-slate-400 hover:text-rose-600 text-xs px-1 cursor-pointer"
+                                title="Remove from queue"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkConfModalOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    disabled={selectedConfIds.length === 0}
+                    onClick={handleStartBulkConfQueue}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Start Confirmation Queue ({selectedConfIds.length})</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
