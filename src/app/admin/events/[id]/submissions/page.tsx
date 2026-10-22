@@ -102,6 +102,7 @@ export default function EventSubmissionsPage() {
   // Preview Modal for Proof / Submission File
   const [previewMediaUrl, setPreviewMediaUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('');
+  const [previewSubmission, setPreviewSubmission] = useState<SubmissionItem | null>(null);
 
   // Email Templates Preview Modal
   const [isEmailPreviewOpen, setIsEmailPreviewOpen] = useState<boolean>(false);
@@ -136,6 +137,13 @@ export default function EventSubmissionsPage() {
   const [editPayeeSub, setEditPayeeSub] = useState<SubmissionItem | null>(null);
   const [participantPayeeInput, setParticipantPayeeInput] = useState<string>('');
   const [isUpdatingParticipantPayee, setIsUpdatingParticipantPayee] = useState<boolean>(false);
+
+  // Bulk Acknowledgement Email Queue State
+  const [selectedAckIds, setSelectedAckIds] = useState<string[]>([]);
+  const [isBulkAckModalOpen, setIsBulkAckModalOpen] = useState<boolean>(false);
+  const [isProcessingQueue, setIsProcessingQueue] = useState<boolean>(false);
+  const [queueProgress, setQueueProgress] = useState<{ current: number; total: number; currentName: string }>({ current: 0, total: 0, currentName: '' });
+  const [queueResults, setQueueResults] = useState<{ success: number; failed: number }>({ success: 0, failed: 0 });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -198,13 +206,89 @@ export default function EventSubmissionsPage() {
     try {
       const res = await acknowledgeSubmissionApi(subId);
       if (res.success) {
-        alert(res.message);
+        if (res.quota?.warningAlert) {
+          alert(`${res.message}\n\n🚨 ${res.quota.alertMessage}`);
+        } else {
+          alert(res.message);
+        }
         await loadData();
       }
     } catch (err: any) {
       alert(err.message || 'Failed to acknowledge submission');
     } finally {
       setAcknowledgingId(null);
+    }
+  };
+
+  // Toggle selection for bulk acknowledgment
+  const handleToggleAckSelection = (subId: string) => {
+    setSelectedAckIds(prev => 
+      prev.includes(subId) ? prev.filter(id => id !== subId) : [...prev, subId]
+    );
+  };
+
+  const handleSelectAllAck = (onlyUnacknowledged: boolean = true) => {
+    if (onlyUnacknowledged) {
+      const unackedIds = filteredSubmissions.filter(s => !s.acknowledged).map(s => s.id);
+      setSelectedAckIds(unackedIds);
+    } else {
+      setSelectedAckIds(filteredSubmissions.map(s => s.id));
+    }
+  };
+
+  const handleClearAckSelection = () => {
+    setSelectedAckIds([]);
+  };
+
+  // Run the sequential dispatch queue for all selected participants
+  const handleStartBulkAckQueue = async () => {
+    if (selectedAckIds.length === 0) return;
+    setIsProcessingQueue(true);
+    setQueueResults({ success: 0, failed: 0 });
+
+    const total = selectedAckIds.length;
+    let successCount = 0;
+    let failedCount = 0;
+    let lastQuotaWarning: string | null = null;
+
+    for (let i = 0; i < total; i++) {
+      const subId = selectedAckIds[i];
+      const targetSub = submissions.find(s => s.id === subId);
+      const name = targetSub ? targetSub.fullName : subId;
+
+      setQueueProgress({ current: i + 1, total, currentName: name });
+
+      try {
+        const res = await acknowledgeSubmissionApi(subId);
+        if (res.success) {
+          successCount++;
+          if (res.quota?.warningAlert && res.quota.alertMessage) {
+            lastQuotaWarning = res.quota.alertMessage;
+          }
+          // Update local state smoothly
+          setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, acknowledged: true, acknowledgedAt: new Date().toISOString() } : s));
+        } else {
+          failedCount++;
+        }
+      } catch (err) {
+        console.error(`Error sending ack email to ${name}:`, err);
+        failedCount++;
+      }
+
+      setQueueResults({ success: successCount, failed: failedCount });
+
+      // Polite delay (700ms) between dispatches to prevent rate-limiting
+      if (i < total - 1) {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      }
+    }
+
+    setIsProcessingQueue(false);
+    setSelectedAckIds([]);
+    await loadData();
+
+    if (lastQuotaWarning) {
+      alert(`Queue complete! (${successCount} sent, ${failedCount} failed)\n\n🚨 ${lastQuotaWarning}`);
     }
   };
 
@@ -230,7 +314,11 @@ export default function EventSubmissionsPage() {
     try {
       const res = await sendConfirmationEmailApi(confirmationModalSub.id, instagramInput.trim());
       if (res.success) {
-        alert(res.message);
+        if (res.quota?.warningAlert) {
+          alert(`${res.message}\n\n🚨 ${res.quota.alertMessage}`);
+        } else {
+          alert(res.message);
+        }
         setConfirmationModalSub(null);
         setInstagramInput('');
         await loadData();
@@ -680,6 +768,20 @@ export default function EventSubmissionsPage() {
             )}
 
             <button
+              onClick={() => setIsBulkAckModalOpen(true)}
+              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              title="Select multiple participants and dispatch acknowledgment emails sequentially"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>Send Multiple Ack Mail</span>
+              {selectedAckIds.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 bg-white text-amber-900 rounded-full text-[10px] font-black">
+                  {selectedAckIds.length}
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={() => setIsEmailPreviewOpen(true)}
               className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               title="Preview participant email templates (Submission under verification & Instagram post confirmation)"
@@ -988,6 +1090,52 @@ export default function EventSubmissionsPage() {
             </div>
           </div>
 
+          {/* BULK ACKNOWLEDGMENT SELECTION BAR */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-amber-500/10 border border-amber-300 rounded-sm">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                <Mail className="w-4 h-4 text-amber-700" />
+                <span>Multiple Ack Dispatch:</span>
+              </span>
+              <span className="px-2 py-0.5 bg-amber-200 text-amber-900 rounded font-black font-mono text-xs">
+                {selectedAckIds.length} selected
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSelectAllAck(true)}
+                className="px-2 py-1 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold rounded cursor-pointer transition-colors"
+              >
+                Select All Unsent ({filteredSubmissions.filter(s => !s.acknowledged).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectAllAck(false)}
+                className="px-2 py-1 bg-white hover:bg-amber-100 text-slate-700 border border-slate-300 text-[11px] font-bold rounded cursor-pointer transition-colors"
+              >
+                Select All ({filteredSubmissions.length})
+              </button>
+              {selectedAckIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAckSelection}
+                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-[11px] font-bold rounded cursor-pointer transition-colors"
+                >
+                  Clear Selection
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              disabled={selectedAckIds.length === 0}
+              onClick={() => setIsBulkAckModalOpen(true)}
+              className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Launch Ack Email Queue ({selectedAckIds.length})</span>
+            </button>
+          </div>
+
           {/* TABLE DISPLAY */}
           {loading ? (
             <div className="py-20 text-center text-slate-400">
@@ -1006,6 +1154,23 @@ export default function EventSubmissionsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="px-2 py-2 w-[40px] text-center">
+                      <input 
+                        type="checkbox"
+                        checked={paginatedSubmissions.length > 0 && paginatedSubmissions.every(s => selectedAckIds.includes(s.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const newIds = Array.from(new Set([...selectedAckIds, ...paginatedSubmissions.map(s => s.id)]));
+                            setSelectedAckIds(newIds);
+                          } else {
+                            const pageIds = paginatedSubmissions.map(s => s.id);
+                            setSelectedAckIds(selectedAckIds.filter(id => !pageIds.includes(id)));
+                          }
+                        }}
+                        className="w-3.5 h-3.5 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        title="Select/Deselect all on this page for Bulk Ack Email"
+                      />
+                    </th>
                     <th className="px-2 py-2 w-[110px]">Ticket ID</th>
                     <th className="px-2 py-2 max-w-[190px]">Participant Details</th>
                     <th className="px-2 py-2 max-w-[180px]">Domain & Theme</th>
@@ -1036,9 +1201,20 @@ export default function EventSubmissionsPage() {
                     const entryFiles = sub.files ? sub.files.filter(f => f !== paymentProofFile) : [];
                     const mediaFile = entryFiles.length > 0 ? entryFiles[0] : null;
                     const driveLink = sub.answers?.['Google Drive Video Reel Link'] || sub.answers?.['Google Drive Video Link'];
+                    const isSelectedForAck = selectedAckIds.includes(sub.id);
 
                     return (
-                      <tr key={sub.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr key={sub.id} className={`transition-colors ${isSelectedForAck ? 'bg-amber-50/60' : 'hover:bg-slate-50/80'}`}>
+                        {/* SELECT CHECKBOX FOR ACKNOWLEDGMENT */}
+                        <td className="px-2 py-2 align-middle text-center">
+                          <input 
+                            type="checkbox"
+                            checked={isSelectedForAck}
+                            onChange={() => handleToggleAckSelection(sub.id)}
+                            className="w-3.5 h-3.5 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                            title="Select participant for Bulk Ack Mail"
+                          />
+                        </td>
                         
                         {/* TICKET ID & SUBMISSION TIMESTAMP */}
                         <td className="px-2 py-2 align-top font-mono font-bold text-slate-900">
@@ -1157,6 +1333,7 @@ export default function EventSubmissionsPage() {
                                   onClick={() => {
                                     setPreviewMediaUrl(proofUrl);
                                     setPreviewTitle(`Payment Screenshot - ${sub.fullName} (UTR: ${utr})`);
+                                    setPreviewSubmission(sub);
                                   }}
                                   className="w-full px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 text-[10px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
                                   title="Click to preview payment screenshot proof"
@@ -1287,6 +1464,7 @@ export default function EventSubmissionsPage() {
                                   onClick={() => {
                                     setPreviewMediaUrl(mediaFile.localUrl || mediaFile.driveLink || '');
                                     setPreviewTitle(`${sub.fullName} - ${mediaFile.originalName}`);
+                                    setPreviewSubmission(sub);
                                   }}
                                   className="flex-1 px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-[10px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
                                 >
@@ -1539,6 +1717,7 @@ export default function EventSubmissionsPage() {
                           onClick={() => {
                             setPreviewMediaUrl(mediaUrl);
                             setPreviewTitle(sub.fullName);
+                            setPreviewSubmission(sub);
                           }}
                         />
                       ) : sub.answers?.['Google Drive Video Reel Link'] ? (
@@ -1797,8 +1976,11 @@ export default function EventSubmissionsPage() {
                   <h3 className="text-sm font-bold text-slate-900 truncate">{previewTitle}</h3>
                 </div>
                 <button 
-                  onClick={() => setPreviewMediaUrl(null)}
-                  className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold uppercase transition-colors hover:bg-slate-800"
+                  onClick={() => {
+                    setPreviewMediaUrl(null);
+                    setPreviewSubmission(null);
+                  }}
+                  className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold uppercase transition-colors hover:bg-slate-800 cursor-pointer"
                 >
                   ✕ Close
                 </button>
@@ -1822,80 +2004,127 @@ export default function EventSubmissionsPage() {
               </div>
 
               {/* MODAL FOOTER BUTTONS */}
-              <div className="p-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2 bg-white">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    // Safe browser download that works for both remote HTTPS and data URIs
-                    try {
-                      if (previewMediaUrl.startsWith('data:')) {
-                        const arr = previewMediaUrl.split(',');
-                        const mimeMatch = arr[0].match(/:(.*?);/);
-                        const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-                        const bstr = atob(arr[1]);
-                        let n = bstr.length;
-                        const u8arr = new Uint8Array(n);
-                        while (n--) {
-                          u8arr[n] = bstr.charCodeAt(n);
-                        }
-                        const blob = new Blob([u8arr], { type: mime });
-                        const blobUrl = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = blobUrl;
-                        a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-                      } else {
-                        const a = document.createElement('a');
-                        a.href = previewMediaUrl;
-                        a.target = '_blank';
-                        a.rel = 'noreferrer';
-                        a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                      }
-                    } catch (err) {
-                      window.open(previewMediaUrl, '_blank');
-                    }
-                  }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download File</span>
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    // For data URIs, convert to object URL so Chrome doesn't block with about:blank#blocked
-                    if (previewMediaUrl.startsWith('data:')) {
+              <div className="p-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-white">
+                {/* Left Side: Verify / Status Controls if previewing a submission */}
+                <div className="flex items-center gap-2">
+                  {previewSubmission && (
+                    <>
+                      {previewSubmission.paymentStatus === 'VERIFIED' || previewSubmission.paymentStatus === 'PAID' ? (
+                        <div className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-black uppercase">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span>Payment Verified</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={updatingPaymentId === previewSubmission.id}
+                          onClick={async () => {
+                            await handleUpdatePayment(previewSubmission.id, 'VERIFIED');
+                            setPreviewSubmission(prev => prev ? { ...prev, paymentStatus: 'VERIFIED', paymentVerifiedAt: new Date().toISOString() } : null);
+                          }}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold uppercase inline-flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>{updatingPaymentId === previewSubmission.id ? 'Verifying...' : '✓ Verify Payment'}</span>
+                        </button>
+                      )}
+
+                      {previewSubmission.paymentStatus !== 'REJECTED' && (
+                        <button
+                          type="button"
+                          disabled={updatingPaymentId === previewSubmission.id}
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to mark this payment as REJECTED?')) {
+                              await handleUpdatePayment(previewSubmission.id, 'REJECTED');
+                              setPreviewSubmission(prev => prev ? { ...prev, paymentStatus: 'REJECTED' } : null);
+                            }
+                          }}
+                          className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-bold uppercase inline-flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Reject</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Right Side: Download & Open in New Tab */}
+                <div className="flex items-center gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      // Safe browser download that works for both remote HTTPS and data URIs
                       try {
-                        const arr = previewMediaUrl.split(',');
-                        const mimeMatch = arr[0].match(/:(.*?);/);
-                        const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
-                        const bstr = atob(arr[1]);
-                        let n = bstr.length;
-                        const u8arr = new Uint8Array(n);
-                        while (n--) {
-                          u8arr[n] = bstr.charCodeAt(n);
+                        if (previewMediaUrl.startsWith('data:')) {
+                          const arr = previewMediaUrl.split(',');
+                          const mimeMatch = arr[0].match(/:(.*?);/);
+                          const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+                          const bstr = atob(arr[1]);
+                          let n = bstr.length;
+                          const u8arr = new Uint8Array(n);
+                          while (n--) {
+                            u8arr[n] = bstr.charCodeAt(n);
+                          }
+                          const blob = new Blob([u8arr], { type: mime });
+                          const blobUrl = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = blobUrl;
+                          a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                        } else {
+                          const a = document.createElement('a');
+                          a.href = previewMediaUrl;
+                          a.target = '_blank';
+                          a.rel = 'noreferrer';
+                          a.download = previewTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'download';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
                         }
-                        const blob = new Blob([u8arr], { type: mime });
-                        const blobUrl = URL.createObjectURL(blob);
-                        window.open(blobUrl, '_blank');
-                      } catch (e) {
+                      } catch (err) {
                         window.open(previewMediaUrl, '_blank');
                       }
-                    } else {
-                      window.open(previewMediaUrl, '_blank');
-                    }
-                  }}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Open in New Tab</span>
-                </button>
+                    }}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Download File</span>
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      // For data URIs, convert to object URL so Chrome doesn't block with about:blank#blocked
+                      if (previewMediaUrl.startsWith('data:')) {
+                        try {
+                          const arr = previewMediaUrl.split(',');
+                          const mimeMatch = arr[0].match(/:(.*?);/);
+                          const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+                          const bstr = atob(arr[1]);
+                          let n = bstr.length;
+                          const u8arr = new Uint8Array(n);
+                          while (n--) {
+                            u8arr[n] = bstr.charCodeAt(n);
+                          }
+                          const blob = new Blob([u8arr], { type: mime });
+                          const blobUrl = URL.createObjectURL(blob);
+                          window.open(blobUrl, '_blank');
+                        } catch (e) {
+                          window.open(previewMediaUrl, '_blank');
+                        }
+                      } else {
+                        window.open(previewMediaUrl, '_blank');
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open in New Tab</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2539,6 +2768,172 @@ export default function EventSubmissionsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* BULK ACKNOWLEDGMENT EMAIL QUEUE MODAL */}
+        {isBulkAckModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white border border-slate-300 w-full max-w-2xl shadow-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-md bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900">
+                      Send Multiple Acknowledgment Emails
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Sequential email queue with verification & dispatch tracker
+                    </p>
+                  </div>
+                </div>
+                {!isProcessingQueue && (
+                  <button
+                    onClick={() => setIsBulkAckModalOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-900 transition-colors cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* QUEUE STATUS & LIST */}
+              {isProcessingQueue ? (
+                <div className="space-y-4 py-4">
+                  <div className="text-center space-y-2">
+                    <div className="inline-block p-3 rounded-full bg-amber-50 border border-amber-200 text-amber-600 animate-spin">
+                      <RefreshCw className="w-7 h-7" />
+                    </div>
+                    <h4 className="font-bold text-sm text-slate-900">
+                      Dispatching email to {queueProgress.currentName}...
+                    </h4>
+                    <p className="text-xs text-slate-500 font-mono">
+                      Queue Progress: {queueProgress.current} of {queueProgress.total} completed
+                    </p>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+                    <div 
+                      className="bg-amber-600 h-full transition-all duration-300"
+                      style={{ width: `${Math.round((queueProgress.current / queueProgress.total) * 100)}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-slate-600 font-mono px-1">
+                    <span className="text-emerald-700 font-bold">✓ {queueResults.success} sent</span>
+                    <span className="text-rose-600 font-bold">{queueResults.failed} failed</span>
+                    <span className="text-slate-500 font-bold">{Math.round((queueProgress.current / queueProgress.total) * 100)}%</span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 text-center italic">
+                    Please keep this window open while the queue completes. Emails are dispatched smoothly with delay to protect delivery reputation.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-3 bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">
+                        You have selected {selectedAckIds.length} participant{selectedAckIds.length === 1 ? '' : 's'} for acknowledgment emails.
+                      </p>
+                      <p className="text-[11.5px] text-amber-800 mt-0.5">
+                        Once you click &quot;Start Email Queue&quot;, emails confirming submission received (and payment under verification) will be sent one by one.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* List of Selected Participants Preview */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-700">Selected Queue Recipients:</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectAllAck(true)}
+                          className="text-amber-800 hover:underline font-bold text-[11px]"
+                        >
+                          Select All Unsent
+                        </button>
+                        <span>•</span>
+                        <button
+                          type="button"
+                          onClick={handleClearAckSelection}
+                          className="text-rose-600 hover:underline font-bold text-[11px]"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 bg-slate-50/50">
+                      {selectedAckIds.length === 0 ? (
+                        <div className="p-6 text-center text-slate-400 text-xs">
+                          No participants selected yet. Check the checkboxes in the table or click &quot;Select All Unsent&quot;.
+                        </div>
+                      ) : (
+                        selectedAckIds.map((id) => {
+                          const sub = submissions.find(s => s.id === id);
+                          if (!sub) return null;
+                          return (
+                            <div key={id} className="p-2.5 flex items-center justify-between text-xs hover:bg-white transition-colors">
+                              <div className="flex items-center gap-2 truncate">
+                                <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-200 px-1 py-0.5">
+                                  {sub.ticketId}
+                                </span>
+                                <span className="font-bold text-slate-900 truncate">{sub.fullName}</span>
+                                <span className="text-slate-500 text-[11px] truncate">({sub.email})</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {sub.acknowledged ? (
+                                  <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-800 font-bold border border-amber-300">
+                                    Already Sent (Will Resend)
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                                    Pending Dispatch
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleAckSelection(sub.id)}
+                                  className="text-slate-400 hover:text-rose-600 text-xs px-1"
+                                  title="Remove from queue"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setIsBulkAckModalOpen(false)}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      disabled={selectedAckIds.length === 0}
+                      onClick={handleStartBulkAckQueue}
+                      className="px-5 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Start Email Queue ({selectedAckIds.length})</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

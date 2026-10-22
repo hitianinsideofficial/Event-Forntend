@@ -7,6 +7,13 @@ export interface ApiResponse<T = any> {
   alreadyCheckedIn?: boolean;
   token?: string;
   error?: string;
+  quota?: {
+    credits: number;
+    totalLimit: number;
+    used: number;
+    warningAlert: boolean;
+    alertMessage?: string;
+  };
 }
 
 export interface BackendHealthResponse {
