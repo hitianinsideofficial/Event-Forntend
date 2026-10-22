@@ -681,8 +681,8 @@ export default function NavroopamPostingExcelPage() {
           </div>
         </div>
 
-        {/* SEARCH & FILTERS BAR */}
-        <div className="bg-white border border-slate-200 p-4 shadow-sm space-y-3">
+        {/* SEARCH & FILTERS BAR (STICKY) */}
+        <div className="sticky top-16 z-30 bg-white border border-slate-200 p-4 shadow-sm space-y-3">
           <div className="flex flex-col md:flex-row items-center justify-between gap-3">
             {/* Search Input */}
             <div className="relative w-full md:w-80">
@@ -794,9 +794,9 @@ export default function NavroopamPostingExcelPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
+                <thead className="sticky top-32 z-20 shadow-xs">
                   <tr className="bg-slate-900 text-white font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
-                    <th className="p-3 w-10 text-center">
+                    <th className="p-3 w-10 text-center bg-slate-900">
                       <input
                         type="checkbox"
                         checked={
@@ -814,13 +814,13 @@ export default function NavroopamPostingExcelPage() {
                         title="Select/Deselect all posted unsent entries on this page"
                       />
                     </th>
-                    <th className="p-3 w-10 text-center">#</th>
-                    <th className="p-3 whitespace-nowrap">Ticket & Participant</th>
-                    <th className="p-3 whitespace-nowrap">Domain & Roll No</th>
-                    <th className="p-3 min-w-[220px]">Submission Entry Media / File</th>
-                    <th className="p-3 min-w-[170px]">Posting Status</th>
-                    <th className="p-3 min-w-[260px]">Instagram Post Link</th>
-                    <th className="p-3 text-right whitespace-nowrap">Action & Confirmation</th>
+                    <th className="p-3 w-10 text-center bg-slate-900">#</th>
+                    <th className="p-3 whitespace-nowrap bg-slate-900">Ticket & Participant</th>
+                    <th className="p-3 whitespace-nowrap bg-slate-900">Domain & Roll No</th>
+                    <th className="p-3 min-w-[220px] bg-slate-900">Submission Entry Media / File</th>
+                    <th className="p-3 min-w-[170px] bg-slate-900">Posting Status</th>
+                    <th className="p-3 min-w-[260px] bg-slate-900">Instagram Post Link</th>
+                    <th className="p-3 text-right whitespace-nowrap bg-slate-900">Action & Confirmation</th>
                   </tr>
                 </thead>
 
