@@ -6,10 +6,17 @@ interface EmailPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: EventItem | null;
+  initialTab?: 'received' | 'verified' | 'drive_fix' | 'resubmission_request';
 }
 
-export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPreviewModalProps) {
-  const [activeTab, setActiveTab] = useState<'received' | 'verified' | 'drive_fix' | 'resubmission_request'>('received');
+export default function EmailPreviewModal({ isOpen, onClose, event, initialTab = 'received' }: EmailPreviewModalProps) {
+  const [activeTab, setActiveTab] = useState<'received' | 'verified' | 'drive_fix' | 'resubmission_request'>(initialTab);
+
+  React.useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
@@ -96,8 +103,8 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
                 : 'border-t-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            <Mail className="w-3.5 h-3.5 text-rose-600" />
-            <span>4. Re-upload Rejection Mail</span>
+            <X className="w-3.5 h-3.5 text-rose-600" />
+            <span>4. Disqualification / Re-upload Mail</span>
           </button>
         </div>
 
@@ -380,10 +387,10 @@ export default function EmailPreviewModal({ isOpen, onClose, event }: EmailPrevi
               <div className="bg-[#170409] text-[#fdfbf7] p-6 sm:p-8 space-y-6">
                 <div className="border-b border-[#e6c594]/30 pb-4">
                   <span className="inline-block px-2.5 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[11px] font-bold uppercase tracking-wider mb-2">
-                    Action Required &bull; Submission Re-upload
+                    Disqualification Notice &bull; Submission Re-upload
                   </span>
                   <h3 className="text-xl font-black text-[#fdfbf7] tracking-tight uppercase">
-                    Action Required: Re-upload Your Submission
+                    Disqualification Notice: Action Required to Re-upload
                   </h3>
                   <p className="text-xs text-[#e6d7c3] mt-1.5 leading-relaxed">
                     Dear <strong>Arjun Sen</strong>, thank you for participating in <strong>{eventTitle}</strong> under the <strong>Photography</strong> domain (Registration Pass: <code className="text-[#e6c594] font-bold">HIT-NAV-4821</code>).
