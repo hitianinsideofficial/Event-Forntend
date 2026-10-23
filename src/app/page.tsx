@@ -215,9 +215,13 @@ export default function Home() {
 
                       <Link 
                         href={`/events/${flagshipNavroopam.id || flagshipNavroopam._id}`}
-                        className="w-full py-3 px-4 bg-gradient-to-r from-[#e6c594] via-[#f7f1e5] to-[#e6c594] hover:brightness-110 text-[#150408] font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-[#800020]/40 flex items-center justify-center gap-2"
+                        className={
+                          flagshipNavroopam.status === 'DONE'
+                            ? "w-full py-3 px-4 bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2"
+                            : "w-full py-3 px-4 bg-gradient-to-r from-[#e6c594] via-[#f7f1e5] to-[#e6c594] hover:brightness-110 text-[#150408] font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-[#800020]/40 flex items-center justify-center gap-2"
+                        }
                       >
-                        <span>Register Now 🔱</span>
+                        <span>{flagshipNavroopam.status === 'DONE' ? 'Event Concluded • View Winners 🏆' : 'Register Now 🔱'}</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
@@ -262,11 +266,15 @@ export default function Home() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-black uppercase text-[#e6c594] bg-[#800020]/60 px-1.5 py-0.5 rounded">
-                            🔱 Live Flagship
+                          <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${
+                            flagshipNavroopam.status === 'DONE'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : 'text-[#e6c594] bg-[#800020]/60'
+                          }`}>
+                            {flagshipNavroopam.status === 'DONE' ? '🏆 Concluded' : '🔱 Live Flagship'}
                           </span>
                           <span className="text-[10px] font-mono font-bold text-amber-300">
-                            ₹9.00
+                            {flagshipNavroopam.status === 'DONE' ? 'Results Out' : '₹9.00'}
                           </span>
                         </div>
                         <h4 className="text-sm font-black text-white truncate mt-1">

@@ -698,6 +698,7 @@ export async function updatePostingExcelApi(
     isDriveNotPublic?: boolean;
     isDriveNotPublicReason?: string | null;
     moveToPostingExcel?: boolean;
+    winnerPosition?: '1st' | '2nd' | '3rd' | null;
   }
 ): Promise<ApiResponse<SubmissionItem>> {
   const baseUrl = await getApiBaseUrl();

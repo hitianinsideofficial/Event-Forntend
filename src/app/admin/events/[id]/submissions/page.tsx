@@ -138,9 +138,6 @@ export default function EventSubmissionsPage() {
   const [participantPayeeInput, setParticipantPayeeInput] = useState<string>('');
   const [isUpdatingParticipantPayee, setIsUpdatingParticipantPayee] = useState<boolean>(false);
 
-  // UPI Payee Breakdown minimize/maximize state (Default: false / minimized)
-  const [isPayeeBreakdownExpanded, setIsPayeeBreakdownExpanded] = useState<boolean>(false);
-
   // Bulk Acknowledgement Email Queue State
   const [selectedAckIds, setSelectedAckIds] = useState<string[]>([]);
   const [isBulkAckModalOpen, setIsBulkAckModalOpen] = useState<boolean>(false);
@@ -419,6 +416,18 @@ export default function EventSubmissionsPage() {
       alert(err.message || 'Failed to update Move to Posting Excel status');
     } finally {
       setUpdatingMoveId(null);
+    }
+  };
+
+  // Update Winner Rank
+  const handleUpdateWinnerRank = async (subId: string, position: '1st' | '2nd' | '3rd' | null) => {
+    try {
+      await updatePostingExcelApi(subId, {
+        winnerPosition: position
+      });
+      setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, winnerPosition: position } : s));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update winner rank');
     }
   };
 
@@ -876,33 +885,21 @@ export default function EventSubmissionsPage() {
         </div>
 
         {/* ========================================================= */}
-        {/* QR CODE & PAYEE REVENUE BREAKDOWN (COLLAPSIBLE, DEFAULT OFF) */}
+        {/* QR CODE & PAYEE REVENUE BREAKDOWN */}
         {/* ========================================================= */}
-        <div className="bg-white border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4 transition-all">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setIsPayeeBreakdownExpanded(prev => !prev)}
-                className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-800 transition-colors cursor-pointer shrink-0"
-                title={isPayeeBreakdownExpanded ? 'Click to minimize Payee Breakdown' : 'Click to expand Payee Breakdown'}
-              >
-                <ChevronRight 
-                  className={`w-4 h-4 transition-transform duration-200 ${isPayeeBreakdownExpanded ? 'rotate-90 text-emerald-900' : 'text-emerald-700'}`} 
-                />
-              </button>
+        <div className="bg-white border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                <QrCode className="w-4 h-4" />
+              </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 
-                    onClick={() => setIsPayeeBreakdownExpanded(prev => !prev)}
-                    className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 cursor-pointer hover:text-emerald-800 transition-colors select-none"
-                  >
-                    <span>QR Code & Payee Revenue Breakdown</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full font-mono">
-                      {payeeBreakdown.length} {payeeBreakdown.length === 1 ? 'QR / Payee' : 'QRs / Payees'}
-                    </span>
-                  </h3>
-                </div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <span>QR Code & Payee Revenue Breakdown</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full font-mono">
+                    {payeeBreakdown.length} {payeeBreakdown.length === 1 ? 'QR / Payee' : 'QRs / Payees'}
+                  </span>
+                </h3>
                 <p className="text-xs text-slate-500">
                   Total money collected and pending verification split across each UPI QR code / payee.
                 </p>
@@ -931,83 +928,67 @@ export default function EventSubmissionsPage() {
                   <span className="text-sm font-black text-slate-800 font-mono">₹{totalPotentialRevenue.toFixed(2)}</span>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setIsPayeeBreakdownExpanded(prev => !prev)}
-                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1 border border-slate-300 transition-colors cursor-pointer select-none"
-              >
-                <span>{isPayeeBreakdownExpanded ? 'Hide Details' : 'Show Details'}</span>
-                <ChevronRight 
-                  className={`w-3.5 h-3.5 transition-transform duration-200 ${isPayeeBreakdownExpanded ? 'rotate-90' : ''}`} 
-                />
-              </button>
             </div>
           </div>
 
-          {/* Collapsible Payee Breakdown Cards */}
-          {isPayeeBreakdownExpanded && (
-            <div className="pt-3 border-t border-slate-200 animate-in fade-in duration-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {payeeBreakdown.map((payee, idx) => (
-                  <div 
-                    key={idx}
-                    className="bg-slate-50 hover:bg-slate-100/70 transition-all border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-3 relative overflow-hidden"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-0.5 flex-1 min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                          Payee / QR Target
-                        </span>
-                        <h4 className="text-sm font-bold text-slate-900 truncate" title={payee.name}>
-                          {payee.name}
-                        </h4>
-                        {payee.upiId && (
-                          <span className="font-mono text-[11px] text-emerald-700 font-semibold block truncate select-all" title={payee.upiId}>
-                            {payee.upiId}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center shrink-0 text-slate-700 shadow-2xs">
-                        <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
-                      </div>
-                    </div>
-
-                    {/* Amount Split Cards */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
-                      <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                        <span className="text-[10px] font-bold text-emerald-800 uppercase block">Verified Received</span>
-                        <span className="text-base font-black text-emerald-700 font-mono block mt-0.5">
-                          ₹{payee.verifiedAmount.toFixed(2)}
-                        </span>
-                        <span className="text-[9.5px] text-emerald-600 font-medium">
-                          {payee.verifiedCount} {payee.verifiedCount === 1 ? 'payment' : 'payments'} verified
-                        </span>
-                      </div>
-
-                      <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                        <span className="text-[10px] font-bold text-amber-800 uppercase block">Total Expected</span>
-                        <span className="text-base font-black text-amber-700 font-mono block mt-0.5">
-                          ₹{payee.totalAmount.toFixed(2)}
-                        </span>
-                        <span className="text-[9.5px] text-amber-600 font-medium">
-                          {payee.count} total ({payee.pendingCount} pending)
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 font-mono">
-                      <span>Entries routed: <strong className="text-slate-800">{payee.count}</strong></span>
-                      <span>
-                        Success rate: <strong className="text-slate-800">{payee.count > 0 ? Math.round((payee.verifiedCount / payee.count) * 100) : 0}%</strong>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {payeeBreakdown.map((payee, idx) => (
+              <div 
+                key={idx}
+                className="bg-slate-50 hover:bg-slate-100/70 transition-all border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-3 relative overflow-hidden"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Payee / QR Target
+                    </span>
+                    <h4 className="text-sm font-bold text-slate-900 truncate" title={payee.name}>
+                      {payee.name}
+                    </h4>
+                    {payee.upiId && (
+                      <span className="font-mono text-[11px] text-emerald-700 font-semibold block truncate select-all" title={payee.upiId}>
+                        {payee.upiId}
                       </span>
-                    </div>
+                    )}
                   </div>
-                ))}
+
+                  <div className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center shrink-0 text-slate-700 shadow-2xs">
+                    <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                  </div>
+                </div>
+
+                {/* Amount Split Cards */}
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
+                  <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                    <span className="text-[10px] font-bold text-emerald-800 uppercase block">Verified Received</span>
+                    <span className="text-base font-black text-emerald-700 font-mono block mt-0.5">
+                      ₹{payee.verifiedAmount.toFixed(2)}
+                    </span>
+                    <span className="text-[9.5px] text-emerald-600 font-medium">
+                      {payee.verifiedCount} {payee.verifiedCount === 1 ? 'payment' : 'payments'} verified
+                    </span>
+                  </div>
+
+                  <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase block">Total Expected</span>
+                    <span className="text-base font-black text-amber-700 font-mono block mt-0.5">
+                      ₹{payee.totalAmount.toFixed(2)}
+                    </span>
+                    <span className="text-[9.5px] text-amber-600 font-medium">
+                      {payee.count} total ({payee.pendingCount} pending)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 font-mono">
+                  <span>Entries routed: <strong className="text-slate-800">{payee.count}</strong></span>
+                  <span>
+                    Success rate: <strong className="text-slate-800">{payee.count > 0 ? Math.round((payee.verifiedCount / payee.count) * 100) : 0}%</strong>
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
 
         {/* ========================================================= */}
@@ -1015,8 +996,8 @@ export default function EventSubmissionsPage() {
         {/* ========================================================= */}
         <section className="bg-white border border-slate-200 shadow-sm space-y-4 p-5">
           
-          {/* SEARCH & FILTER CONTROLS (STICKY) */}
-          <div className="sticky top-16 z-30 bg-white border-b border-slate-200 pb-3 -mx-5 px-5 pt-1 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          {/* SEARCH & FILTER CONTROLS */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-slate-200">
             <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
               
               {/* Search Bar */}
@@ -1183,9 +1164,9 @@ export default function EventSubmissionsPage() {
           ) : viewMode === 'table' ? (
             <div className="overflow-x-auto border border-slate-200">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-32 z-20 shadow-xs">
-                  <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                    <th className="px-2 py-2.5 w-[40px] text-center bg-slate-100">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="px-2 py-2 w-[40px] text-center">
                       <input 
                         type="checkbox"
                         checked={paginatedSubmissions.length > 0 && paginatedSubmissions.every(s => selectedAckIds.includes(s.id))}
@@ -1202,18 +1183,23 @@ export default function EventSubmissionsPage() {
                         title="Select/Deselect all on this page for Bulk Ack Email"
                       />
                     </th>
-                    <th className="px-2 py-2.5 w-[110px] bg-slate-100">Ticket ID</th>
-                    <th className="px-2 py-2.5 max-w-[190px] bg-slate-100">Participant Details</th>
-                    <th className="px-2 py-2.5 max-w-[180px] bg-slate-100">Domain & Theme</th>
-                    <th className="px-2 py-2.5 w-[130px] bg-slate-100">Payment & UTR</th>
-                    <th className="px-2 py-2.5 w-[110px] bg-slate-100">Verification</th>
-                    <th className="px-2 py-2.5 w-[140px] bg-slate-100">Media / File</th>
+                    <th className="px-2 py-2 w-[110px]">Ticket ID</th>
+                    <th className="px-2 py-2 max-w-[190px]">Participant Details</th>
+                    <th className="px-2 py-2 max-w-[180px]">Domain & Theme</th>
+                    <th className="px-2 py-2 w-[130px]">Payment & UTR</th>
+                    <th className="px-2 py-2 w-[110px]">Verification</th>
+                    <th className="px-2 py-2 w-[140px]">Media / File</th>
                     {isNavroopam && (
-                      <th className="px-2 py-2.5 text-center whitespace-nowrap bg-emerald-50 text-emerald-900 border-x border-emerald-200 w-[70px]" title="Move to Posting Excel Sheet">
+                      <th className="px-2 py-2 text-center whitespace-nowrap bg-emerald-50 text-emerald-900 border-x border-emerald-200 w-[70px]" title="Move to Posting Excel Sheet">
                         To Excel
                       </th>
                     )}
-                    <th className="px-2 py-2.5 text-right w-[150px] bg-slate-100">Actions</th>
+                    {event?.status === 'DONE' && (
+                      <th className="px-2 py-2 text-center whitespace-nowrap bg-amber-50 text-amber-950 border-x border-amber-200 w-[110px]" title="Assign Winner Rank">
+                        🏆 Winner
+                      </th>
+                    )}
+                    <th className="px-2 py-2 text-right w-[150px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
@@ -1647,6 +1633,33 @@ export default function EventSubmissionsPage() {
                                 {sub.moveToPostingExcel ? 'Included' : 'Add'}
                               </span>
                             </label>
+                          </td>
+                        )}
+
+                        {/* WINNER RANK SELECTOR (WHEN EVENT IS DONE) */}
+                        {event?.status === 'DONE' && (
+                          <td className="px-2 py-2 align-middle text-center bg-amber-50/40 border-x border-amber-100">
+                            <select
+                              value={sub.winnerPosition || ''}
+                              onChange={e => {
+                                const val = (e.target.value || null) as '1st' | '2nd' | '3rd' | null;
+                                handleUpdateWinnerRank(sub.id, val);
+                              }}
+                              className={`w-full px-1.5 py-1 text-[11px] font-bold border outline-none cursor-pointer rounded-xs ${
+                                sub.winnerPosition === '1st'
+                                  ? 'bg-amber-100 text-amber-950 border-amber-500'
+                                  : sub.winnerPosition === '2nd'
+                                  ? 'bg-slate-200 text-slate-900 border-slate-400'
+                                  : sub.winnerPosition === '3rd'
+                                  ? 'bg-orange-100 text-orange-950 border-orange-400'
+                                  : 'bg-white text-slate-600 border-slate-300'
+                              }`}
+                            >
+                              <option value="">None</option>
+                              <option value="1st">🥇 1st</option>
+                              <option value="2nd">🥈 2nd</option>
+                              <option value="3rd">🥉 3rd</option>
+                            </select>
                           </td>
                         )}
 

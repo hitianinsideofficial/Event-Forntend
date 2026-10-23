@@ -68,6 +68,8 @@ export default function NavroopamPostingExcelPage() {
   // Local editing states (keyed by submission ID)
   const [instagramUrls, setInstagramUrls] = useState<Record<string, string>>({});
   const [postingStatuses, setPostingStatuses] = useState<Record<string, PostingStatusType>>({});
+  const [winnerPositions, setWinnerPositions] = useState<Record<string, '1st' | '2nd' | '3rd' | null>>({});
+  const [savingWinnerId, setSavingWinnerId] = useState<string | null>(null);
 
   // Async action states
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -124,15 +126,18 @@ export default function NavroopamPostingExcelPage() {
       // Initialize edit fields
       const initUrls: Record<string, string> = {};
       const initStatuses: Record<string, PostingStatusType> = {};
+      const initWinners: Record<string, '1st' | '2nd' | '3rd' | null> = {};
 
       subsData.forEach(sub => {
         initUrls[sub.id] = sub.instagramPostUrl || '';
         // Default posting status to QUALIFIED ('Yellow') if not set; if confirmation email was already sent, MAIL_SENT ('Blue')
         initStatuses[sub.id] = sub.postingStatus || (sub.confirmationEmailSent ? 'MAIL_SENT' : 'QUALIFIED');
+        initWinners[sub.id] = sub.winnerPosition || null;
       });
 
       setInstagramUrls(initUrls);
       setPostingStatuses(initStatuses);
+      setWinnerPositions(initWinners);
     } catch (err) {
       console.error('Error loading Posting Excel data:', err);
     } finally {
@@ -362,6 +367,24 @@ export default function NavroopamPostingExcelPage() {
       alert(err.message || 'Failed to save changes');
     } finally {
       setSavingId(null);
+    }
+  };
+
+  // Handle Winner Position Change (1st, 2nd, 3rd, or null)
+  const handleUpdateWinner = async (subId: string, position: '1st' | '2nd' | '3rd' | null) => {
+    setSavingWinnerId(subId);
+    try {
+      setWinnerPositions(prev => ({ ...prev, [subId]: position }));
+      const res = await updatePostingExcelApi(subId, {
+        winnerPosition: position
+      });
+      if (res.success && res.data) {
+        setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, winnerPosition: position } : s));
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update winner position');
+    } finally {
+      setSavingWinnerId(null);
     }
   };
 
@@ -824,6 +847,9 @@ export default function NavroopamPostingExcelPage() {
                     <th className="p-3 min-w-[220px]">Submission Entry Media / File</th>
                     <th className="p-3 min-w-[170px]">Posting Status</th>
                     <th className="p-3 min-w-[260px]">Instagram Post Link</th>
+                    <th className="p-3 min-w-[150px] bg-amber-950/60 text-amber-300 border-x border-amber-900/60 text-center" title="Mark participant as 1st, 2nd, or 3rd winner">
+                      🏆 Winner Rank
+                    </th>
                     <th className="p-3 text-right whitespace-nowrap">Action & Confirmation</th>
                   </tr>
                 </thead>
@@ -1237,6 +1263,50 @@ export default function NavroopamPostingExcelPage() {
                               )}
                             </div>
                           )}
+                        </td>
+
+                        {/* Winner Position Selector (1st, 2nd, 3rd, or None) */}
+                        <td className="p-3 align-top bg-amber-50/40 border-x border-amber-200/60">
+                          <div className="space-y-1.5 min-w-[130px]">
+                            <select
+                              value={winnerPositions[sub.id] || sub.winnerPosition || ''}
+                              onChange={e => {
+                                const val = (e.target.value || null) as '1st' | '2nd' | '3rd' | null;
+                                handleUpdateWinner(sub.id, val);
+                              }}
+                              disabled={savingWinnerId === sub.id}
+                              className={`w-full px-2 py-1.5 text-xs font-bold border outline-none cursor-pointer rounded-xs transition-colors ${
+                                (winnerPositions[sub.id] || sub.winnerPosition) === '1st'
+                                  ? 'bg-amber-100 text-amber-950 border-amber-500 ring-1 ring-amber-400'
+                                  : (winnerPositions[sub.id] || sub.winnerPosition) === '2nd'
+                                  ? 'bg-slate-200 text-slate-900 border-slate-400 ring-1 ring-slate-300'
+                                  : (winnerPositions[sub.id] || sub.winnerPosition) === '3rd'
+                                  ? 'bg-orange-100 text-orange-950 border-orange-400 ring-1 ring-orange-300'
+                                  : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                              }`}
+                            >
+                              <option value="">None (Participant)</option>
+                              <option value="1st">🥇 1st Place Winner</option>
+                              <option value="2nd">🥈 2nd Place Winner</option>
+                              <option value="3rd">🥉 3rd Place Winner</option>
+                            </select>
+
+                            <div className="flex items-center justify-between text-[10px]">
+                              {savingWinnerId === sub.id ? (
+                                <span className="text-amber-700 font-semibold flex items-center gap-1">
+                                  <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                                  <span>Saving...</span>
+                                </span>
+                              ) : (winnerPositions[sub.id] || sub.winnerPosition) ? (
+                                <span className="font-extrabold text-amber-800 flex items-center gap-1">
+                                  <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                                  <span>Rank Assigned</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic">No award rank</span>
+                              )}
+                            </div>
+                          </div>
                         </td>
 
                         {/* Action buttons: Save & Send Confirmation Email */}

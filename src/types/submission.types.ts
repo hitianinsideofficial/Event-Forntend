@@ -47,5 +47,6 @@ export interface SubmissionItem {
   couponCollected?: boolean;
   paymentStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'PAID';
   paymentVerifiedAt?: string | null;
+  winnerPosition?: '1st' | '2nd' | '3rd' | null;
   createdAt: string;
 }

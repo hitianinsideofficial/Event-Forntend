@@ -723,6 +723,47 @@ export default function DedicatedEventRegistrationPage({ params }: { params: Pro
     );
   }
 
+  // Registration closed guard for concluded/DONE events
+  if (event.status === 'DONE') {
+    return (
+      <div className="min-h-screen bg-[#0d0205] text-[#fdfbf7] flex flex-col">
+        <div className="no-print">
+          <Navbar />
+        </div>
+        <div className="flex-1 max-w-2xl w-full mx-auto px-4 flex flex-col items-center justify-center text-center py-16">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-3xl mb-5 shadow-lg">
+            🏆
+          </div>
+          <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20 mb-3">
+            Registration Closed
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3">
+            {event.title} has Concluded
+          </h1>
+          <p className="text-xs sm:text-sm text-[#a69181] max-w-md mx-auto mb-8 leading-relaxed">
+            Registrations for this event are now officially closed. You can explore the winners showcase, top participant rankings, and the photo & artwork gallery directly on the event overview page.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
+            <Link 
+              href={`/events/${eventId}`}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-[#e6c594] via-[#f7f1e5] to-[#e6c594] text-[#150408] font-black text-xs uppercase tracking-wider shadow-lg hover:brightness-110 transition-all inline-flex items-center justify-center gap-2"
+            >
+              <span>View Winners & Gallery</span>
+              <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
+            </Link>
+            <Link 
+              href="/"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs transition-colors inline-flex items-center justify-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to All Events</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const selectedDomainObj = activeEventDomains.find(d => d.id === selectedDomainId) || activeEventDomains[0];
   const isSelectedDomainSubmitted = submittedDomains.includes(selectedDomainId);
 
