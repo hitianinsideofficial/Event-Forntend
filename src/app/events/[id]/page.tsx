@@ -150,6 +150,9 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
       if (isReel || isWriting) return false;
       if (!isPhoto && !isArt) return false;
 
+      // In Navroopam, only show photos/artworks that are marked as included (moveToPostingExcel)
+      if (isNavroopam && !sub.moveToPostingExcel) return false;
+
       // Must have valid image media file (exclude payment proof)
       const paymentProof = sub.files?.find(f => {
         const n = (f.originalName || '').toLowerCase();
