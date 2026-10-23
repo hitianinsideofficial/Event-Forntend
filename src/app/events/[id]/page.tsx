@@ -834,7 +834,7 @@ export default function DedicatedEventDetailsPage({ params }: { params: Promise<
       {/* One to another, no boxes, no separation                   */}
       {/* On hover: black transparent layer at bottom with name & roll */}
       {/* ========================================================= */}
-      {galleryItems.length > 0 && (
+      {event?.showGallery !== false && galleryItems.length > 0 && (
         <section id="gallery-section" className="mt-20 pt-12 border-t border-white/10">
           <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>

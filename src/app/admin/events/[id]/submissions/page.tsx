@@ -145,6 +145,24 @@ export default function EventSubmissionsPage() {
   const [queueProgress, setQueueProgress] = useState<{ current: number; total: number; currentName: string }>({ current: 0, total: 0, currentName: '' });
   const [queueResults, setQueueResults] = useState<{ success: number; failed: number }>({ success: 0, failed: 0 });
 
+  // Gallery display toggle state
+  const [isTogglingGallery, setIsTogglingGallery] = useState<boolean>(false);
+
+  const handleToggleGallery = async () => {
+    if (!event) return;
+    const currentVal = event.showGallery !== false;
+    const nextVal = !currentVal;
+    setIsTogglingGallery(true);
+    try {
+      await updateEventDetailsApi(eventId, { showGallery: nextVal });
+      setEvent(prev => prev ? { ...prev, showGallery: nextVal } : null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to toggle gallery visibility');
+    } finally {
+      setIsTogglingGallery(false);
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = sessionStorage.getItem('adminToken');
@@ -809,6 +827,21 @@ export default function EventSubmissionsPage() {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
+            </button>
+
+            {/* Event Submissions Gallery Toggle Button */}
+            <button
+              onClick={handleToggleGallery}
+              disabled={isTogglingGallery || !event}
+              className={`px-3.5 py-2 border text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs ${
+                event?.showGallery === false
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-300'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-300'
+              }`}
+              title={event?.showGallery === false ? 'Click to show submissions gallery on public event page' : 'Click to hide submissions gallery from public event page'}
+            >
+              <ImageIcon className={`w-3.5 h-3.5 ${event?.showGallery === false ? 'text-slate-400' : 'text-indigo-600'}`} />
+              <span>{isTogglingGallery ? 'Updating...' : event?.showGallery === false ? 'Gallery: Hidden' : 'Gallery: Visible'}</span>
             </button>
 
             <Link 
