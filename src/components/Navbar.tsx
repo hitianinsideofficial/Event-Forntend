@@ -38,6 +38,13 @@ export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
 
         {/* Right side navigation utilities */}
         <div className="flex items-center gap-3">
+          <Link
+            href="/#past-events"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-[#e6d7c3] hover:text-[#e6c594] transition-colors"
+          >
+            <span>Past Events</span>
+          </Link>
+
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-[#e6d7c3]">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-semibold">Live Events Open</span>
