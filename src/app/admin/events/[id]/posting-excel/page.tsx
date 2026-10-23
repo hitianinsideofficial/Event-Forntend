@@ -334,10 +334,10 @@ export default function NavroopamPostingExcelPage() {
   };
 
   // Handle Saving single entry row
-  const handleSaveRow = async (subId: string) => {
+  const handleSaveRow = async (subId: string, overrideUrl?: string) => {
     setSavingId(subId);
     try {
-      const url = (instagramUrls[subId] !== undefined ? instagramUrls[subId] : '').trim();
+      const url = (overrideUrl !== undefined ? overrideUrl : (instagramUrls[subId] !== undefined ? instagramUrls[subId] : '')).trim();
       let status = postingStatuses[subId] || null;
 
       // Automatically change status to POSTED ('Green') when Instagram link is pasted and saved,
@@ -1219,31 +1219,46 @@ export default function NavroopamPostingExcelPage() {
                                     const val = e.target.value;
                                     setInstagramUrls(prev => ({ ...prev, [sub.id]: val }));
                                   }}
+                                  onPaste={async e => {
+                                    const pastedText = e.clipboardData.getData('text');
+                                    if (pastedText && pastedText.trim()) {
+                                      const cleaned = pastedText.trim();
+                                      setInstagramUrls(prev => ({ ...prev, [sub.id]: cleaned }));
+                                      // Auto-save immediately upon direct keyboard paste
+                                      await handleSaveRow(sub.id, cleaned);
+                                    }
+                                  }}
                                   className="w-full pl-7 pr-14 py-1.5 text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 outline-none focus:border-rose-600 font-mono transition-colors"
                                 />
                                 <button
                                   type="button"
+                                  disabled={savingId === sub.id}
                                   onClick={async () => {
                                     try {
                                       const text = await navigator.clipboard.readText();
                                       if (text && text.trim()) {
                                         const cleaned = text.trim();
                                         setInstagramUrls(prev => ({ ...prev, [sub.id]: cleaned }));
+                                        // Auto-save immediately upon paste
+                                        await handleSaveRow(sub.id, cleaned);
                                       } else {
                                         alert('Clipboard is empty or does not contain a link.');
                                       }
                                     } catch (err) {
                                       const manual = window.prompt('Paste your copied Instagram link here:');
                                       if (manual && manual.trim()) {
-                                        setInstagramUrls(prev => ({ ...prev, [sub.id]: manual.trim() }));
+                                        const cleaned = manual.trim();
+                                        setInstagramUrls(prev => ({ ...prev, [sub.id]: cleaned }));
+                                        // Auto-save immediately upon paste
+                                        await handleSaveRow(sub.id, cleaned);
                                       }
                                     }
                                   }}
-                                  className="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors cursor-pointer rounded-xs"
-                                  title="Paste link from clipboard"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors cursor-pointer rounded-xs disabled:opacity-50"
+                                  title="Paste link from clipboard & auto save"
                                 >
                                   <Clipboard className="w-2.5 h-2.5" />
-                                  <span>Paste</span>
+                                  <span>{savingId === sub.id ? 'Saving...' : 'Paste'}</span>
                                 </button>
                               </div>
 
