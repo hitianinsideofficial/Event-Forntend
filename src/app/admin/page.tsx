@@ -65,7 +65,8 @@ import {
   Sparkles,
   Building2,
   GraduationCap,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Image as ImageIcon
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -98,6 +99,7 @@ export default function AdminDashboardPage() {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingVisibilityId, setTogglingVisibilityId] = useState<string | null>(null);
+  const [togglingGalleryId, setTogglingGalleryId] = useState<string | null>(null);
   const [previewEvent, setPreviewEvent] = useState<EventItem | null>(null);
 
   // Event-Wise Analytics Filter
@@ -215,6 +217,24 @@ export default function AdminDashboardPage() {
       alert(err.message || 'Failed to toggle event visibility');
     } finally {
       setTogglingVisibilityId(null);
+    }
+  };
+
+  const handleToggleGallery = async (eventId: string, currentShowGallery: boolean) => {
+    const nextShowGallery = !currentShowGallery;
+    setTogglingGalleryId(eventId);
+    try {
+      await updateEventDetailsApi(eventId, { showGallery: nextShowGallery });
+      setEvents(prev => prev.map(ev => {
+        if ((ev.id || (ev as any)._id) === eventId) {
+          return { ...ev, showGallery: nextShowGallery };
+        }
+        return ev;
+      }));
+    } catch (err: any) {
+      alert(err.message || 'Failed to toggle gallery display');
+    } finally {
+      setTogglingGalleryId(null);
     }
   };
 
@@ -994,6 +1014,22 @@ export default function AdminDashboardPage() {
                               <span>Public</span>
                             </>
                           )}
+                        </button>
+
+                        {/* Submission Gallery Toggle Button */}
+                        <button
+                          type="button"
+                          disabled={togglingGalleryId === eventId}
+                          onClick={() => handleToggleGallery(eventId, ev.showGallery !== false)}
+                          className={`px-2.5 py-0.5 text-[10px] font-bold border inline-flex items-center gap-1 transition-colors cursor-pointer ${
+                            ev.showGallery === false 
+                              ? 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200' 
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-300 hover:bg-indigo-100'
+                          }`}
+                          title={ev.showGallery === false ? 'Click to show submissions gallery on event page' : 'Click to hide submissions gallery on event page'}
+                        >
+                          <ImageIcon className={`w-3 h-3 ${ev.showGallery === false ? 'text-slate-400' : 'text-indigo-600'}`} />
+                          <span>{ev.showGallery === false ? 'Gallery Off' : 'Gallery On'}</span>
                         </button>
                       </div>
 

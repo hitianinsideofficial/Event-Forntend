@@ -145,6 +145,24 @@ export default function EventSubmissionsPage() {
   const [queueProgress, setQueueProgress] = useState<{ current: number; total: number; currentName: string }>({ current: 0, total: 0, currentName: '' });
   const [queueResults, setQueueResults] = useState<{ success: number; failed: number }>({ success: 0, failed: 0 });
 
+  // Gallery display toggle state
+  const [isTogglingGallery, setIsTogglingGallery] = useState<boolean>(false);
+
+  const handleToggleGallery = async () => {
+    if (!event) return;
+    const currentVal = event.showGallery !== false;
+    const nextVal = !currentVal;
+    setIsTogglingGallery(true);
+    try {
+      await updateEventDetailsApi(eventId, { showGallery: nextVal });
+      setEvent(prev => prev ? { ...prev, showGallery: nextVal } : null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to toggle gallery visibility');
+    } finally {
+      setIsTogglingGallery(false);
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = sessionStorage.getItem('adminToken');
@@ -416,6 +434,18 @@ export default function EventSubmissionsPage() {
       alert(err.message || 'Failed to update Move to Posting Excel status');
     } finally {
       setUpdatingMoveId(null);
+    }
+  };
+
+  // Update Winner Rank
+  const handleUpdateWinnerRank = async (subId: string, position: '1st' | '2nd' | '3rd' | null) => {
+    try {
+      await updatePostingExcelApi(subId, {
+        winnerPosition: position
+      });
+      setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, winnerPosition: position } : s));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update winner rank');
     }
   };
 
@@ -799,6 +829,21 @@ export default function EventSubmissionsPage() {
               <span>Refresh</span>
             </button>
 
+            {/* Event Submissions Gallery Toggle Button */}
+            <button
+              onClick={handleToggleGallery}
+              disabled={isTogglingGallery || !event}
+              className={`px-3.5 py-2 border text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs ${
+                event?.showGallery === false
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-300'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-300'
+              }`}
+              title={event?.showGallery === false ? 'Click to show submissions gallery on public event page' : 'Click to hide submissions gallery from public event page'}
+            >
+              <ImageIcon className={`w-3.5 h-3.5 ${event?.showGallery === false ? 'text-slate-400' : 'text-indigo-600'}`} />
+              <span>{isTogglingGallery ? 'Updating...' : event?.showGallery === false ? 'Gallery: Hidden' : 'Gallery: Visible'}</span>
+            </button>
+
             <Link 
               href={`/admin/events/${eventId}/edit`}
               className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
@@ -1180,6 +1225,11 @@ export default function EventSubmissionsPage() {
                     {isNavroopam && (
                       <th className="px-2 py-2 text-center whitespace-nowrap bg-emerald-50 text-emerald-900 border-x border-emerald-200 w-[70px]" title="Move to Posting Excel Sheet">
                         To Excel
+                      </th>
+                    )}
+                    {event?.status === 'DONE' && (
+                      <th className="px-2 py-2 text-center whitespace-nowrap bg-amber-50 text-amber-950 border-x border-amber-200 w-[110px]" title="Assign Winner Rank">
+                        🏆 Winner
                       </th>
                     )}
                     <th className="px-2 py-2 text-right w-[150px]">Actions</th>
@@ -1616,6 +1666,33 @@ export default function EventSubmissionsPage() {
                                 {sub.moveToPostingExcel ? 'Included' : 'Add'}
                               </span>
                             </label>
+                          </td>
+                        )}
+
+                        {/* WINNER RANK SELECTOR (WHEN EVENT IS DONE) */}
+                        {event?.status === 'DONE' && (
+                          <td className="px-2 py-2 align-middle text-center bg-amber-50/40 border-x border-amber-100">
+                            <select
+                              value={sub.winnerPosition || ''}
+                              onChange={e => {
+                                const val = (e.target.value || null) as '1st' | '2nd' | '3rd' | null;
+                                handleUpdateWinnerRank(sub.id, val);
+                              }}
+                              className={`w-full px-1.5 py-1 text-[11px] font-bold border outline-none cursor-pointer rounded-xs ${
+                                sub.winnerPosition === '1st'
+                                  ? 'bg-amber-100 text-amber-950 border-amber-500'
+                                  : sub.winnerPosition === '2nd'
+                                  ? 'bg-slate-200 text-slate-900 border-slate-400'
+                                  : sub.winnerPosition === '3rd'
+                                  ? 'bg-orange-100 text-orange-950 border-orange-400'
+                                  : 'bg-white text-slate-600 border-slate-300'
+                              }`}
+                            >
+                              <option value="">None</option>
+                              <option value="1st">🥇 1st</option>
+                              <option value="2nd">🥈 2nd</option>
+                              <option value="3rd">🥉 3rd</option>
+                            </select>
                           </td>
                         )}
 

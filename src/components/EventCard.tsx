@@ -132,20 +132,31 @@ export default function EventCard({ event }: EventCardProps) {
           </p>
         </div>
 
-        {/* Full Width Registration Action Button */}
+        {/* Full Width Action Button */}
         <div className="pt-4 border-t border-[#f7f1e5]/10 mt-auto">
           <Link 
             href={`/events/${eventId}`}
             className={
-              isNavroopam
-                ? 'w-full justify-center text-center py-2.5 px-4 text-xs font-bold text-[#150408] bg-gradient-to-r from-[#e6c594] via-[#f7f1e5] to-[#e6c594] hover:brightness-110 rounded-xl transition-all shadow-md shadow-[#800020]/40 inline-flex items-center gap-1.5'
-                : isTricolour 
-                  ? 'btn-tricolour w-full justify-center text-center text-xs py-2.5 px-4 font-bold shadow-lg' 
-                  : 'w-full justify-center text-center py-2.5 px-4 text-xs font-bold text-[#150408] bg-[#e6c594] hover:bg-[#f7f1e5] rounded-xl transition-all shadow-md shadow-[#e6c594]/20 inline-flex items-center gap-1.5'
+              status === 'DONE'
+                ? 'w-full justify-center text-center py-2.5 px-4 text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/10 inline-flex items-center gap-1.5'
+                : isNavroopam
+                  ? 'w-full justify-center text-center py-2.5 px-4 text-xs font-bold text-[#150408] bg-gradient-to-r from-[#e6c594] via-[#f7f1e5] to-[#e6c594] hover:brightness-110 rounded-xl transition-all shadow-md shadow-[#800020]/40 inline-flex items-center gap-1.5'
+                  : isTricolour 
+                    ? 'btn-tricolour w-full justify-center text-center text-xs py-2.5 px-4 font-bold shadow-lg' 
+                    : 'w-full justify-center text-center py-2.5 px-4 text-xs font-bold text-[#150408] bg-[#e6c594] hover:bg-[#f7f1e5] rounded-xl transition-all shadow-md shadow-[#e6c594]/20 inline-flex items-center gap-1.5'
             }
           >
-            <span>{isNavroopam ? 'Register for Navroopam v7.0 🔱' : isTricolour ? 'Register for Swaraj-E-Hind' : 'View Details & Rules'}</span>
-            <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+            {status === 'DONE' ? (
+              <>
+                <span>Event Concluded • View Winners</span>
+                <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+              </>
+            ) : (
+              <>
+                <span>{isNavroopam ? 'Register for Navroopam v7.0 🔱' : isTricolour ? 'Register for Swaraj-E-Hind' : 'View Details & Rules'}</span>
+                <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+              </>
+            )}
           </Link>
         </div>
       </div>

@@ -34,6 +34,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     hasAttendance: false,
     requireFileUpload: false,
     isHidden: false,
+    showGallery: true,
     upiId: '',
     payeeName: '',
     registrationFee: '',
@@ -89,6 +90,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             hasAttendance: Boolean(ev.hasAttendance),
             requireFileUpload: Boolean(ev.requireFileUpload),
             isHidden: Boolean(ev.isHidden),
+            showGallery: ev.showGallery !== false,
             upiId: ev.upiId || '',
             payeeName: ev.payeeName || '',
             registrationFee: ev.registrationFee !== undefined ? String(ev.registrationFee) : '',
@@ -495,6 +497,17 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                     className="w-4 h-4 border-slate-300 text-rose-600 focus:ring-0"
                   />
                   <span>🙈 Keep Hidden from Main Website Catalog</span>
+                </label>
+
+                <label className="flex items-center gap-2 text-xs text-indigo-700 font-bold cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    name="showGallery"
+                    checked={formData.showGallery}
+                    onChange={handleChange}
+                    className="w-4 h-4 border-slate-300 text-indigo-600 focus:ring-0"
+                  />
+                  <span>🖼️ Show Submissions Gallery on Event Page</span>
                 </label>
               </div>
 

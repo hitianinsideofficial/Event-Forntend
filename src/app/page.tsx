@@ -17,8 +17,61 @@ import {
   ShieldCheck, 
   ArrowRight,
   TrendingUp,
-  Tag
+  Tag,
+  History,
+  CheckCircle2,
+  Calendar,
+  ExternalLink
 } from 'lucide-react';
+
+// Curated legacy archive for past hallmark HITian Inside celebrations
+const FALLBACK_PAST_EVENTS: EventItem[] = [
+  {
+    id: 'swaraj_e_hind_legacy',
+    title: 'SWARAJ-E-HIND 3.0',
+    description: 'The hallmark Independence Day tournament celebrating patriotism, freedom & creative youth expression across Photography, Reel Making, Digital Art, and Creative Writing.',
+    date: 'August 15, 2025',
+    location: 'HIT Campus & Online Media Showcase',
+    organizer: 'HITian Inside',
+    status: 'DONE',
+    mode: 'ONLINE',
+    theme: 'TRICOLOUR',
+    isFlagship: true,
+    hasAttendance: false,
+    requireFileUpload: true,
+    coverUrl: 'https://images.unsplash.com/photo-1532375810709-75b1da00537c?q=80&w=1200&auto=format&fit=crop'
+  },
+  {
+    id: 'navroopam_v6_legacy',
+    title: 'NAVROOPAM v6.0',
+    description: 'The 6th grand edition of Durga Puja Socio-Cultural Festival featuring Kolkata & Haldia pandal photography, festive vlogs, canvas art, and literary tributes.',
+    date: 'October 18 – 28, 2025',
+    location: 'HITian Inside Cultural Exhibition',
+    organizer: 'HITian Inside',
+    status: 'DONE',
+    mode: 'ONLINE',
+    theme: 'DEFAULT',
+    isFlagship: true,
+    hasAttendance: false,
+    requireFileUpload: true,
+    coverUrl: 'https://ik.imagekit.io/n6cw3mewa/navroopam_banner.png'
+  },
+  {
+    id: 'canvas_chronicles_legacy',
+    title: 'CANVAS CHRONICLES 2025',
+    description: 'Annual fine arts and visual design competition bringing together campus painters, digital illustrators, and sketch artists with offline gallery display.',
+    date: 'February 20, 2025',
+    location: 'HIT Central Auditorium & Gallery',
+    organizer: 'HITian Inside',
+    status: 'DONE',
+    mode: 'OFFLINE',
+    theme: 'DEFAULT',
+    isFlagship: false,
+    hasAttendance: true,
+    requireFileUpload: true,
+    coverUrl: 'https://images.unsplash.com/photo-1460661419200-1868a1eb65bc?q=80&w=1200&auto=format&fit=crop'
+  }
+];
 
 export default function Home() {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -28,7 +81,8 @@ export default function Home() {
   const loadEvents = async () => {
     setLoading(true);
     try {
-      const data = await fetchEvents(false);
+      // Fetch all events including completed (includeDone: true)
+      const data = await fetchEvents(true, false, false);
       setEvents(data || []);
     } catch (err) {
       console.warn('Backend unavailable.');
@@ -48,7 +102,20 @@ export default function Home() {
     return id === '6aca70825588e8009b8e8e83' || id.includes('nav') || t.includes('navroopam');
   });
 
-  const filteredEvents = events.filter(event => 
+  // Separate active/upcoming and past events
+  const activeEvents = events.filter(e => e.status !== 'DONE' && !e.isHidden);
+  const dbPastEvents = events.filter(e => e.status === 'DONE');
+
+  // If no DB past events yet, showcase the hallmark archive
+  const pastEvents = dbPastEvents.length > 0 ? dbPastEvents : FALLBACK_PAST_EVENTS;
+
+  const filteredActiveEvents = activeEvents.filter(event => 
+    event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.organizer?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredPastEvents = pastEvents.filter(event =>
     event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     event.organizer?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -148,9 +215,13 @@ export default function Home() {
 
                       <Link 
                         href={`/events/${flagshipNavroopam.id || flagshipNavroopam._id}`}
-                        className="w-full py-3 px-4 bg-gradient-to-r from-[#e6c594] via-[#f7f1e5] to-[#e6c594] hover:brightness-110 text-[#150408] font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-[#800020]/40 flex items-center justify-center gap-2"
+                        className={
+                          flagshipNavroopam.status === 'DONE'
+                            ? "w-full py-3 px-4 bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2"
+                            : "w-full py-3 px-4 bg-gradient-to-r from-[#e6c594] via-[#f7f1e5] to-[#e6c594] hover:brightness-110 text-[#150408] font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-[#800020]/40 flex items-center justify-center gap-2"
+                        }
                       >
-                        <span>Register Now 🔱</span>
+                        <span>{flagshipNavroopam.status === 'DONE' ? 'Event Concluded • View Winners 🏆' : 'Register Now 🔱'}</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
@@ -195,11 +266,15 @@ export default function Home() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-black uppercase text-[#e6c594] bg-[#800020]/60 px-1.5 py-0.5 rounded">
-                            🔱 Live Flagship
+                          <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${
+                            flagshipNavroopam.status === 'DONE'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : 'text-[#e6c594] bg-[#800020]/60'
+                          }`}>
+                            {flagshipNavroopam.status === 'DONE' ? '🏆 Concluded' : '🔱 Live Flagship'}
                           </span>
                           <span className="text-[10px] font-mono font-bold text-amber-300">
-                            ₹9.00
+                            {flagshipNavroopam.status === 'DONE' ? 'Results Out' : '₹9.00'}
                           </span>
                         </div>
                         <h4 className="text-sm font-black text-white truncate mt-1">
@@ -219,17 +294,17 @@ export default function Home() {
         </section>
 
         {/* ========================================================= */}
-        {/* EVENT DIRECTORY & CONTROLS SECTION */}
+        {/* EVENT DIRECTORY & CONTROLS SECTION (ACTIVE REGISTRATIONS) */}
         {/* ========================================================= */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
+        <section id="active-events" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
           {/* Controls Bar: Search Box */}
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5 pb-4 border-b border-white/10">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
                   <span>Available Registrations</span>
-                  <span className="text-xs font-mono font-normal text-[#a69181] bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
-                    {filteredEvents.length} {filteredEvents.length === 1 ? 'Event' : 'Events'}
+                  <span className="text-xs font-mono font-normal text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                    {filteredActiveEvents.length} Active {filteredActiveEvents.length === 1 ? 'Event' : 'Events'}
                   </span>
                 </h2>
                 <p className="text-xs text-[#a69181] mt-0.5">
@@ -251,28 +326,28 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Catalog Listing */}
+          {/* Active Catalog Listing */}
           <div>
             {loading ? (
               <div className="py-20 text-center text-[#e6d7c3]">
                 <p className="text-xs font-semibold text-[#a69181] animate-pulse">Syncing with MongoDB database...</p>
               </div>
-            ) : filteredEvents.length === 0 ? (
-              <div className="rounded-3xl bg-[#140307]/70 p-12 text-center my-6 border border-white/10 max-w-xl mx-auto space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#800020]/30 border border-[#e6c594]/30 text-[#e6c594] flex items-center justify-center mx-auto">
-                  <CalendarX className="w-7 h-7" />
+            ) : filteredActiveEvents.length === 0 ? (
+              <div className="rounded-3xl bg-[#140307]/70 p-10 text-center my-4 border border-white/10 max-w-xl mx-auto space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#800020]/30 border border-[#e6c594]/30 text-[#e6c594] flex items-center justify-center mx-auto">
+                  <CalendarX className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-extrabold text-white">No Matching Events Found</h3>
+                <h3 className="text-lg font-extrabold text-white">No Matching Active Events</h3>
                 <p className="text-xs text-[#a69181] leading-relaxed">
                   {searchQuery 
-                    ? `No registrations match your search "${searchQuery}". Please check for typos or clear your filter.` 
-                    : 'There are currently no active events in this category. Check back soon for new club updates!'}
+                    ? `No active registrations match your search "${searchQuery}".` 
+                    : 'All current registrations are closed. Explore our past events below!'}
                 </p>
 
                 {searchQuery && (
                   <button 
                     onClick={() => setSearchQuery('')}
-                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors inline-block"
+                    className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors inline-block"
                   >
                     Clear Search
                   </button>
@@ -280,12 +355,132 @@ export default function Home() {
               </div>
             ) : (
               <div className="events-grid-container">
-                {filteredEvents.map(event => (
+                {filteredActiveEvents.map(event => (
                   <EventCard key={event.id || event._id} event={event} />
                 ))}
               </div>
             )}
           </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* PAST EVENTS & HALLMARK ARCHIVE SECTION */}
+        {/* ========================================================= */}
+        <section id="past-events" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5 pb-4 border-b border-white/10 mb-8">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#e6c594]" />
+                <span className="text-[10px] font-black tracking-widest text-[#e6c594] uppercase font-mono">
+                  Legacy & History
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2 mt-0.5">
+                <History className="w-5 h-5 text-[#e6c594]" />
+                <span>Past Events</span>
+                <span className="text-xs font-mono font-normal text-[#a69181] bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
+                  {filteredPastEvents.length} Concluded
+                </span>
+              </h2>
+              <p className="text-xs text-[#a69181] mt-0.5">
+                Archived festivals, tournaments, and creative showcases celebrated across Haldia Institute of Technology.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-[#a69181]">
+              <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 font-mono text-[11px] text-[#e6d7c3]">
+                🏆 Certificates & Highlights Archived
+              </span>
+            </div>
+          </div>
+
+          {filteredPastEvents.length === 0 ? (
+            <div className="rounded-3xl bg-[#140307]/50 p-8 text-center border border-white/5 max-w-md mx-auto text-xs text-[#a69181]">
+              No archived events match your search &ldquo;{searchQuery}&rdquo;.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredPastEvents.map((event) => {
+                const eventId = event.id || event._id;
+                const cardImg = event.coverUrl || event.bannerUrl || 'https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1200&auto=format&fit=crop';
+                const isNav = Boolean(event.title?.toLowerCase().includes('nav') || eventId?.includes('nav'));
+                const isTri = Boolean(event.theme === 'TRICOLOUR' || event.title?.toLowerCase().includes('swaraj'));
+
+                return (
+                  <div 
+                    key={eventId}
+                    className="group relative rounded-2xl overflow-hidden bg-gradient-to-b from-[#18040a] via-[#120306] to-[#0c0204] border border-white/10 hover:border-[#e6c594]/50 transition-all duration-300 flex flex-col justify-between shadow-lg hover:shadow-2xl hover:shadow-[#800020]/20 hover:-translate-y-1"
+                  >
+                    {/* Media Preview Thumbnail */}
+                    <div className="relative aspect-[16/9] w-full overflow-hidden bg-black/40">
+                      <img 
+                        src={cardImg} 
+                        alt={event.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#120306] via-transparent to-black/50" />
+                      
+                      {/* Top Badges */}
+                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                        <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-[#e6d7c3] flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span>Concluded</span>
+                        </span>
+                        
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                          isNav 
+                            ? 'bg-[#800020]/80 text-[#e6c594] border border-[#e6c594]/40' 
+                            : isTri 
+                            ? 'bg-[#ff9933]/20 text-[#ff9933] border border-[#ff9933]/40' 
+                            : 'bg-white/10 text-white border border-white/20'
+                        }`}>
+                          {event.mode === 'ONLINE' ? 'Online' : 'In-Person'}
+                        </span>
+                      </div>
+
+                      {/* Date bar on thumbnail */}
+                      <div className="absolute bottom-2.5 left-3.5 right-3.5 flex items-center justify-between text-[11px] text-[#e6d7c3]">
+                        <span className="font-semibold text-white/90 flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-[#e6c594]" />
+                          <span>{event.date}</span>
+                        </span>
+                        <span className="text-[10px] text-[#a69181] font-mono">
+                          {event.organizer || 'HITian Inside'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card Content Body */}
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                      <div className="space-y-2">
+                        <h3 className="text-base font-bold text-white group-hover:text-[#e6c594] transition-colors line-clamp-1">
+                          {event.title}
+                        </h3>
+                        <p className="text-xs text-[#a69181] line-clamp-3 leading-relaxed">
+                          {event.description}
+                        </p>
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+                        <span className="text-[10.5px] font-mono text-[#a69181]">
+                          Status: <strong className="text-emerald-400">Successfully Completed</strong>
+                        </span>
+
+                        <Link 
+                          href={`/events/${eventId}`}
+                          className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#e6c594]/40 text-[#e6c594] text-xs font-bold transition-all inline-flex items-center gap-1"
+                        >
+                          <span>Event Overview</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* ========================================================= */}

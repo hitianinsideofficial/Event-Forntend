@@ -30,6 +30,7 @@ export default function CreateEventPage() {
     hasAttendance: true,
     requireFileUpload: false,
     isHidden: false,
+    showGallery: true,
     upiId: '',
     payeeName: '',
     registrationFee: '',
@@ -119,6 +120,7 @@ The Value Edition is about going beyond celebration and looking at the values th
       hasAttendance: true,
       requireFileUpload: false,
       isHidden: false,
+      showGallery: true,
       upiId: '',
       payeeName: '',
       registrationFee: '',
@@ -515,6 +517,17 @@ The Value Edition is about going beyond celebration and looking at the values th
                   className="w-4 h-4 border-slate-300 text-rose-600 focus:ring-0"
                 />
                 <span>🙈 Keep Hidden from Main Website Catalog</span>
+              </label>
+
+              <label className="flex items-center gap-2 text-xs text-indigo-700 font-bold cursor-pointer">
+                <input 
+                  type="checkbox"
+                  name="showGallery"
+                  checked={formData.showGallery}
+                  onChange={handleChange}
+                  className="w-4 h-4 border-slate-300 text-indigo-600 focus:ring-0"
+                />
+                <span>🖼️ Show Submissions Gallery on Event Page</span>
               </label>
             </div>
 
