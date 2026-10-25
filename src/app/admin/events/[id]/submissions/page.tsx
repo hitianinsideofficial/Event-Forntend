@@ -63,7 +63,10 @@ import {
   ChevronRight,
   UploadCloud,
   Edit3,
-  Link2
+  Link2,
+  MessageSquare,
+  PhoneCall,
+  Ban
 } from 'lucide-react';
 import MongoProgressBar from '../../../../../components/MongoProgressBar';
 
@@ -137,6 +140,13 @@ export default function EventSubmissionsPage() {
   const [editPayeeSub, setEditPayeeSub] = useState<SubmissionItem | null>(null);
   const [participantPayeeInput, setParticipantPayeeInput] = useState<string>('');
   const [isUpdatingParticipantPayee, setIsUpdatingParticipantPayee] = useState<boolean>(false);
+
+  // Payment Issues & Scam Tracker State
+  const [isPaymentIssuesExpanded, setIsPaymentIssuesExpanded] = useState<boolean>(true);
+  const [paymentIssueCategoryTab, setPaymentIssueCategoryTab] = useState<'ALL' | 'MULTI_DOMAIN' | 'CROSS_STUDENT'>('ALL');
+  const [paymentIssueStatusFilter, setPaymentIssueStatusFilter] = useState<'ALL' | 'UNRESOLVED' | 'RESOLVED' | 'DISQUALIFIED'>('ALL');
+  const [resolvingPaymentId, setResolvingPaymentId] = useState<string | null>(null);
+  const [disqualifyingPaymentId, setDisqualifyingPaymentId] = useState<string | null>(null);
 
   // Bulk Acknowledgement Email Queue State
   const [selectedAckIds, setSelectedAckIds] = useState<string[]>([]);
@@ -631,6 +641,229 @@ export default function EventSubmissionsPage() {
     }
   };
 
+  // =========================================================================
+  // PAYMENT ISSUES & SCAM INVESTIGATION LOGIC
+  // =========================================================================
+  const { paymentScamGroups, reusedUtrsSet, utrUsageCount } = React.useMemo(() => {
+    // Only analyze submissions belonging to this event
+    const currentSubs = submissions.filter(s => s.eventId === eventId);
+    const uMap = new Map<string, SubmissionItem[]>();
+    const uUsage = new Map<string, number>();
+
+    currentSubs.forEach(s => {
+      const u = (s.answers?.['Transaction UID'] || s.answers?.['UTR'] || s.answers?.['Transaction ID'] || '').trim();
+      if (u && u.length >= 4) {
+        const list = uMap.get(u) || [];
+        list.push(s);
+        uMap.set(u, list);
+        uUsage.set(u, (uUsage.get(u) || 0) + 1);
+      }
+    });
+
+    const rSet = new Set<string>();
+    uUsage.forEach((cnt, u) => {
+      if (cnt > 1) rSet.add(u);
+    });
+
+    // Group by student key (Roll number, Email, or Phone)
+    const sMap = new Map<string, SubmissionItem[]>();
+    currentSubs.forEach(s => {
+      const roll = (s.answers?.['College Roll Number'] || '').trim().toLowerCase();
+      const email = (s.email || '').trim().toLowerCase();
+      const phone = (s.phone || '').trim();
+      const key = roll || email || phone;
+      if (key) {
+        const list = sMap.get(key) || [];
+        list.push(s);
+        sMap.set(key, list);
+      }
+    });
+
+    interface ScamEntryItem {
+      sub: SubmissionItem;
+      isLegitPrimary: boolean;
+      isResolved: boolean;
+      isDisqualified: boolean;
+    }
+
+    interface PaymentScamGroup {
+      id: string;
+      type: 'MULTI_DOMAIN' | 'CROSS_STUDENT';
+      typeLabel: string;
+      studentName: string;
+      phone: string;
+      email: string;
+      roll: string;
+      department: string;
+      reusedUtr: string;
+      totalEntries: number;
+      unpaidCount: number;
+      entries: ScamEntryItem[];
+      allResolved: boolean;
+      hasDisqualified: boolean;
+    }
+
+    const groups: PaymentScamGroup[] = [];
+    const processedSubIds = new Set<string>();
+
+    // 1. Same Student Multi-Domain Reused UTR
+    sMap.forEach((sList, key) => {
+      if (sList.length <= 1) return;
+      const sorted = [...sList].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+      const utrs = sorted.map(s => (s.answers?.['Transaction UID'] || s.answers?.['UTR'] || s.answers?.['Transaction ID'] || '').trim()).filter(Boolean);
+      const uniqueUtrs = new Set(utrs);
+
+      if (uniqueUtrs.size > 0 && uniqueUtrs.size < sorted.length) {
+        sorted.forEach(s => processedSubIds.add(s.id));
+        const seenUtrs = new Set<string>();
+        const entries: ScamEntryItem[] = sorted.map((s, idx) => {
+          const u = (s.answers?.['Transaction UID'] || s.answers?.['UTR'] || s.answers?.['Transaction ID'] || '').trim();
+          let isLegitPrimary = false;
+          if (u && !seenUtrs.has(u)) {
+            seenUtrs.add(u);
+            isLegitPrimary = true;
+          } else if (!u && idx === 0) {
+            isLegitPrimary = true;
+          }
+          const isDisqualified = s.postingStatus === 'DISQUALIFIED' || s.paymentStatus === 'REJECTED';
+          const isResolved = !isDisqualified && (s.paymentStatus === 'VERIFIED' || s.paymentStatus === 'PAID');
+          return { sub: s, isLegitPrimary, isResolved, isDisqualified };
+        });
+
+        const unpaidCount = entries.filter(e => !e.isLegitPrimary).length;
+        groups.push({
+          id: `student_${key}`,
+          type: 'MULTI_DOMAIN',
+          typeLabel: 'Reused UTR Across Domains',
+          studentName: sorted[0].fullName,
+          phone: sorted.map(s => s.phone).find(Boolean) || 'N/A',
+          email: sorted.map(s => s.email).find(Boolean) || 'N/A',
+          roll: sorted.map(s => s.answers?.['College Roll Number']).find(Boolean) || 'N/A',
+          department: sorted.map(s => s.answers?.['Department']).find(Boolean) || 'N/A',
+          reusedUtr: Array.from(uniqueUtrs).join(', '),
+          totalEntries: sorted.length,
+          unpaidCount,
+          entries,
+          allResolved: entries.every(e => e.isResolved || e.isDisqualified),
+          hasDisqualified: entries.some(e => e.isDisqualified)
+        });
+      }
+    });
+
+    // 2. Cross-Student Shared UTR
+    uMap.forEach((uList, utr) => {
+      if (uList.length <= 1) return;
+      const distinctNames = new Set(uList.map(s => s.fullName.trim().toLowerCase()));
+      if (distinctNames.size > 1) {
+        const sorted = [...uList].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+        const entries: ScamEntryItem[] = sorted.map((s, idx) => {
+          const isDisqualified = s.postingStatus === 'DISQUALIFIED' || s.paymentStatus === 'REJECTED';
+          const isResolved = !isDisqualified && (s.paymentStatus === 'VERIFIED' || s.paymentStatus === 'PAID');
+          return { sub: s, isLegitPrimary: idx === 0, isResolved, isDisqualified };
+        });
+        const alreadyExists = groups.some(g => g.type === 'CROSS_STUDENT' && g.reusedUtr === utr);
+        if (!alreadyExists) {
+          groups.push({
+            id: `cross_${utr}`,
+            type: 'CROSS_STUDENT',
+            typeLabel: 'Shared UTR Between Different Students',
+            studentName: Array.from(distinctNames).join(' & '),
+            phone: sorted.map(s => s.phone).find(Boolean) || 'N/A',
+            email: sorted.map(s => s.email).find(Boolean) || 'N/A',
+            roll: sorted.map(s => s.answers?.['College Roll Number']).find(Boolean) || 'N/A',
+            department: sorted.map(s => s.answers?.['Department']).find(Boolean) || 'N/A',
+            reusedUtr: utr,
+            totalEntries: sorted.length,
+            unpaidCount: sorted.length - 1,
+            entries,
+            allResolved: entries.every(e => e.isResolved || e.isDisqualified),
+            hasDisqualified: entries.some(e => e.isDisqualified)
+          });
+        }
+      }
+    });
+
+    return { paymentScamGroups: groups, reusedUtrsSet: rSet, utrUsageCount: uUsage };
+  }, [submissions, eventId]);
+
+  // Action 1: Mark Entry as Resolved (Paid & Qualified)
+  const handleResolvePaymentIssue = async (sub: SubmissionItem) => {
+    setResolvingPaymentId(sub.id);
+    try {
+      await updatePaymentStatusApi(sub.id, 'VERIFIED');
+      await updatePostingExcelApi(sub.id, { postingStatus: 'QUALIFIED' });
+      setSubmissions(prev => prev.map(s => {
+        if (s.id === sub.id) {
+          return {
+            ...s,
+            paymentStatus: 'VERIFIED',
+            paymentVerifiedAt: new Date().toISOString(),
+            postingStatus: 'QUALIFIED'
+          };
+        }
+        return s;
+      }));
+      alert(`Entry marked as RESOLVED (Payment Verified & Posting Qualified) for ${sub.fullName} (${sub.ticketId})!`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to resolve payment issue');
+    } finally {
+      setResolvingPaymentId(null);
+    }
+  };
+
+  // Action 2: Mark Entry as Disqualified (Rejected & Disqualified)
+  const handleDisqualifyPaymentIssue = async (sub: SubmissionItem) => {
+    if (!window.confirm(`Disqualify this unpaid entry for "${sub.fullName}" (${sub.answers?.['Selected Domain'] || sub.ticketId})?\n\nThis will mark Payment as REJECTED and Posting as DISQUALIFIED.`)) {
+      return;
+    }
+    setDisqualifyingPaymentId(sub.id);
+    try {
+      await updatePaymentStatusApi(sub.id, 'REJECTED');
+      await updatePostingExcelApi(sub.id, { postingStatus: 'DISQUALIFIED' });
+      setSubmissions(prev => prev.map(s => {
+        if (s.id === sub.id) {
+          return {
+            ...s,
+            paymentStatus: 'REJECTED',
+            postingStatus: 'DISQUALIFIED'
+          };
+        }
+        return s;
+      }));
+      alert(`Entry marked as DISQUALIFIED for ${sub.fullName} (${sub.ticketId}).`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to disqualify entry');
+    } finally {
+      setDisqualifyingPaymentId(null);
+    }
+  };
+
+  // Action 3: Disqualify all unpaid extra entries in a group
+  const handleBulkDisqualifyUnpaidGroup = async (group: any) => {
+    const unpaidEntries = group.entries.filter((e: any) => !e.isLegitPrimary && !e.isDisqualified).map((e: any) => e.sub);
+    if (unpaidEntries.length === 0) {
+      alert('All unpaid entries in this group are already resolved or disqualified.');
+      return;
+    }
+    if (!window.confirm(`Disqualify all ${unpaidEntries.length} unpaid duplicate domain entries for "${group.studentName}"?\n\nTheir 1st entry will remain valid and active.`)) {
+      return;
+    }
+    setDisqualifyingPaymentId(group.id);
+    let count = 0;
+    for (const sub of unpaidEntries) {
+      try {
+        await updatePaymentStatusApi(sub.id, 'REJECTED');
+        await updatePostingExcelApi(sub.id, { postingStatus: 'DISQUALIFIED' });
+        count++;
+        setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, paymentStatus: 'REJECTED', postingStatus: 'DISQUALIFIED' } : s));
+      } catch (err) {
+        console.error('Error disqualifying sub:', sub.id, err);
+      }
+    }
+    setDisqualifyingPaymentId(null);
+    alert(`Successfully disqualified ${count} unpaid entries for ${group.studentName}.`);
+  };
+
   // Available Domains & Themes
   const availableDomains = Array.from(
     new Set(
@@ -795,6 +1028,22 @@ export default function EventSubmissionsPage() {
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>Posting Excel</span>
               </Link>
+            )}
+
+            {paymentScamGroups.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPaymentIssuesExpanded(true);
+                  const el = document.getElementById('payment-issues-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black inline-flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer animate-pulse"
+                title="Review duplicate UTRs and multi-domain payment fraud"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Payment Issues ({paymentScamGroups.length})</span>
+              </button>
             )}
 
             <button
@@ -1023,6 +1272,366 @@ export default function EventSubmissionsPage() {
             ))}
           </div>
         </div>
+
+        {/* ========================================================= */}
+        {/* PAYMENT ISSUES & REUSED UTR SCAM INVESTIGATION SECTION */}
+        {/* ========================================================= */}
+        {paymentScamGroups.length > 0 && (
+          <section id="payment-issues-section" className="bg-white border-2 border-rose-300 shadow-md rounded-xl overflow-hidden">
+            {/* SECTION TOP HEADER */}
+            <div className="bg-gradient-to-r from-rose-900 via-rose-800 to-slate-900 text-white p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-rose-500/20 text-rose-300 rounded border border-rose-400/30">
+                    <ShieldAlert className="w-5 h-5 text-rose-300" />
+                  </span>
+                  <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
+                    <span>Payment Issues & Scam Investigation</span>
+                    <span className="px-2.5 py-0.5 bg-rose-600 text-white rounded-full text-xs font-mono font-bold">
+                      {paymentScamGroups.length} Students Flagged
+                    </span>
+                  </h2>
+                </div>
+                <p className="text-xs text-rose-200/90 max-w-3xl">
+                  Students who submitted entries across multiple domains but reused the same payment UTR / screenshot, or shared a transaction ID with another participant.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentIssuesExpanded(!isPaymentIssuesExpanded)}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg transition-colors border border-white/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isPaymentIssuesExpanded ? 'rotate-180' : ''}`} />
+                  <span>{isPaymentIssuesExpanded ? 'Collapse Section' : 'Expand Section'}</span>
+                </button>
+              </div>
+            </div>
+
+            {isPaymentIssuesExpanded && (
+              <div className="p-5 space-y-5 bg-slate-50/50">
+                {/* METRICS & CATEGORY TABS BAR */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
+                  {/* Category Filter Tabs */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentIssueCategoryTab('ALL')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                        paymentIssueCategoryTab === 'ALL'
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-300'
+                      }`}
+                    >
+                      All Issues ({paymentScamGroups.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentIssueCategoryTab('MULTI_DOMAIN')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                        paymentIssueCategoryTab === 'MULTI_DOMAIN'
+                          ? 'bg-rose-700 text-white shadow-xs'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-300'
+                      }`}
+                    >
+                      Reused UTR Across Domains ({paymentScamGroups.filter(g => g.type === 'MULTI_DOMAIN').length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentIssueCategoryTab('CROSS_STUDENT')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                        paymentIssueCategoryTab === 'CROSS_STUDENT'
+                          ? 'bg-amber-700 text-white shadow-xs'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-300'
+                      }`}
+                    >
+                      Shared Between Students ({paymentScamGroups.filter(g => g.type === 'CROSS_STUDENT').length})
+                    </button>
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status:</span>
+                    <select
+                      value={paymentIssueStatusFilter}
+                      onChange={e => setPaymentIssueStatusFilter(e.target.value as any)}
+                      className="px-2.5 py-1.5 text-xs font-bold bg-white border border-slate-300 rounded text-slate-800 outline-none cursor-pointer"
+                    >
+                      <option value="ALL">All Entries</option>
+                      <option value="UNRESOLVED">Unresolved / Pending Extra</option>
+                      <option value="RESOLVED">Resolved / Verified</option>
+                      <option value="DISQUALIFIED">Disqualified Entries</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* SCAM GROUPS LIST */}
+                <div className="space-y-4">
+                  {paymentScamGroups
+                    .filter(group => {
+                      if (paymentIssueCategoryTab !== 'ALL' && group.type !== paymentIssueCategoryTab) return false;
+                      if (paymentIssueStatusFilter === 'UNRESOLVED') {
+                        return group.entries.some(e => !e.isLegitPrimary && !e.isResolved && !e.isDisqualified);
+                      }
+                      if (paymentIssueStatusFilter === 'RESOLVED') {
+                        return group.entries.some(e => e.isResolved);
+                      }
+                      if (paymentIssueStatusFilter === 'DISQUALIFIED') {
+                        return group.hasDisqualified;
+                      }
+                      return true;
+                    })
+                    .map((group) => {
+                      const cleanPhone = (group.phone || '').replace(/[^0-9]/g, '');
+                      const waPhone = cleanPhone.startsWith('91') && cleanPhone.length > 10 ? cleanPhone : `91${cleanPhone.slice(-10)}`;
+                      const waText = encodeURIComponent(
+                        `Hello ${group.studentName},\nRegarding your Navroopam registration (Roll: ${group.roll}): We noticed the payment UTR (${group.reusedUtr}) was reused across multiple domain entries without separate payment. Please send the payment receipt/UTR for each domain so your extra entries are not disqualified.`
+                      );
+                      const waUrl = `https://wa.me/${waPhone}?text=${waText}`;
+
+                      const hasUnpaidRemaining = group.entries.some(e => !e.isLegitPrimary && !e.isDisqualified);
+
+                      return (
+                        <div
+                          key={group.id}
+                          className="bg-white border border-slate-300 rounded-xl p-4 shadow-xs space-y-3"
+                        >
+                          {/* GROUP TOP INFO STRIP */}
+                          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                                  group.type === 'MULTI_DOMAIN' ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                }`}>
+                                  {group.typeLabel}
+                                </span>
+                                <h3 className="text-base font-black text-slate-900 tracking-tight">
+                                  {group.studentName}
+                                </h3>
+                                {group.roll && group.roll !== 'N/A' && (
+                                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-mono font-bold border border-slate-200 rounded">
+                                    Roll: {group.roll}
+                                  </span>
+                                )}
+                                {group.department && group.department !== 'N/A' && (
+                                  <span className="text-xs text-slate-500 font-medium">
+                                    ({group.department})
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 pt-0.5">
+                                <span className="font-mono bg-rose-50 text-rose-900 px-2 py-0.5 rounded border border-rose-200 font-bold">
+                                  Reused UTR: <strong className="select-all">{group.reusedUtr}</strong>
+                                </span>
+                                <span>
+                                  Submitted <strong>{group.totalEntries} entries</strong> ({group.unpaidCount} unpaid extra)
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* CONTACT STRIP & GROUP ACTIONS */}
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* Direct WhatsApp Button with pre-filled message */}
+                              {cleanPhone.length >= 10 && (
+                                <a
+                                  href={waUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-md inline-flex items-center gap-1.5 transition-colors shadow-2xs"
+                                  title={`Open WhatsApp chat with ${group.studentName}`}
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  <span>WhatsApp: {group.phone}</span>
+                                </a>
+                              )}
+
+                              {/* Direct Phone Call Button */}
+                              {cleanPhone.length >= 10 && (
+                                <a
+                                  href={`tel:${group.phone}`}
+                                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold rounded-md inline-flex items-center gap-1 transition-colors"
+                                  title="Call Phone Number"
+                                >
+                                  <PhoneCall className="w-3.5 h-3.5 text-slate-600" />
+                                  <span>Call</span>
+                                </a>
+                              )}
+
+                              {/* Email Link */}
+                              {group.email && group.email !== 'N/A' && (
+                                <a
+                                  href={`mailto:${group.email}?subject=Navroopam Registration Payment Verification Issue`}
+                                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold rounded-md inline-flex items-center gap-1 transition-colors"
+                                  title="Email Participant"
+                                >
+                                  <Mail className="w-3.5 h-3.5 text-slate-600" />
+                                </a>
+                              )}
+
+                              {/* Bulk Disqualify Extra Entries */}
+                              {hasUnpaidRemaining && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleBulkDisqualifyUnpaidGroup(group)}
+                                  disabled={disqualifyingPaymentId === group.id}
+                                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-bold rounded-md inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                                  title="Keep 1st entry valid and disqualify all other unpaid entries"
+                                >
+                                  <Ban className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>{disqualifyingPaymentId === group.id ? 'Processing...' : 'Disqualify Unpaid Extras'}</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* SUBMISSIONS BREAKDOWN TABLE */}
+                          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                            <table className="w-full text-left text-xs text-slate-800">
+                              <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                                <tr>
+                                  <th className="px-3 py-2">Entry & Domain</th>
+                                  <th className="px-3 py-2">Ticket ID</th>
+                                  <th className="px-3 py-2">UTR Ref</th>
+                                  <th className="px-3 py-2">Submitted At</th>
+                                  <th className="px-3 py-2">Entry Status</th>
+                                  <th className="px-3 py-2 text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 bg-white">
+                                {group.entries.map((entry) => {
+                                  const sub = entry.sub;
+                                  const domain = sub.answers?.['Selected Domain'] || 'General Entry';
+                                  const utr = (sub.answers?.['Transaction UID'] || sub.answers?.['UTR'] || '-').trim();
+
+                                  // Find proof file if any
+                                  const proofFile = sub.files?.find(f => {
+                                    const n = (f.originalName || '').toLowerCase();
+                                    return n.includes('proof') || n.includes('pay') || n.includes('utr') || f.provider === 'cloudinary_payment_proof';
+                                  }) || sub.files?.[0];
+
+                                  return (
+                                    <tr key={sub.id} className={entry.isLegitPrimary ? 'bg-emerald-50/30' : entry.isDisqualified ? 'bg-slate-50 opacity-70' : 'bg-rose-50/20'}>
+                                      {/* DOMAIN & NATURE */}
+                                      <td className="px-3 py-2.5">
+                                        <div className="font-extrabold text-slate-900">{domain}</div>
+                                        <div className="mt-0.5">
+                                          {entry.isLegitPrimary ? (
+                                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded border border-emerald-300">
+                                              ✅ 1st Entry (Fee Covered)
+                                            </span>
+                                          ) : (
+                                            <span className="px-1.5 py-0.5 bg-rose-100 text-rose-800 font-bold text-[10px] rounded border border-rose-300">
+                                              🚨 Duplicate UTR (Unpaid)
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+
+                                      {/* TICKET ID */}
+                                      <td className="px-3 py-2.5 font-mono font-bold text-slate-800">
+                                        <span className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-[11px]">
+                                          {sub.ticketId}
+                                        </span>
+                                      </td>
+
+                                      {/* UTR */}
+                                      <td className="px-3 py-2.5 font-mono text-[11px] text-slate-700">
+                                        <span className="bg-slate-50 px-1.5 py-0.5 border border-slate-200 rounded font-semibold select-all">
+                                          {utr}
+                                        </span>
+                                      </td>
+
+                                      {/* TIMESTAMP */}
+                                      <td className="px-3 py-2.5 text-slate-600 text-[11px]">
+                                        {new Date(sub.createdAt).toLocaleString('en-IN', {
+                                          day: '2-digit',
+                                          month: 'short',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        })}
+                                      </td>
+
+                                      {/* STATUS BADGES */}
+                                      <td className="px-3 py-2.5">
+                                        {entry.isDisqualified ? (
+                                          <span className="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 rounded text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+                                            <XCircle className="w-3 h-3 text-rose-600" />
+                                            <span>DISQUALIFIED</span>
+                                          </span>
+                                        ) : entry.isResolved ? (
+                                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                            <span>RESOLVED / VERIFIED</span>
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1">
+                                            <Clock className="w-3 h-3 text-amber-600" />
+                                            <span>PENDING CHECK</span>
+                                          </span>
+                                        )}
+                                      </td>
+
+                                      {/* ACTION BUTTONS */}
+                                      <td className="px-3 py-2.5 text-right">
+                                        <div className="flex items-center justify-end gap-1.5">
+                                          {/* Action 1: Resolved Button */}
+                                          <button
+                                            type="button"
+                                            onClick={() => handleResolvePaymentIssue(sub)}
+                                            disabled={resolvingPaymentId === sub.id}
+                                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded inline-flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                                            title="Mark payment as verified and entry as qualified"
+                                          >
+                                            <Check className="w-3 h-3" />
+                                            <span>{resolvingPaymentId === sub.id ? '...' : 'Resolved'}</span>
+                                          </button>
+
+                                          {/* Action 2: Marked as Disqualified Button */}
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDisqualifyPaymentIssue(sub)}
+                                            disabled={disqualifyingPaymentId === sub.id}
+                                            className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded inline-flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                                            title="Disqualify this entry (Payment Rejected & Posting Disqualified)"
+                                          >
+                                            <Ban className="w-3 h-3" />
+                                            <span>{disqualifyingPaymentId === sub.id ? '...' : 'Mark as Disqualified'}</span>
+                                          </button>
+
+                                          {/* View Proof Screenshot if available */}
+                                          {proofFile && (proofFile.localUrl || proofFile.driveLink || (proofFile as any).downloadLink) && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setPreviewMediaUrl(proofFile.localUrl || proofFile.driveLink || (proofFile as any).downloadLink || null);
+                                                setPreviewTitle(`Payment Screenshot - ${sub.fullName} (${sub.ticketId})`);
+                                                setPreviewSubmission(sub);
+                                              }}
+                                              className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded transition-colors cursor-pointer"
+                                              title="View uploaded payment screenshot"
+                                            >
+                                              <Eye className="w-3.5 h-3.5" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ========================================================= */}
         {/* SUBMISSIONS TABLE & CONTROL TOOLBAR */}
@@ -1334,6 +1943,12 @@ export default function EventSubmissionsPage() {
                           <div className="mt-0.5 font-mono text-[10px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 border border-slate-300 truncate" title={`UTR: ${utr}`}>
                             UTR: {utr}
                           </div>
+                          {reusedUtrsSet.has(utr) && (
+                            <div className="mt-1 px-1.5 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 rounded text-[9px] font-black uppercase tracking-wider flex items-center gap-1" title="This payment UTR has been used across multiple submissions">
+                              <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                              <span>Reused UTR ({utrUsageCount.get(utr)}x)</span>
+                            </div>
+                          )}
                           <div className="mt-1 flex items-center justify-between gap-1">
                             <span className="text-[9px] text-slate-500 truncate max-w-[110px]" title={`Payee: ${payee}`}>
                               Payee: <span className="font-semibold text-slate-700">{payee !== '-' ? payee : 'Not Set'}</span>
