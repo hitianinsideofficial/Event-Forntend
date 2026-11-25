@@ -23,6 +23,7 @@ import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
 import { ApiResponse } from '../../../../../types/api.types';
 import EmailPreviewModal from '../../../../../components/EmailPreviewModal';
+import { CopyEmailsSection, CopyEmailsModal } from '../../../../../components/CopyEmailsManager';
 import { 
   ArrowLeft, 
   QrCode, 
@@ -157,6 +158,7 @@ export default function EventSubmissionsPage() {
 
   // Gallery display toggle state
   const [isTogglingGallery, setIsTogglingGallery] = useState<boolean>(false);
+  const [isCopyEmailsModalOpen, setIsCopyEmailsModalOpen] = useState<boolean>(false);
 
   const handleToggleGallery = async () => {
     if (!event) return;
@@ -1061,6 +1063,15 @@ export default function EventSubmissionsPage() {
             </button>
 
             <button
+              onClick={() => setIsCopyEmailsModalOpen(true)}
+              className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm active:scale-95"
+              title="Copy all user emails formatted for Gmail compose"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>Copy All Emails</span>
+            </button>
+
+            <button
               onClick={() => setIsEmailPreviewOpen(true)}
               className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               title="Preview participant email templates (Submission under verification & Instagram post confirmation)"
@@ -1108,6 +1119,14 @@ export default function EventSubmissionsPage() {
             </Link>
           </div>
         </div>
+
+        {/* QUICK COPY EMAILS SECTION FOR GMAIL */}
+        <CopyEmailsSection 
+          submissions={submissions}
+          title="Copy Participant Emails for Gmail"
+          defaultFilter="ALL"
+          onOpenAdvancedModal={() => setIsCopyEmailsModalOpen(true)}
+        />
 
         {/* 4 SUMMARY STATS + LIVE QR CHECK-IN BAR */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -3629,6 +3648,14 @@ export default function EventSubmissionsPage() {
             </div>
           </div>
         )}
+
+        {/* COPY EMAILS MODAL */}
+        <CopyEmailsModal
+          isOpen={isCopyEmailsModalOpen}
+          onClose={() => setIsCopyEmailsModalOpen(false)}
+          submissions={submissions}
+          eventName={event?.title}
+        />
 
       </main>
     </div>

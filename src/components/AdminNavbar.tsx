@@ -25,7 +25,8 @@ export default function AdminNavbar({ onLogout }: AdminNavbarProps) {
   const navLinks = [
     { href: '/admin', label: 'Dashboard & Analytics', icon: LayoutDashboard },
     { href: '/admin/events/create', label: 'Create Event', icon: Plus },
-    { href: '/admin/send-appreciation-email', label: 'Certificates & Emails', icon: Mail },
+    { href: '/admin/navroopam-certificates', label: 'Navroopam Certificates', icon: Sparkles },
+    { href: '/admin/send-appreciation-email', label: 'Legacy Appreciation', icon: Mail },
   ];
 
   const handleLogout = () => {

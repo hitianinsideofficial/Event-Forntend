@@ -984,5 +984,67 @@ export async function fetchBrevoMailStatsApi(): Promise<ApiResponse<BrevoMailSta
   return data;
 }
 
+export interface ParticipantCertificateEligibility {
+  fullName: string;
+  email: string;
+  ticketId: string;
+  allTicketIds: string[];
+  eventTitle: string;
+  domains: string[];
+  domainCount: number;
+  totalEntries: number;
+  certificateType: string;
+  certificateUrl: string;
+}
+
+export async function checkParticipantCertificateEligibilityApi(
+  query: string
+): Promise<{ success: boolean; eligible: boolean; participant?: ParticipantCertificateEligibility; message?: string }> {
+  const baseUrl = await getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/certificates/participant-eligibility`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ query: query.trim() })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    const error: any = new Error(data.message || 'No valid participation detected.');
+    error.status = res.status;
+    error.data = data;
+    throw error;
+  }
+  return data;
+}
+
+export async function sendParticipantCertificateEmailApi(payload: {
+  submissionId?: string;
+  email: string;
+  fullName: string;
+  ticketId?: string;
+  eventTitle?: string;
+  domains?: string[];
+  certificateBase64: string;
+}): Promise<ApiResponse<{ message: string }>> {
+  const baseUrl = await getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/certificates/send-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to send certificate email.');
+  }
+  clearApiCache('submissions');
+  return data;
+}
+
+
 
 

@@ -39,6 +39,13 @@ export default function Navbar({ onOpenVerifyModal }: NavbarProps) {
         {/* Right side navigation utilities */}
         <div className="flex items-center gap-3">
           <Link
+            href="/certificate"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#800020]/40 hover:bg-[#800020]/70 border border-[#e6c594]/40 text-[11px] font-bold text-[#e6c594] transition-all shadow-sm"
+          >
+            <span>Get Certificate 🎓</span>
+          </Link>
+
+          <Link
             href="/#past-events"
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-[#e6d7c3] hover:text-[#e6c594] transition-colors"
           >

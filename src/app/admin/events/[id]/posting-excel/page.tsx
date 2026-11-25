@@ -19,6 +19,7 @@ import {
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
+import { CopyEmailsSection, CopyEmailsModal } from '../../../../../components/CopyEmailsManager';
 import { 
   ArrowLeft, 
   FileSpreadsheet, 
@@ -103,6 +104,7 @@ export default function NavroopamPostingExcelPage() {
   const [confQuotaWarning, setConfQuotaWarning] = useState<string | null>(null);
   const [mailQuota, setMailQuota] = useState<BrevoMailStatsData | null>(null);
   const [isLoadingQuota, setIsLoadingQuota] = useState<boolean>(false);
+  const [isCopyEmailsModalOpen, setIsCopyEmailsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -722,6 +724,15 @@ export default function NavroopamPostingExcelPage() {
             </button>
 
             <button
+              onClick={() => setIsCopyEmailsModalOpen(true)}
+              className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm active:scale-95"
+              title="Copy all user emails for Gmail composing"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>Copy All Emails</span>
+            </button>
+
+            <button
               onClick={() => loadData(true)}
               disabled={loading}
               className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -731,6 +742,14 @@ export default function NavroopamPostingExcelPage() {
             </button>
           </div>
         </div>
+
+        {/* QUICK COPY EMAILS SECTION FOR GMAIL */}
+        <CopyEmailsSection 
+          submissions={submissions}
+          title="Copy Participant Emails for Gmail"
+          defaultFilter="ACKNOWLEDGED"
+          onOpenAdvancedModal={() => setIsCopyEmailsModalOpen(true)}
+        />
 
         {/* 4 COLOR STATUS & METRICS SUMMARY CARDS */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -2139,6 +2158,14 @@ export default function NavroopamPostingExcelPage() {
         onClose={() => setIsEmailPreviewOpen(false)}
         event={event}
         initialTab={emailPreviewTab}
+      />
+
+      {/* Copy All Emails Modal */}
+      <CopyEmailsModal
+        isOpen={isCopyEmailsModalOpen}
+        onClose={() => setIsCopyEmailsModalOpen(false)}
+        submissions={submissions}
+        eventName={event?.title}
       />
 
     </div>
