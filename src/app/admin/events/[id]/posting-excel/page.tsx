@@ -13,10 +13,13 @@ import {
   sendConfirmationEmailApi,
   requestDriveLinkUpdateEmailApi,
   requestResubmissionEmailApi,
-  acknowledgeSubmissionApi
+  acknowledgeSubmissionApi,
+  fetchBrevoMailStatsApi,
+  BrevoMailStatsData
 } from '../../../../../services/api.service';
 import { EventItem } from '../../../../../types/event.types';
 import { SubmissionItem } from '../../../../../types/submission.types';
+import { CopyEmailsSection, CopyEmailsModal } from '../../../../../components/CopyEmailsManager';
 import { 
   ArrowLeft, 
   FileSpreadsheet, 
@@ -99,6 +102,9 @@ export default function NavroopamPostingExcelPage() {
   const [confQueueProgress, setConfQueueProgress] = useState<{ current: number; total: number; currentName: string }>({ current: 0, total: 0, currentName: '' });
   const [confQueueResults, setConfQueueResults] = useState<{ success: number; failed: number }>({ success: 0, failed: 0 });
   const [confQuotaWarning, setConfQuotaWarning] = useState<string | null>(null);
+  const [mailQuota, setMailQuota] = useState<BrevoMailStatsData | null>(null);
+  const [isLoadingQuota, setIsLoadingQuota] = useState<boolean>(false);
+  const [isCopyEmailsModalOpen, setIsCopyEmailsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -257,25 +263,82 @@ export default function NavroopamPostingExcelPage() {
     setSelectedConfIds([]);
   };
 
+  // Open the Bulk Confirmation Queue Modal and refresh Brevo mail quota in real-time
+  const handleOpenBulkConfModal = async () => {
+    setIsBulkConfModalOpen(true);
+    setIsLoadingQuota(true);
+    try {
+      const res = await fetchBrevoMailStatsApi();
+      if (res.success && res.data) {
+        setMailQuota(res.data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch Brevo mail stats:', err);
+    } finally {
+      setIsLoadingQuota(false);
+    }
+  };
+
   // Run the sequential dispatch queue for all selected confirmation emails
   const handleStartBulkConfQueue = async () => {
     if (selectedConfIds.length === 0) return;
+
+    // 1. Fetch latest Brevo remaining credits in real-time
+    let availableCredits = mailQuota?.credits ?? 285;
+    try {
+      const statsRes = await fetchBrevoMailStatsApi();
+      if (statsRes.success && statsRes.data) {
+        availableCredits = statsRes.data.credits;
+        setMailQuota(statsRes.data);
+      }
+    } catch (err) {
+      console.warn('Could not refresh Brevo quota before queue, using existing quota state:', err);
+    }
+
+    // Safety margin rule: safe quota limit = Math.max(0, availableCredits - 2)
+    const safeLimit = Math.max(0, availableCredits - 2);
+
+    if (safeLimit <= 0) {
+      alert(`Daily Brevo email limit reached!\n\nCredits left: ${availableCredits} (Buffer: 2 reserved).\nPlease wait until midnight UTC (resets daily at 00:00 UTC) before sending more emails.`);
+      return;
+    }
+
+    // Check if selection exceeds the safe limit
+    const totalSelected = selectedConfIds.length;
+    let sendList = selectedConfIds;
+    let deferredCount = 0;
+
+    if (totalSelected > safeLimit) {
+      sendList = selectedConfIds.slice(0, safeLimit);
+      deferredCount = totalSelected - safeLimit;
+      const confirmProceed = window.confirm(
+        `⚠️ Daily Email Limit Protection:\n\n` +
+        `• Selected: ${totalSelected} emails\n` +
+        `• Remaining credits: ${availableCredits} emails\n` +
+        `• Safe sending capacity (Credits - 2 buffer): ${safeLimit} emails\n\n` +
+        `The system will dispatch the first ${safeLimit} emails today and keep the remaining ${deferredCount} selected emails for tomorrow.\n\n` +
+        `Do you want to proceed with sending ${safeLimit} emails now?`
+      );
+      if (!confirmProceed) return;
+    }
+
     setIsProcessingConfQueue(true);
     setConfQueueResults({ success: 0, failed: 0 });
     setConfQuotaWarning(null);
 
-    const total = selectedConfIds.length;
+    const totalToSend = sendList.length;
     let successCount = 0;
     let failedCount = 0;
     let lastQuotaWarning: string | null = null;
+    const successfullySentIds: string[] = [];
 
-    for (let i = 0; i < total; i++) {
-      const subId = selectedConfIds[i];
+    for (let i = 0; i < totalToSend; i++) {
+      const subId = sendList[i];
       const targetSub = submissions.find(s => s.id === subId);
       const name = targetSub ? targetSub.fullName : subId;
       const postUrl = (instagramUrls[subId] !== undefined ? instagramUrls[subId] : (targetSub?.instagramPostUrl || '')).trim();
 
-      setConfQueueProgress({ current: i + 1, total, currentName: name });
+      setConfQueueProgress({ current: i + 1, total: totalToSend, currentName: name });
 
       try {
         if (!postUrl) {
@@ -293,9 +356,13 @@ export default function NavroopamPostingExcelPage() {
         const res = await sendConfirmationEmailApi(subId, postUrl);
         if (res.success) {
           successCount++;
+          successfullySentIds.push(subId);
           if (res.quota?.warningAlert && res.quota.alertMessage) {
             lastQuotaWarning = res.quota.alertMessage;
             setConfQuotaWarning(res.quota.alertMessage);
+          }
+          if (res.quota?.credits !== undefined) {
+            setMailQuota(prev => prev ? { ...prev, credits: res.quota!.credits } : null);
           }
           // Update local status smoothly
           setPostingStatuses(prev => ({ ...prev, [subId]: 'MAIL_SENT' }));
@@ -322,22 +389,31 @@ export default function NavroopamPostingExcelPage() {
       setConfQueueResults({ success: successCount, failed: failedCount });
 
       // Polite delay (700ms) between dispatches to prevent rate-limiting Brevo
-      if (i < total - 1) {
+      if (i < totalToSend - 1) {
         await new Promise(resolve => setTimeout(resolve, 700));
       }
     }
 
+    // Retain deferred and failed emails in selectedConfIds for next day
+    setSelectedConfIds(prev => prev.filter(id => !successfullySentIds.includes(id)));
+
     setIsProcessingConfQueue(false);
-    if (lastQuotaWarning) {
-      alert(`Bulk confirmation email queue completed!\n\n${successCount} sent, ${failedCount} failed.\n\n🚨 ${lastQuotaWarning}`);
+
+    let completionMessage = `Bulk confirmation email queue completed!\n\n• Successfully sent: ${successCount}\n• Failed: ${failedCount}`;
+    if (deferredCount > 0) {
+      completionMessage += `\n• Kept for tomorrow: ${deferredCount} (Selection retained in queue)`;
     }
+    if (lastQuotaWarning) {
+      completionMessage += `\n\n🚨 ${lastQuotaWarning}`;
+    }
+    alert(completionMessage);
   };
 
   // Handle Saving single entry row
-  const handleSaveRow = async (subId: string) => {
+  const handleSaveRow = async (subId: string, overrideUrl?: string) => {
     setSavingId(subId);
     try {
-      const url = (instagramUrls[subId] !== undefined ? instagramUrls[subId] : '').trim();
+      const url = (overrideUrl !== undefined ? overrideUrl : (instagramUrls[subId] !== undefined ? instagramUrls[subId] : '')).trim();
       let status = postingStatuses[subId] || null;
 
       // Automatically change status to POSTED ('Green') when Instagram link is pasted and saved,
@@ -648,6 +724,15 @@ export default function NavroopamPostingExcelPage() {
             </button>
 
             <button
+              onClick={() => setIsCopyEmailsModalOpen(true)}
+              className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm active:scale-95"
+              title="Copy all user emails for Gmail composing"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>Copy All Emails</span>
+            </button>
+
+            <button
               onClick={() => loadData(true)}
               disabled={loading}
               className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -657,6 +742,14 @@ export default function NavroopamPostingExcelPage() {
             </button>
           </div>
         </div>
+
+        {/* QUICK COPY EMAILS SECTION FOR GMAIL */}
+        <CopyEmailsSection 
+          submissions={submissions}
+          title="Copy Participant Emails for Gmail"
+          defaultFilter="ACKNOWLEDGED"
+          onOpenAdvancedModal={() => setIsCopyEmailsModalOpen(true)}
+        />
 
         {/* 4 COLOR STATUS & METRICS SUMMARY CARDS */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -794,7 +887,7 @@ export default function NavroopamPostingExcelPage() {
           <button
             type="button"
             disabled={selectedConfIds.length === 0}
-            onClick={() => setIsBulkConfModalOpen(true)}
+            onClick={handleOpenBulkConfModal}
             className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
@@ -1219,31 +1312,46 @@ export default function NavroopamPostingExcelPage() {
                                     const val = e.target.value;
                                     setInstagramUrls(prev => ({ ...prev, [sub.id]: val }));
                                   }}
+                                  onPaste={async e => {
+                                    const pastedText = e.clipboardData.getData('text');
+                                    if (pastedText && pastedText.trim()) {
+                                      const cleaned = pastedText.trim();
+                                      setInstagramUrls(prev => ({ ...prev, [sub.id]: cleaned }));
+                                      // Auto-save immediately upon direct keyboard paste
+                                      await handleSaveRow(sub.id, cleaned);
+                                    }
+                                  }}
                                   className="w-full pl-7 pr-14 py-1.5 text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 outline-none focus:border-rose-600 font-mono transition-colors"
                                 />
                                 <button
                                   type="button"
+                                  disabled={savingId === sub.id}
                                   onClick={async () => {
                                     try {
                                       const text = await navigator.clipboard.readText();
                                       if (text && text.trim()) {
                                         const cleaned = text.trim();
                                         setInstagramUrls(prev => ({ ...prev, [sub.id]: cleaned }));
+                                        // Auto-save immediately upon paste
+                                        await handleSaveRow(sub.id, cleaned);
                                       } else {
                                         alert('Clipboard is empty or does not contain a link.');
                                       }
                                     } catch (err) {
                                       const manual = window.prompt('Paste your copied Instagram link here:');
                                       if (manual && manual.trim()) {
-                                        setInstagramUrls(prev => ({ ...prev, [sub.id]: manual.trim() }));
+                                        const cleaned = manual.trim();
+                                        setInstagramUrls(prev => ({ ...prev, [sub.id]: cleaned }));
+                                        // Auto-save immediately upon paste
+                                        await handleSaveRow(sub.id, cleaned);
                                       }
                                     }
                                   }}
-                                  className="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors cursor-pointer rounded-xs"
-                                  title="Paste link from clipboard"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors cursor-pointer rounded-xs disabled:opacity-50"
+                                  title="Paste link from clipboard & auto save"
                                 >
                                   <Clipboard className="w-2.5 h-2.5" />
-                                  <span>Paste</span>
+                                  <span>{savingId === sub.id ? 'Saving...' : 'Paste'}</span>
                                 </button>
                               </div>
 
@@ -1918,13 +2026,37 @@ export default function NavroopamPostingExcelPage() {
               <div className="space-y-4">
                 <div className="p-3 bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-start gap-2">
                   <MailCheck className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold">
-                      You have selected {selectedConfIds.length} participant{selectedConfIds.length === 1 ? '' : 's'} for Instagram confirmation emails.
-                    </p>
-                    <p className="text-[11.5px] text-blue-800 mt-0.5">
-                      Once you click &quot;Start Confirmation Queue&quot;, emails containing their live Instagram post link and entry certificate announcement will be sent one by one.
-                    </p>
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-bold">
+                        You have selected {selectedConfIds.length} participant{selectedConfIds.length === 1 ? '' : 's'} for Instagram confirmation emails.
+                      </p>
+                      {mailQuota && (
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold border ${
+                          selectedConfIds.length > Math.max(0, mailQuota.credits - 2)
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                        }`}>
+                          Quota Left: {mailQuota.credits} | Safe Max: {Math.max(0, mailQuota.credits - 2)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {mailQuota && selectedConfIds.length > Math.max(0, mailQuota.credits - 2) ? (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-300 rounded text-[11.5px] text-amber-900 space-y-1">
+                        <p className="font-bold flex items-center gap-1.5">
+                          <span>⚠️ Quota Protection Active:</span>
+                          <span>Will send {Math.max(0, mailQuota.credits - 2)} emails today & reserve {selectedConfIds.length - Math.max(0, mailQuota.credits - 2)} for tomorrow.</span>
+                        </p>
+                        <p className="text-[11px] text-amber-800">
+                          Brevo has {mailQuota.credits} credits left today (2 credits are kept as buffer). The remaining {selectedConfIds.length - Math.max(0, mailQuota.credits - 2)} participants will remain selected in the queue to dispatch after midnight UTC.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-[11.5px] text-blue-800 mt-0.5">
+                        Once you click &quot;Start Confirmation Queue&quot;, emails containing their live Instagram post link and entry certificate announcement will be sent one by one.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -2026,6 +2158,14 @@ export default function NavroopamPostingExcelPage() {
         onClose={() => setIsEmailPreviewOpen(false)}
         event={event}
         initialTab={emailPreviewTab}
+      />
+
+      {/* Copy All Emails Modal */}
+      <CopyEmailsModal
+        isOpen={isCopyEmailsModalOpen}
+        onClose={() => setIsCopyEmailsModalOpen(false)}
+        submissions={submissions}
+        eventName={event?.title}
       />
 
     </div>
