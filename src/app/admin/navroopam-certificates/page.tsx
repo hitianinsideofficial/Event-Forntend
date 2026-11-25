@@ -198,7 +198,7 @@ export default function AdminNavroopamCertificatesPage() {
     setRenderingPreview(true);
     try {
       const canvas = await renderCertificateCanvas({ participantName: p.fullName });
-      setPreviewCanvasUrl(canvas.toDataURL('image/jpeg', 0.95));
+      setPreviewCanvasUrl(canvas.toDataURL('image/jpeg', 0.88));
     } catch (err: any) {
       alert('Error rendering certificate preview: ' + err.message);
     } finally {
@@ -217,7 +217,8 @@ export default function AdminNavroopamCertificatesPage() {
     setSendingEmailKey(p.email);
     try {
       const canvas = await renderCertificateCanvas({ participantName: p.fullName });
-      const base64Data = canvas.toDataURL('image/jpeg', 0.95);
+      // Use 0.88 quality JPEG: crystal crisp 1600x1131 image at only ~250-350KB payload (well below limits)
+      const base64Data = canvas.toDataURL('image/jpeg', 0.88);
 
       await sendParticipantCertificateEmailApi({
         submissionId: p.submissionIds[0],
@@ -300,7 +301,7 @@ export default function AdminNavroopamCertificatesPage() {
 
       try {
         const canvas = await renderCertificateCanvas({ participantName: p.fullName });
-        const base64Data = canvas.toDataURL('image/jpeg', 0.95);
+        const base64Data = canvas.toDataURL('image/jpeg', 0.88);
 
         await sendParticipantCertificateEmailApi({
           submissionId: p.submissionIds[0],
